@@ -2,14 +2,14 @@
 
 > **Для команды** (этот блок удалить перед сдачей)
 >
-> - Разбор для созвона одной страницей: https://claude.ai/artifact/9dFfTSrBJoWvE6sQvCcvzD (открывается после того, как Илья поделится)
-> - Кейс, требования к сдаче и критерии: [docs/00_case.md](docs/00_case.md)
-> - Варианты идеи и рекомендация: [docs/01_options.md](docs/01_options.md)
-> - Роли, стек и план по дням: [docs/02_team_plan.md](docs/02_team_plan.md)
-> - Журнал решений: [docs/decisions.md](docs/decisions.md)
-> - Как работаем с репозиторием: [CONTRIBUTING.md](CONTRIBUTING.md)
+> - **Твои задачи и инструкция для твоего Claude:** `team/<имя>/CLAUDE.md` · как запускать — [team/README.md](team/README.md)
+> - Продукт, сценарий, экраны, данные, границы MVP: [docs/03_product.md](docs/03_product.md)
+> - Как закрываем каждый критерий: [docs/04_criteria_map.md](docs/04_criteria_map.md)
+> - Что проверено в документации MAX: [docs/05_max_platform.md](docs/05_max_platform.md)
+> - Кейс и требования к сдаче: [docs/00_case.md](docs/00_case.md) · план по дням: [docs/02_team_plan.md](docs/02_team_plan.md) · решения: [docs/decisions.md](docs/decisions.md)
+> - Разбор одной страницей: https://claude.ai/artifact/9dFfTSrBJoWvE6sQvCcvzD (откроется, когда Илья поделится)
 >
-> Статус на 27.09: идея не выбрана, кода нет.
+> Статус на 27.09: идея выбрана (стажировки через центр карьеры), кода нет.
 
 ---
 
