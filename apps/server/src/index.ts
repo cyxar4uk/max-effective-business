@@ -5,6 +5,7 @@ import { createRepos } from './db/repos.js';
 import { EventBus } from './events.js';
 import { createLogger } from './logger.js';
 import { matcher } from './matching/index.js';
+import { seedSkills } from './seed/index.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL);
@@ -15,6 +16,8 @@ if (config.RUN_MIGRATIONS) {
   const applied = await ds.runMigrations();
   if (applied.length) log.info({ migrations: applied.map((m) => m.name) }, 'Миграции применены');
 }
+// Справочник навыков нужен и в проде: без него не сохранить анкету и стажировку. Загрузка идемпотентна.
+log.info({ skills: await seedSkills(ds) }, 'Справочник навыков загружен');
 
 const events = new EventBus(log);
 // Сюда подключаются модули Тимура: registerBot({ events, ds, config, log }), сид при SEED_DEMO=true
