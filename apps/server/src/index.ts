@@ -1,4 +1,5 @@
 import { createApp } from './app.js';
+import { registerBot } from './bot/index.js';
 import { loadConfig } from './config.js';
 import { createDataSource } from './db/dataSource.js';
 import { createRepos } from './db/repos.js';
@@ -23,9 +24,9 @@ if (config.SEED_DEMO) log.info(await seedDemo(ds), 'Демо-данные заг
 const events = new EventBus(log);
 // Демо-режим: на стажировку проверяющего сразу откликаются подходящие демо-студенты (см. src/seed/demo/responder.ts)
 if (config.SEED_DEMO) registerDemoResponder({ events, ds, log, threshold: config.MATCH_NOTIFY_THRESHOLD });
-// Сюда подключается модуль бота Тимура: registerBot({ events, ds, config, log })
+const bot = registerBot({ events, ds, config, log });
 
-const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher } });
+const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher }, onBotUpdate: bot.onUpdate });
 const server = app.listen(config.PORT, () => log.info({ port: config.PORT }, 'Сервер запущен'));
 server.requestTimeout = 15_000;
 
@@ -36,6 +37,7 @@ async function shutdown(signal: string) {
   log.info({ signal }, 'Остановка');
   const force = setTimeout(() => process.exit(1), 10_000).unref();
   server.close(async () => {
+    await bot.stop().catch(() => undefined);
     await ds.destroy().catch(() => undefined);
     clearTimeout(force);
     process.exit(0);

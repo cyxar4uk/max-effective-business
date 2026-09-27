@@ -58,6 +58,10 @@ SDK `@maxhub/max-bot-api` 0.3.1 ([client.ts](https://github.com/max-messenger/ma
 - Отправка: `POST /messages?user_id=<id>` (личный диалог) или `?chat_id=<id>`
   ([messages](https://dev.max.ru/docs-api/methods/POST/messages)). Тело: `text` до 4000 символов, `attachments`,
   `notify` (по умолчанию `true`), `format: "markdown" | "html"`. В SDK: `bot.api.sendMessageToUser(userId, text, extra)`.
+- `GET /me` — сведения о боте (`BotInfo`: `user_id`, `username`). Бот берёт отсюда свой ник для поля `web_app`
+  кнопки `open_app`, поэтому ник не нужно хранить в настройках.
+- Входящее сообщение (`message_created`): `message.sender` — отправитель, `message.recipient.chat_type` — `dialog`,
+  `chat` или `channel`, `message.body.mid` — id сообщения. Бот отвечает только в `dialog` и только людям (`is_bot`).
 - Кнопки inline-клавиатуры: `callback`, `link`, `open_app`, `message`, `request_contact`, `request_geo_location`,
   `clipboard`. Текст кнопки 1–128 символов.
 - Вложения: `image`, `video`, `audio`, `file`, `sticker`, `contact`, `inline_keyboard`, `share`, `location`.
