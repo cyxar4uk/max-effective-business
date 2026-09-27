@@ -1,0 +1,21 @@
+# Блок для Caddy, который уже работает на сервере: дописать в его Caddyfile, заменить домен и
+# выполнить `caddy reload` (или перезапустить контейнер). Сертификат Caddy выпустит сам.
+
+app.example.ru {
+	encode zstd gzip
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle /bot/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+	# Мини-приложение (статика Ильи)
+	handle {
+		reverse_proxy 127.0.0.1:8080
+	}
+	log {
+		format filter {
+			request>headers delete
+		}
+	}
+}

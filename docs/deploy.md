@@ -41,6 +41,27 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build
 curl -s https://$DOMAIN/api/health     # {"status":"ok","db":"ok"}
 ```
 
+## Если на сервере уже есть nginx или Caddy
+
+Например, на машине уже живёт другое мини-приложение и порты 80/443 заняты его прокси. Тогда свой Caddy не
+поднимаем, а встаём за существующий прокси:
+
+1. Поддомен (например, `career.<домен>`) с A-записью на этот сервер; в `.env` — `DOMAIN=<поддомен>`,
+   `SERVER_PORT` — свободный локальный порт (по умолчанию 3000).
+2. Запуск: `docker compose -f compose.yaml -f compose.proxy.yaml up -d --build`.
+   Сервер слушает только `127.0.0.1:$SERVER_PORT`, БД наружу не публикуется.
+3. В существующий прокси добавить блок для поддомена:
+   - nginx — [deploy/nginx.conf.example](../deploy/nginx.conf.example), сертификат — `certbot --nginx -d <поддомен>`;
+   - Caddy — [deploy/Caddyfile.snippet](../deploy/Caddyfile.snippet), сертификат выпустит сам.
+   В примерах сервер на порту 3000 — поменять, если `SERVER_PORT` другой.
+4. Проверка: `node scripts/smoke.mjs https://<поддомен> --no-auth`.
+5. Выкатка новых версий: `DEPLOY_MODE=proxy DEPLOY_HOST=… scripts/deploy.sh`.
+
+Соседнее приложение не затрагивается: у нас свои контейнеры, сеть и тома Docker, из общего — только прокси.
+
+Что узнать у владельца сервера заранее: SSH-доступ, какой прокси (nginx или Caddy, в Docker или на хосте),
+свободная память (нужно ~500 МБ), установлен ли Docker Compose v2.24+.
+
 ## Подключить к MAX
 
 1. **Вебхук:** `scripts/max-webhook.sh subscribe`, проверка — `scripts/max-webhook.sh list`.
