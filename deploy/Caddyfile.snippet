@@ -1,0 +1,23 @@
+# Блок для Caddy, который уже работает на сервере: дописать в его Caddyfile, заменить домен и
+# выполнить `caddy reload` (или перезапустить контейнер). Сертификат Caddy выпустит сам.
+# Caddy в Docker-контейнере: подключить его к сети meb-edge и заменить 127.0.0.1:3000 на meb-server:3000
+# (Caddy разрешает имя при каждом запросе, поэтому переживёт остановку нашего сервера).
+
+app.example.ru {
+	encode zstd gzip
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle /bot/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+	# Мини-приложение (статика Ильи)
+	handle {
+		reverse_proxy 127.0.0.1:8080
+	}
+	log {
+		format filter {
+			request>headers delete
+		}
+	}
+}
