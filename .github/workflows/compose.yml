@@ -108,8 +108,8 @@ jobs:
         run: docker compose -f compose.yaml -f compose.proxy.yaml up -d --build --wait --wait-timeout 300
       - name: Сервер только на 127.0.0.1
         run: |
-          docker compose -f compose.yaml -f compose.proxy.yaml ps --format '{{.Publishers}}' | tee /dev/stderr | grep -q '127.0.0.1:3000->3000'
-          if docker compose -f compose.yaml -f compose.proxy.yaml ps --format '{{.Publishers}}' | grep -q '0.0.0.0'; then echo "порт открыт наружу"; exit 1; fi
+          docker compose -f compose.yaml -f compose.proxy.yaml ps server --format '{{.Ports}}' | tee /dev/stderr | grep -q '127.0.0.1:3000->3000'
+          if docker compose -f compose.yaml -f compose.proxy.yaml ps --format '{{.Ports}}' | grep -qE '0\.0\.0\.0:|\[::\]:'; then echo "порт открыт наружу"; exit 1; fi
       - name: nginx из примера перед сервером
         env:
           MAX_BOT_TOKEN: ci-token
