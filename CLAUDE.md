@@ -75,5 +75,5 @@ materials/         кейс организаторов и исходный ре�
 compose.yaml       запуск всего одной командой (Андрей)
 ```
 
-Стек по умолчанию, если на созвоне не решили иначе: React + TypeScript + Vite + MAX UI, Node.js 20 + TypeScript,
+Стек по умолчанию, если на созвоне не решили иначе: React + TypeScript + Vite + MAX UI, Node.js 24 + TypeScript,
 PostgreSQL, Docker Compose. Изменение стека — только через `docs/decisions.md`.
