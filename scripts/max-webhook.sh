@@ -8,20 +8,28 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 set -a; source .env; set +a
 
-API="https://platform-api2.max.ru"
+API="${MAX_API_BASE:-https://platform-api2.max.ru}"
 URL="https://${DOMAIN:?Нет DOMAIN в .env}/bot/webhook"
-auth=(-H "Authorization: ${MAX_BOT_TOKEN:?Нет MAX_BOT_TOKEN в .env}")
+: "${MAX_BOT_TOKEN:?Нет MAX_BOT_TOKEN в .env}"
+# Токен и секрет передаём через stdin (curl -K -), чтобы они не были видны в списке процессов.
+# $BODY, если задан, уходит телом запроса.
+api() {
+  { printf 'header = "Authorization: %s"\n' "$MAX_BOT_TOKEN"
+    if [ -n "${BODY:-}" ]; then printf 'data = "%s"\n' "$(printf '%s' "$BODY" | sed 's/\\/\\\\/g; s/"/\\"/g')"; fi
+  } | curl -sS -K - "$@"
+}
 
 case "${1:-list}" in
   subscribe)
-    curl -sS -X POST "$API/subscriptions" "${auth[@]}" -H 'Content-Type: application/json' \
-      -d "{\"url\":\"$URL\",\"secret\":\"${MAX_WEBHOOK_SECRET:?Нет MAX_WEBHOOK_SECRET в .env}\"}"
+    # Только события, которые обрабатывает бот
+    BODY="{\"url\":\"$URL\",\"secret\":\"${MAX_WEBHOOK_SECRET:?Нет MAX_WEBHOOK_SECRET в .env}\",\"update_types\":[\"bot_started\",\"message_created\"]}" \
+      api -X POST "$API/subscriptions" -H 'Content-Type: application/json'
     ;;
   unsubscribe)
-    curl -sS -X DELETE "$API/subscriptions?url=$URL" "${auth[@]}"
+    api -G -X DELETE "$API/subscriptions" --data-urlencode "url=$URL"
     ;;
   list)
-    curl -sS "$API/subscriptions" "${auth[@]}"
+    api "$API/subscriptions"
     ;;
   *) echo "subscribe | list | unsubscribe" >&2; exit 1 ;;
 esac
