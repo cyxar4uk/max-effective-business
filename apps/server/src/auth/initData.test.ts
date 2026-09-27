@@ -28,6 +28,18 @@ describe('validateInitData', () => {
     expect(validateInitData(raw, TOKEN, { maxAgeSec: 1e9, now })).toMatchObject({ ok: true, data: { user: { id: 1 } } });
   });
 
+  it('принимает пробелы, закодированные как «+»', () => {
+    const withSpace = JSON.stringify({ id: 7, first_name: 'Анна Мария' });
+    const strict = buildInitData({ auth_date: authDate, user: withSpace }, TOKEN);
+    expect(validateInitData(strict, TOKEN, opts).ok).toBe(true);
+    const formEncoded = strict.replace(/%20/g, '+');
+    expect(formEncoded).toContain('+');
+    expect(validateInitData(formEncoded, TOKEN, opts)).toMatchObject({ ok: true, data: { user: { first_name: 'Анна Мария' } } });
+    // «+» как настоящий символ по-прежнему работает
+    const plus = buildInitData({ auth_date: authDate, user: JSON.stringify({ id: 8, first_name: 'A+B' }) }, TOKEN);
+    expect(validateInitData(plus, TOKEN, opts)).toMatchObject({ ok: true, data: { user: { first_name: 'A+B' } } });
+  });
+
   it('отклоняет пустой заголовок', () => {
     expect(validateInitData(undefined, TOKEN, opts)).toEqual({ ok: false, error: 'MISSING' });
     expect(validateInitData('', TOKEN, opts)).toEqual({ ok: false, error: 'MISSING' });
