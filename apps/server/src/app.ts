@@ -5,15 +5,20 @@ import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
 import { errorBody, errorHandler, notFoundHandler } from './api/errors.js';
+import type { DomainDeps } from './api/context.js';
+import { internshipsRouter } from './api/internships.js';
+import { profilesRouter } from './api/profiles.js';
 import { apiRouter } from './api/routes.js';
 import { requireMaxUser } from './auth/middleware.js';
 import type { Config } from './config.js';
+import type { User } from './db/entities.js';
 import type { UsersRepo } from './db/users.js';
 import type { EventBus } from './events.js';
 
 // Всё, что API нужно от хранилища. Реализация — db/repos.ts, в тестах — заглушки.
 export interface Repos {
   users: UsersRepo;
+  savePhone(userId: number, phone: string): Promise<User>;
   roles(userId: number): Promise<{ student: boolean; employer: boolean }>;
   skillGroups(): Promise<{ name: string; skills: { code: string; name: string }[] }[]>;
   ping(): Promise<void>;
@@ -24,9 +29,11 @@ export interface AppDeps {
   log: Logger;
   repos: Repos;
   events: EventBus;
+  // Маршруты профилей и стажировок работают поверх БД; в тестах без БД их нет
+  domain?: Omit<DomainDeps, 'events'>;
 }
 
-export function createApp({ config, log, repos }: AppDeps): Express {
+export function createApp({ config, log, repos, events, domain }: AppDeps): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', config.TRUST_PROXY);
@@ -75,7 +82,8 @@ export function createApp({ config, log, repos }: AppDeps): Express {
       },
     }),
     requireMaxUser({ botToken: config.MAX_BOT_TOKEN, maxAgeSec: config.INIT_DATA_MAX_AGE_SEC, users: repos.users }),
-    apiRouter(repos),
+    apiRouter(repos, config),
+    ...(domain ? [profilesRouter({ ...domain, events }), internshipsRouter({ ...domain, events })] : []),
   );
 
   app.use(notFoundHandler);

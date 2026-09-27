@@ -39,6 +39,10 @@ function fakeRepos(opts: { dbDown?: boolean } = {}): Repos {
         return Object.assign(user, { consentAt: new Date('2026-09-27T10:00:00Z'), consentVersion: version });
       },
     },
+    async savePhone(userId, phone) {
+      const user = [...users.values()].find((u) => u.id === userId)!;
+      return Object.assign(user, { phone });
+    },
     roles: async () => ({ student: false, employer: false }),
     skillGroups: async () => [{ name: 'Аналитика', skills: [{ code: 'excel', name: 'Excel' }] }],
     ping: async () => {
