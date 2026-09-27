@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EnqueueInput, InterestContext, Recipient, StudentCandidate } from '../db/botData.js';
 import type { Employer, Interest, Internship, StudentProfile } from '../db/entities.js';
-import { onInterestCreated, onInterestInvited, onInternshipCreated, type NotifyDeps } from './notify.js';
+import { DAILY_MATCH_LIMIT, mskDay, onInterestCreated, onInterestInvited, onInternshipCreated, type NotifyDeps } from './notify.js';
 
 const recipient = (userId: number, over: Partial<Recipient> = {}): Recipient => ({ userId, maxUserId: 1000 + userId, firstName: `U${userId}`, isDemo: false, ...over });
 
@@ -16,12 +16,14 @@ const student = (userId: number, skills: string[], over: Partial<Recipient> = {}
   profile: { userId, skills, formats: ['remote'], city: 'Москва' } as unknown as StudentProfile,
 });
 
-function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | null; seen?: Set<string> } = {}) {
+function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | null; seen?: Set<string>; today?: number } = {}) {
   const queued: EnqueueInput[] = [];
   const seen = over.seen ?? new Set<string>();
   let excluded: number | undefined;
   const d: NotifyDeps = {
     threshold: 60,
+    countToday: async () => over.today ?? 0,
+    now: () => new Date('2026-09-28T10:00:00Z'),
     skillNames: async () => new Map([['excel', 'Excel'], ['sql', 'SQL'], ['power_bi', 'Power BI']]),
     data: {
       internship: async (id) => (id === 7 ? { internship, employer } : null),
@@ -110,5 +112,37 @@ describe('onInterestInvited', () => {
     const { d, queued } = deps({ ctx: demoStudent });
     expect(await onInterestInvited(d, { interestId: 30, internshipId: 7, studentUserId: 1 })).toBe(1);
     expect(queued[0]!.userId).toBe(50);
+  });
+});
+
+describe('лимит «не больше 3 новых мест в день»', () => {
+  it('сверх лимита — не место, а одна подборка в сутки', async () => {
+    const seen = new Set<string>();
+    const students = [student(1, ['excel', 'sql'])];
+    const first = deps({ students, seen, today: DAILY_MATCH_LIMIT });
+    expect(await onInternshipCreated(first.d, { internshipId: 7 })).toBe(1);
+    expect(first.queued[0]).toMatchObject({ userId: 1, kind: 'digest', dedupeKey: 'digest:1:2026-09-28' });
+    // второе место сверх лимита в тот же день — подборка уже стоит, второй не будет
+    expect(await onInternshipCreated(deps({ students, seen, today: DAILY_MATCH_LIMIT + 1 }).d, { internshipId: 7 })).toBe(0);
+  });
+
+  it('до лимита — обычное сообщение о месте', async () => {
+    const { d, queued } = deps({ students: [student(1, ['excel', 'sql'])], today: DAILY_MATCH_LIMIT - 1 });
+    await onInternshipCreated(d, { internshipId: 7 });
+    expect(queued[0]!.kind).toBe('internship_match');
+  });
+
+  it('сутки — московские', () => {
+    expect(mskDay(new Date('2026-09-28T20:59:00Z'))).toBe('2026-09-28');
+    expect(mskDay(new Date('2026-09-28T21:00:00Z'))).toBe('2026-09-29');
+  });
+});
+
+describe('чек-лист по типу места', () => {
+  it('практика — с документами практики', async () => {
+    const practice = { ...internship, type: 'practice' } as unknown as Internship;
+    const { d, queued } = deps({ ctx: ctx({ internship: practice }) });
+    await onInterestInvited(d, { interestId: 30, internshipId: 7, studentUserId: 1 });
+    expect(String(queued[0]!.payload.text)).toContain('885/390');
   });
 });

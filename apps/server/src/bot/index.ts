@@ -46,6 +46,16 @@ export function registerBot({ events, ds, config, log, api = createMaxApi({ toke
       const rows: { code: string; name: string }[] = await ds.query('SELECT code, name FROM skills');
       return new Map(rows.map((r) => [r.code, r.name]));
     },
+    // Уведомления за текущие московские сутки — для лимита «не больше 3 новых мест в день»
+    async countToday(userId, kind) {
+      const [row]: { n: number }[] = await ds.query(
+        `SELECT count(*)::int AS n FROM notifications
+         WHERE user_id = $1 AND kind = $2
+           AND created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow')`,
+        [userId, kind],
+      );
+      return row?.n ?? 0;
+    },
   };
 
   const logQueued = (event: string) => (queued: number) => {

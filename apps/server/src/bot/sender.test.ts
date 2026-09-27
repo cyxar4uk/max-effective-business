@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { describe, expect, it } from 'vitest';
 import { MaxApiError, type NewMessageBody } from './maxApi.js';
-import { createSender, GLOBAL_INTERVAL_MS, MAX_ATTEMPTS, PER_CHAT_INTERVAL_MS, retryDelaySec } from './sender.js';
+import { createSender, GLOBAL_INTERVAL_MS, MAX_ATTEMPTS, PER_CHAT_INTERVAL_MS, quietSecondsLeft, retryDelaySec } from './sender.js';
 
 type Row = { id: number; maxUserId: number; isDemo: boolean; attempts: number; kind: string; payload: Record<string, unknown> };
 const row = (id: number, maxUserId: number, over: Partial<Row> = {}): Row => ({
@@ -10,8 +10,11 @@ const row = (id: number, maxUserId: number, over: Partial<Row> = {}): Row => ({
   ...over,
 });
 
-function setup(rows: Row[], send: (userId: number, body: NewMessageBody) => Promise<void> = async () => {}) {
-  let clock = 0;
+// 12:00 по Москве — не тихие часы
+const NOON_MSK = Date.parse('2026-09-28T09:00:00Z');
+
+function setup(rows: Row[], send: (userId: number, body: NewMessageBody) => Promise<void> = async () => {}, start = NOON_MSK) {
+  let clock = start;
   const log: string[] = [];
   const sentAt: { userId: number; t: number; body: NewMessageBody }[] = [];
   const sender = createSender({
@@ -87,5 +90,26 @@ describe('sender', () => {
     const { sender } = setup([]);
     const loop = sender.start(1);
     await loop.stop();
+  });
+});
+
+describe('тихие часы 22:00–9:00 по Москве', () => {
+  const at = (iso: string) => Date.parse(iso);
+
+  it('считает, сколько осталось до 9:00', () => {
+    expect(quietSecondsLeft(at('2026-09-28T09:00:00Z'))).toBe(0); // 12:00 МСК
+    expect(quietSecondsLeft(at('2026-09-28T18:59:00Z'))).toBe(0); // 21:59 МСК
+    expect(quietSecondsLeft(at('2026-09-28T19:00:00Z'))).toBe(11 * 3600); // 22:00 МСК
+    expect(quietSecondsLeft(at('2026-09-29T05:30:00Z'))).toBe(30 * 60); // 8:30 МСК
+    expect(quietSecondsLeft(at('2026-09-29T06:00:00Z'))).toBe(0); // 9:00 МСК
+    expect(quietSecondsLeft(at('2026-09-28T19:00:00Z'), null)).toBe(0); // выключены
+  });
+
+  it('ночью уведомление откладывается до 9:00, ответ на /start уходит сразу', async () => {
+    const night = at('2026-09-28T20:00:00Z'); // 23:00 МСК
+    const { sender, log, sentAt } = setup([row(1, 501, { kind: 'internship_match' }), row(2, 502, { kind: 'welcome' })], undefined, night);
+    await sender.tick();
+    expect(log).toEqual([`retry 1 ${10 * 3600}`, 'sent 2']);
+    expect(sentAt.map((s) => s.userId)).toEqual([502]);
   });
 });

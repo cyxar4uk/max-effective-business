@@ -12,6 +12,26 @@ export const GLOBAL_INTERVAL_MS = 40;
 export const MAX_ATTEMPTS = 5;
 export const BATCH = 10;
 
+/** Тихие часы по Москве (решение Артёма от 27.09): с 22:00 до 9:00 уведомления не шлём, откладываем до утра. */
+export const QUIET_HOURS = { from: 22, to: 9 } as const;
+/** Ответы на сообщения самого пользователя (/start, текст) уходят в любое время: он только что написал боту. */
+export const REPLY_KINDS: ReadonlySet<string> = new Set(['welcome', 'fallback']);
+
+const MSK_OFFSET_MS = 3 * 3600_000;
+
+/** Сколько секунд до конца тихих часов; 0 — сейчас не тихие часы. */
+export function quietSecondsLeft(nowMs: number, quiet: { from: number; to: number } | null = QUIET_HOURS): number {
+  if (!quiet) return 0;
+  const msk = new Date(nowMs + MSK_OFFSET_MS);
+  const minutes = msk.getUTCHours() * 60 + msk.getUTCMinutes();
+  const from = quiet.from * 60;
+  const to = quiet.to * 60;
+  const inQuiet = from > to ? minutes >= from || minutes < to : minutes >= from && minutes < to;
+  if (!inQuiet) return 0;
+  const left = (to - minutes + 24 * 60) % (24 * 60);
+  return left * 60 - msk.getUTCSeconds();
+}
+
 /** Пауза перед повтором: 5, 10, 20, 40… секунд, не больше 5 минут. */
 export const retryDelaySec = (attempt: number) => Math.min(5 * 2 ** Math.max(0, attempt - 1), 300);
 
@@ -20,6 +40,8 @@ export interface SenderDeps {
   api: Pick<MaxApi, 'sendMessage'>;
   botUsername(): Promise<string>;
   log: Logger;
+  /** Тихие часы по Москве; null — выключены. По умолчанию QUIET_HOURS. */
+  quietHours?: { from: number; to: number } | null;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
 }
@@ -46,6 +68,11 @@ export function createSender(deps: SenderDeps) {
     for (const n of due) {
       if (n.isDemo || n.maxUserId <= 0) {
         await deps.data.markFailed(n.id, 'демо-пользователь: не настоящий аккаунт MAX');
+        continue;
+      }
+      const quietLeft = REPLY_KINDS.has(n.kind) ? 0 : quietSecondsLeft(now(), deps.quietHours === undefined ? QUIET_HOURS : deps.quietHours);
+      if (quietLeft > 0) {
+        await deps.data.markRetry(n.id, 'тихие часы: отложено до 9:00', quietLeft);
         continue;
       }
       try {

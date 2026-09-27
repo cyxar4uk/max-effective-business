@@ -4,18 +4,29 @@ import type { BotData, Recipient } from '../db/botData.js';
 import type { AppEvents } from '../events.js';
 import { matchStudentToInternship, shouldNotify } from '../matching/index.js';
 import {
+  digestMessage,
   employerInvitedMessage,
   internshipMatchMessage,
   newCandidateMessage,
   studentInvitedMessage,
+  type PlaceType,
   type QueuedMessage,
 } from './messages.js';
+
+/** Студенту — не больше стольких новых мест в день, остальное подборкой (решение Артёма от 27.09). */
+export const DAILY_MATCH_LIMIT = 3;
+
+/** Московская дата YYYY-MM-DD: день для лимита и ключа подборки. */
+export const mskDay = (now: Date) => new Date(now.getTime() + 3 * 3600_000).toISOString().slice(0, 10);
 
 export interface NotifyDeps {
   data: Pick<BotData, 'internship' | 'studentsWithProfiles' | 'interestContext' | 'enqueue'>;
   /** Коды навыков → названия из справочника. */
   skillNames(): Promise<Map<string, string>>;
+  /** Сколько уведомлений вида kind пользователь получил (или ждёт) за текущие московские сутки. */
+  countToday(userId: number, kind: string): Promise<number>;
   threshold: number;
+  now?: () => Date;
 }
 
 /** Демо-пользователи — не настоящие аккаунты MAX: им не пишем. */
@@ -38,6 +49,12 @@ export async function onInternshipCreated(deps: NotifyDeps, { internshipId }: Ap
     if (!reachable(user)) continue;
     const match = matchStudentToInternship(profile, internship);
     if (!shouldNotify(match, deps.threshold)) continue;
+    // Лимит в день: сверх него — одна подборка со ссылкой на ленту (раз в сутки)
+    if ((await deps.countToday(user.userId, 'internship_match')) >= DAILY_MATCH_LIMIT) {
+      const day = mskDay(deps.now?.() ?? new Date());
+      if (await enqueue(deps, user, 'digest', `digest:${user.userId}:${day}`, digestMessage())) queued++;
+      continue;
+    }
     const matchedSkills = [...match.mustMatched, ...match.niceMatched].map((c) => names.get(c) ?? c);
     const ok = await enqueue(
       deps,
@@ -80,7 +97,15 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
       student.user,
       'invited_student',
       `invite:${interest.id}:student`,
-      studentInvitedMessage({ internshipId: internship.id, title: internship.title, company, contactName: employer?.contactName ?? null, phone: employerOwner?.phone ?? null }),
+      studentInvitedMessage({
+        internshipId: internship.id,
+        title: internship.title,
+        company,
+        contactName: employer?.contactName ?? null,
+        phone: employerOwner?.phone ?? null,
+        // Поле «тип места» добавляет #22; до него — undefined, и студент получает общий чек-лист
+        type: (internship as { type?: PlaceType | null }).type,
+      }),
     );
     if (ok) queued++;
   }
