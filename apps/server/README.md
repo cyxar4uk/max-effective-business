@@ -15,6 +15,13 @@ npm run dev                     # миграции применяются при
 
 Проверки перед PR: `npm run typecheck && npm run lint && npm test`.
 
+Сквозной тест сценария на настоящей БД (без переменной он пропускается; базу он очищает целиком):
+
+```bash
+docker run -d --rm --name pg-test -e POSTGRES_USER=app -e POSTGRES_PASSWORD=app -e POSTGRES_DB=app_test -p 55432:5432 postgres:18.6-alpine3.24
+TEST_DATABASE_URL=postgres://app:app@localhost:55432/app_test npm test
+```
+
 Запрос от имени тестового пользователя MAX:
 
 ```bash
@@ -38,6 +45,9 @@ src/
 
 ## Для модулей Тимура
 
+- **Совпадение:** API зовёт функцию с типом `Matcher` из `src/api/matcher.ts`. Сейчас там временная
+  `temporaryMatcher`, чтобы сценарий работал сквозь. Когда `matching` готов — экспортируй функцию того же типа и
+  замени её в `src/index.ts` (одна строка), `temporaryMatcher` удалим.
 - **События:** `events.on('internship.created', async ({ internshipId }) => …)`. Ошибка в обработчике логируется
   и не ломает запрос пользователя. Подключение — в `src/index.ts`, там оставлено место.
 - **Данные:** сущности TypeORM в `src/db/entities.ts` (`Internship`, `StudentProfile`, `Interest`, `Notification`…),
