@@ -1,0 +1,51 @@
+name: compose
+
+# Проверка «как у жюри»: чистая машина, инструкция из README, одна команда.
+# Требование кейса — сборка не дольше 5 минут без скачивания базовых образов.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths: ['apps/**', 'compose*.yaml', '.env.example', 'scripts/smoke.mjs', '.github/workflows/compose.yml']
+
+jobs:
+  up:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Базовые образы (в 5 минут не входят)
+        run: |
+          grep -hoE '^FROM [^ ]+|image: [^ ]+' apps/*/Dockerfile compose.yaml | awk '{print $2}' | sort -u | xargs -n1 docker pull -q
+
+      - name: .env по README
+        run: |
+          cp .env.example .env
+          sed -i 's/^MAX_BOT_TOKEN=.*/MAX_BOT_TOKEN=ci-token/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-pass/' .env
+
+      - name: docker compose up --build
+        run: |
+          start=$(date +%s)
+          docker compose up -d --build --wait --wait-timeout 300
+          took=$(( $(date +%s) - start ))
+          echo "Сборка и запуск с нуля: ${took} с (лимит 300 с)" | tee -a "$GITHUB_STEP_SUMMARY"
+          test "$took" -le 300
+
+      - name: Smoke
+        env:
+          MAX_BOT_TOKEN: ci-token
+        run: node scripts/smoke.mjs http://localhost:3000 | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Повторный запуск без потери данных
+        run: |
+          docker compose down
+          docker compose up -d --wait --wait-timeout 120
+          docker compose exec -T db psql -U app -d app -Atc "select count(*) from users where max_user_id = 999000001" | grep -qx 1
+
+      - name: Логи при ошибке
+        if: failure()
+        run: docker compose logs --tail 200
+
+      - run: docker compose down -v
+        if: always()

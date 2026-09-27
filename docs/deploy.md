@@ -47,6 +47,8 @@ curl -s https://$DOMAIN/api/health     # {"status":"ok","db":"ok"}
    После подписки long polling с этим токеном перестаёт работать (одна среда на один токен).
 2. **URL мини-приложения:** business.max.ru → «Чат-боты» → бот → ⋮ → «Настройки» → `https://<DOMAIN>`.
 
+Проверка после запуска: `node scripts/smoke.mjs https://$DOMAIN --no-auth`.
+
 ## Выкатить новую версию
 
 С любой машины, где есть SSH-доступ к серверу:
@@ -55,6 +57,8 @@ curl -s https://$DOMAIN/api/health     # {"status":"ok","db":"ok"}
 DEPLOY_HOST=deploy@<ip> scripts/deploy.sh          # main
 DEPLOY_HOST=deploy@<ip> scripts/deploy.sh andrey/x # другая ветка — только для проверки
 ```
+
+После выкатки — `node scripts/smoke.mjs https://<DOMAIN> --no-auth`.
 
 Скрипт обновляет код до `origin/<ветка>`, пересобирает образы и перезапускает контейнеры. Миграции применяются
 при старте сервера. Данные БД и сертификаты — в томах `db-data` и `caddy-data`, между выкатками не теряются.
