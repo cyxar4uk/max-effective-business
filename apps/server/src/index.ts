@@ -17,7 +17,8 @@ if (config.RUN_MIGRATIONS) {
 }
 
 const events = new EventBus(log);
-// Сюда подключаются модули Тимура: registerBot({ events, ds, config, log }), сид при SEED_DEMO=true
+// Сюда подключаются модули Тимура: registerBot({ events, botData: createBotData(ds), config, log }),
+// его обработчик вебхука — в createApp({ onBotUpdate }), сид — при config.SEED_DEMO
 
 // temporaryMatcher — до модуля matching Тимура, см. src/api/matcher.ts
 const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher: temporaryMatcher } });

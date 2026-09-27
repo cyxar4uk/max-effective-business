@@ -50,11 +50,23 @@ src/
   замени её в `src/index.ts` (одна строка), `temporaryMatcher` удалим.
 - **События:** `events.on('internship.created', async ({ internshipId }) => …)`. Ошибка в обработчике логируется
   и не ломает запрос пользователя. Подключение — в `src/index.ts`, там оставлено место.
-- **Данные:** сущности TypeORM в `src/db/entities.ts` (`Internship`, `StudentProfile`, `Interest`, `Notification`…),
+- **Данные для бота — `createBotData(ds)` из `src/db/botData.ts`:**
+  - `internship(id)` — стажировка с работодателем; `studentsWithProfiles(excludeUserId)` — все студенты с анкетой
+    (для `internship.created`: дальше фильтр и порог — в `matching`);
+  - `interestContext(interestId)` — отклик, стажировка, студент и владелец компании с `maxUserId` и телефонами
+    (для `interest.created` и `interest.invited`);
+  - очередь: `enqueue({ userId, kind, dedupeKey, payload })` → `false`, если такое уже было;
+    `claimDue(limit)` — взять подошедшие (аренда 60 с, после падения вернутся сами);
+    `markSent(id)`, `markRetry(id, error, delaySec)` для 429/5xx/сети, `markFailed(id, error)` для 403.
+  - У каждого получателя есть `isDemo`: тестовым пользователям с выдуманным `maxUserId` отправка упадёт, их лучше
+    сразу помечать `markFailed` или не ставить в очередь.
+- **Данные (прочее):** сущности TypeORM в `src/db/entities.ts` (`Internship`, `StudentProfile`, `Interest`, `Notification`…),
   `DataSource` — `createDataSource()` из `src/db/dataSource.ts`. Нужен новый запрос или поле — скажи Андрею:
   схему меняем только миграциями.
 - **Навыки** хранятся массивами кодов (`text[]`): `student_profiles.skills`, `internships.required_skills`,
   `internships.nice_skills`. Справочник — таблица `skills (code, name, group_name, sort)`.
 - **Уведомления:** таблица `notifications` с `dedupe_key UNIQUE` — ключ идемпотентности, например
-  `invite:<interestId>:student`, чтобы повтор события не отправил сообщение дважды.
+  `invite:<interestId>:student`, чтобы повтор события не отправил сообщение дважды. Работа с ней — через `botData`.
+- **Вебхук:** `createApp({ …, onBotUpdate })` — обновления MAX Bot API приходят туда после проверки секрета.
+  Обработчик должен быть быстрым и идемпотентным: ошибка → 500, MAX повторит доставку.
 - **Тестовые данные:** у всех таблиц с данными есть `is_demo`, у стажировок ещё `source = 'demo'`.

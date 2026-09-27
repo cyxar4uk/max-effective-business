@@ -114,6 +114,7 @@ export class Notification {
   @Column({ type: 'text', default: 'pending' }) status!: NotificationStatus;
   @Column({ type: 'integer', default: 0 }) attempts!: number;
   @Column({ name: 'last_error', type: 'text', nullable: true }) lastError!: string | null;
+  @Column({ name: 'next_attempt_at', type: 'timestamptz', default: () => 'now()' }) nextAttemptAt!: Date;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt!: Date;
   @Column({ name: 'sent_at', type: 'timestamptz', nullable: true }) sentAt!: Date | null;
 }
