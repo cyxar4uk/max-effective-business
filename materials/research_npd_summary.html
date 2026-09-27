@@ -1,0 +1,802 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Чеки НПД в MAX</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ground:#EFF2EE; --surface:#FBFCFA; --surface-2:#E6EBE5;
+    --ink:#141A17; --ink-2:#4E5A53; --ink-3:#7A867E;
+    --line:#D2DACF; --line-strong:#B6C1B6;
+    --accent:#0E5C58; --accent-ink:#0A403D; --accent-soft:#D6E7E4;
+    --go:#2E7D4F; --warn:#9C6A12; --stop:#A93A2A;
+    --shadow:0 1px 2px rgba(20,26,23,.06), 0 8px 24px -16px rgba(20,26,23,.28);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0D1210; --surface:#151C19; --surface-2:#1D2622;
+      --ink:#E7EDE8; --ink-2:#A0AEA6; --ink-3:#77857D;
+      --line:#26312C; --line-strong:#38463F;
+      --accent:#5BC9BE; --accent-ink:#8FDCD3; --accent-soft:#16332F;
+      --go:#63BC86; --warn:#D3A244; --stop:#E0776A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0D1210; --surface:#151C19; --surface-2:#1D2622;
+    --ink:#E7EDE8; --ink-2:#A0AEA6; --ink-3:#77857D;
+    --line:#26312C; --line-strong:#38463F;
+    --accent:#5BC9BE; --accent-ink:#8FDCD3; --accent-soft:#16332F;
+    --go:#63BC86; --warn:#D3A244; --stop:#E0776A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:15px; line-height:1.55; margin:0;
+  }
+  .wrap{max-width:1060px; margin:0 auto; padding-inline:20px; padding-block:28px 64px}
+  h1,h2,h3{font-family:"Bitter",Georgia,serif; text-wrap:balance; margin:0}
+  h1{font-size:clamp(28px,5.2vw,44px); font-weight:700; letter-spacing:-.015em; line-height:1.1}
+  h2{font-size:clamp(19px,2.6vw,24px); font-weight:600; letter-spacing:-.01em}
+  h3{font-size:16px; font-weight:600}
+  p{margin:0}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums}
+
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--ink-3);
+  }
+  .lede{color:var(--ink-2); max-width:62ch; font-size:16px}
+
+  header.masthead{display:flex; flex-direction:column; gap:12px; padding-bottom:26px}
+  .byline{display:flex; flex-wrap:wrap; gap:8px 18px; align-items:baseline; color:var(--ink-3); font-size:12.5px}
+
+  /* deadline strip */
+  .clock{
+    display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px;
+    background:var(--surface); border:1px solid var(--line);
+    border-left:4px solid var(--stop); border-radius:4px;
+    padding:16px 18px; box-shadow:var(--shadow); margin-bottom:34px;
+  }
+  .clock .num{font-family:"Bitter",serif; font-size:40px; font-weight:700; line-height:1; color:var(--stop); font-variant-numeric:tabular-nums}
+  .clock .unit{font-size:12px; color:var(--ink-3); display:block; letter-spacing:.06em; text-transform:uppercase; margin-top:4px}
+  .clock .body{flex:1 1 320px; min-width:0}
+  .clock strong{font-weight:600}
+
+  section{margin-bottom:46px}
+  .sec-head{display:flex; flex-direction:column; gap:6px; margin-bottom:18px}
+
+  /* triad */
+  .triad{display:grid; grid-template-columns:repeat(3,1fr); gap:14px}
+  .plate{
+    background:var(--surface); border:1px solid var(--line); border-radius:4px;
+    padding:18px; display:flex; flex-direction:column; gap:10px; min-width:0;
+  }
+  .plate .step{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--accent); font-weight:600;
+  }
+  .plate h3{font-size:17px}
+  .plate ul{margin:0; padding-left:17px; color:var(--ink-2); font-size:14px; display:flex; flex-direction:column; gap:5px}
+  .plate .kicker{font-size:13.5px; color:var(--ink-2)}
+  .plate--win{border-color:var(--accent); background:var(--accent-soft)}
+  .plate--win .step{color:var(--accent-ink)}
+
+  /* scoring table */
+  .scroller{overflow-x:auto; border:1px solid var(--line); border-radius:4px; background:var(--surface)}
+  table{border-collapse:collapse; width:100%; min-width:720px; font-size:14px}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:middle}
+  thead th{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--ink-3); font-weight:500; background:var(--surface-2);
+    white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:0}
+  tr.out td{color:var(--ink-3)}
+  tr.win{background:var(--accent-soft)}
+  tr.win td{font-weight:500}
+  td.seg{min-width:230px}
+  .dots{display:inline-flex; gap:3px; align-items:center}
+  .dot{width:9px; height:9px; border-radius:50%; background:var(--line-strong); display:block}
+  .dot.on{background:var(--accent)}
+  tr.out .dot.on{background:var(--line-strong)}
+  tr.out .dot{background:transparent; box-shadow:inset 0 0 0 1px var(--line-strong)}
+  tr.out .dot.on{background:var(--ink-3); box-shadow:none}
+  .verdict{font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.06em; white-space:nowrap}
+  .verdict.go{color:var(--go); font-weight:600}
+  .verdict.no{color:var(--ink-3)}
+  .why{font-size:12.5px; color:var(--ink-3)}
+
+  /* pain cards */
+  .cards{display:flex; flex-direction:column; gap:12px; margin-top:18px}
+  .pcard{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:18px}
+  .pcard--win{border-color:var(--accent)}
+  .pcard--dead{background:transparent}
+  .pcard-head{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .badge{
+    font-family:"Bitter",Georgia,serif; font-size:18px; font-weight:700;
+    width:32px; height:32px; display:grid; place-items:center; border-radius:3px;
+    background:var(--surface-2); color:var(--ink-2); flex:0 0 auto;
+  }
+  .pcard--win .badge{background:var(--accent); color:var(--surface)}
+  :root[data-theme="dark"] .pcard--win .badge,
+  :root:not([data-theme="light"]) .pcard--win .badge{color:#0D1210}
+  .pcard-head h3{font-size:17px; flex:1 1 220px; min-width:0}
+  .chip{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; padding:3px 8px; border-radius:3px;
+    border:1px solid var(--line-strong); color:var(--ink-3); white-space:nowrap;
+  }
+  .chip.go{border-color:var(--go); color:var(--go)}
+  .chip.stop{border-color:var(--stop); color:var(--stop)}
+  .thesis{color:var(--ink-2); margin-top:11px; font-size:14.5px; max-width:72ch}
+  .pcols{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:16px}
+  .pcol h4{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--ink-3); font-weight:500; margin:0 0 9px;
+  }
+  .pcol ul{margin:0; padding-left:16px; font-size:13.5px; color:var(--ink-2); display:flex; flex-direction:column; gap:6px}
+  .pcol--kill ul{color:var(--ink-3)}
+  .pcol li strong{color:var(--ink); font-weight:600}
+  .check{
+    margin-top:16px; padding-top:13px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--ink-2);
+  }
+  .check .lbl{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--accent); display:block; margin-bottom:4px;
+  }
+  .groups{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px}
+  .grp{border-left:2px solid var(--line-strong); padding-left:13px; font-size:13.5px; color:var(--ink-2)}
+  .grp.a{border-left-color:var(--warn)}
+  .grp.b{border-left-color:var(--accent)}
+  .grp.c{border-left-color:var(--stop)}
+  .grp b{display:block; color:var(--ink); font-size:14px; margin-bottom:4px}
+
+  /* process */
+  .flows{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .flow{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:18px}
+  .flow--to{border-color:var(--accent)}
+  .flow h3{margin-bottom:12px; display:flex; align-items:baseline; gap:9px}
+  .flow h3 .tag{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.1em;
+    text-transform:uppercase; padding:2px 6px; border-radius:3px;
+  }
+  .flow--as .tag{background:var(--surface-2); color:var(--ink-3)}
+  .flow--to .tag{background:var(--accent); color:var(--surface)}
+  :root[data-theme="dark"] .flow--to .tag, :root:not([data-theme="light"]) .flow--to .tag{color:#0D1210}
+  ol.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0}
+  ol.steps li{
+    position:relative; padding:9px 0 9px 26px; font-size:14px; color:var(--ink-2);
+    border-left:1px solid var(--line); margin-left:5px;
+  }
+  ol.steps li::before{
+    content:""; position:absolute; left:-4.5px; top:15px; width:8px; height:8px;
+    border-radius:50%; background:var(--line-strong);
+  }
+  ol.steps li.fail{color:var(--stop)}
+  ol.steps li.fail::before{background:var(--stop)}
+  ol.steps li.gain{color:var(--ink)}
+  .flow--to ol.steps li::before{background:var(--accent)}
+  ol.steps li:last-child{border-left-color:transparent}
+
+  /* timeline */
+  .timeline{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:18px 18px 8px}
+  .tl-scroll{overflow-x:auto}
+  svg{display:block}
+  .tl-legend{display:flex; flex-wrap:wrap; gap:8px 20px; font-size:12.5px; color:var(--ink-3); padding-top:10px}
+
+  /* platform fit */
+  .fit{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .fit .card{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:18px}
+  .fit ul{margin:10px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:9px; font-size:14px}
+  .fit li{display:flex; gap:9px; align-items:flex-start; color:var(--ink-2)}
+  .mark{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600; line-height:1.5;
+    flex:0 0 auto; width:15px; text-align:center;
+  }
+  .mark.has{color:var(--go)} .mark.no{color:var(--stop)} .mark.ok{color:var(--ink-3)}
+
+  /* evidence */
+  .evid{display:grid; grid-template-columns:auto 1fr; gap:14px}
+  .funnel-nums{display:flex; flex-direction:column; gap:8px; min-width:150px}
+  .fn{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:12px 14px}
+  .fn .n{font-family:"Bitter",serif; font-size:26px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums}
+  .fn .l{font-size:12px; color:var(--ink-3); margin-top:3px}
+  .fn.kept{border-color:var(--accent)} .fn.kept .n{color:var(--accent)}
+  .killed{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:18px}
+  .killed ul{margin:10px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:8px; font-size:14px; color:var(--ink-2)}
+  .killed code{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--stop)}
+
+  .note{
+    font-size:13.5px; color:var(--ink-2); border-left:2px solid var(--line-strong);
+    padding-left:14px; margin-top:16px; max-width:70ch;
+  }
+  footer{border-top:1px solid var(--line); padding-top:18px; color:var(--ink-3); font-size:12.5px}
+  a{color:var(--accent-ink); text-decoration-thickness:1px; text-underline-offset:2px}
+  :root[data-theme="dark"] a, :root:not([data-theme="light"]) a{color:var(--accent)}
+  a:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  @media (max-width:760px){
+    .triad,.flows,.fit,.pcols,.groups{grid-template-columns:1fr}
+    .pcols{gap:16px}
+    .groups{gap:14px}
+    .evid{grid-template-columns:1fr}
+    .funnel-nums{flex-direction:row; flex-wrap:wrap}
+    .fn{flex:1 1 120px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Продуктовая триада · ресёрч</p>
+    <h1>Чеки НПД в MAX</h1>
+    <p class="lede">Из шести сегментов микробизнеса выжил один, и не тот, что ожидался. Запись в бьюти занята бесплатным лидером — а расчёты с мастерами-самозанятыми не закрывает никто, и по ним через одиннадцать дней включается новая норма.</p>
+    <p class="byline mono">20.09.2026 · 115 утверждений извлечено, 25 проверено состязательно, 6 выжило</p>
+  </header>
+
+  <div class="clock">
+    <div><span class="num">11</span><span class="unit">дней</span></div>
+    <div class="body">
+      <p><strong>01.10.2026 — цифровые платформы обязаны блокировать связку исполнитель–заказчик</strong> на два календарных месяца, если сотрудничество длится более 6 месяцев и человек работает на одного заказчика более 160 часов в месяц.</p>
+      <p class="why" style="margin-top:6px">Сегодня этих часов и месяцев не считает никто: они живут в переписке и Excel.</p>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">01 — триада</p>
+      <h2>Сегмент → проблема → ценность</h2>
+    </div>
+    <div class="triad">
+      <div class="plate">
+        <span class="step">Сегмент</span>
+        <h3>Услуги с исполнителями на НПД</h3>
+        <ul>
+          <li>ИП или микро-ООО: бьюти-студия, барбершоп, бригада, клининг, автосервис</li>
+          <li>5–30 исполнителей на НПД или ГПХ, не в штате</li>
+          <li>бухгалтера нет — считает владелец или администратор</li>
+          <li>расчёты еженедельно, по факту смены или заказа</li>
+          <li>переписка с мастерами уже в мессенджере</li>
+        </ul>
+      </div>
+      <div class="plate">
+        <span class="step">Проблема</span>
+        <h3>Закрытие расчётов за неделю</h3>
+        <p class="kicker">Выплатил → нужен чек НПД → нужен акт → нужно не превысить лимиты. Четыре шага, ни одного инструмента.</p>
+        <ul>
+          <li>чек пробивает сам мастер — заказчик на это не влияет</li>
+          <li>чеки приходят скриншотами и теряются в чате</li>
+          <li>акты не оформляются, договор один шаблон на всех</li>
+          <li>месяцы и часы по каждому никто не считает</li>
+        </ul>
+      </div>
+      <div class="plate plate--win">
+        <span class="step">Ценность</span>
+        <h3>Один проход вместо охоты за скриншотами</h3>
+        <ul>
+          <li>реестр исполнителей с месяцами и часами</li>
+          <li>светофор риска по четырём критериям ФНС</li>
+          <li>кнопка «запросить чек» → карточка мастеру в MAX</li>
+          <li>автоакт по шаблону и папка по каждому</li>
+        </ul>
+        <p class="kicker" style="margin-top:2px"><strong>Продаётся не автоматизацией, а суммой доначисления.</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">02 — отбор</p>
+      <h2>Почему отвалились остальные пять</h2>
+      <p class="lede">Оценка по пяти осям, три деления на ось. Сегмент проходит, только если ни одна ось не в нуле — одна провальная ось убивает всю триаду.</p>
+    </div>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Сегмент</th>
+            <th scope="col">Размер</th>
+            <th scope="col">Боль</th>
+            <th scope="col">Платит</th>
+            <th scope="col">Фит</th>
+            <th scope="col">Дыра</th>
+            <th scope="col">Итог</th>
+            <th scope="col">Что решило</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="win">
+            <td class="seg">Услуги с исполнителями-самозанятыми</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="verdict go">берём</span></td>
+            <td class="why">дедлайн 01.10, обе стороны в чате, нишу никто не занял</td>
+          </tr>
+          <tr class="out">
+            <td class="seg">Бьюти: запись и no-show</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">мимо</span></td>
+            <td class="why">DIKIDI бесплатен и держит свою витрину; дно рынка 390–490 ₽</td>
+          </tr>
+          <tr class="out">
+            <td class="seg">Селлеры маркетплейсов</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">мимо</span></td>
+            <td class="why">боль живёт в кабинете площадки, мессенджер там не рабочее место</td>
+          </tr>
+          <tr class="out">
+            <td class="seg">Розница под маркировку</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">мимо</span></td>
+            <td class="why">ядро процесса — касса, сканер и ЭДО, а не экран в мессенджере</td>
+          </tr>
+          <tr class="out">
+            <td class="seg">Микро-ИП под НДС на УСН</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">мимо</span></td>
+            <td class="why">процесс бухгалтерский, плюс порог могут заморозить на 2027</td>
+          </tr>
+          <tr class="out">
+            <td class="seg">HoReCa и локальная доставка</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">мимо</span></td>
+            <td class="why">платёжеспособность низкая, дыра узкая</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Оси «острота боли» и «конкурентная дыра» — экспертная оценка на собранных источниках, а не замер. Проверка отклонила весь бьюти-тезис по качеству источников: это значит «не доказано», а не «опровергнуто по существу».</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">03 — портфель</p>
+      <h2>Шесть запасных болей, если основная не подтвердится</h2>
+      <p class="lede">Всё, что выживает, стоит на двух опорах сразу: государство создало дедлайн, и вторая сторона процесса уже в чате у владельца. Где опора одна — идея рассыпается.</p>
+    </div>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Вариант</th>
+            <th scope="col">Процесс</th>
+            <th scope="col">Доказанность</th>
+            <th scope="col">Фит с MAX</th>
+            <th scope="col">Дыра</th>
+            <th scope="col">Решение</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="win">
+            <td class="seg"><strong>А.</strong> Расчёты с самозанятыми</td>
+            <td class="why">выплата → чек НПД → акт → лимиты</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="verdict go">основной</span></td>
+          </tr>
+          <tr>
+            <td class="seg"><strong>Б.</strong> Цифровой ID на кассе</td>
+            <td class="why">проверка возраста по QR или NFC вместо паспорта</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="verdict go">второй номер</span></td>
+          </tr>
+          <tr>
+            <td class="seg"><strong>В.</strong> Сводка по кабинетам</td>
+            <td class="why">ежедневная сверка остатков, заказов и выплат на 2–3 площадках</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">только алерты</span></td>
+          </tr>
+          <tr class="out">
+            <td class="seg"><strong>Г.</strong> Табель часов и смен</td>
+            <td class="why">кто вышел, кто подменил, сколько часов набежало</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">модуль внутри А</span></td>
+          </tr>
+          <tr class="out">
+            <td class="seg"><strong>Д.</strong> Календарь маркировки</td>
+            <td class="why">какая товарная группа касается меня и с какого числа</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot on"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">точка входа</span></td>
+          </tr>
+          <tr class="out">
+            <td class="seg"><strong>Е.</strong> НДС на УСН</td>
+            <td class="why">выбор ставки, счета-фактуры, платежи по датам</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot on"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">мимо</span></td>
+          </tr>
+          <tr class="out">
+            <td class="seg"><strong>Ж.</strong> Приём заявок после блокировки звонков</td>
+            <td class="why">клиент не может дозвониться, переписка рассыпалась</td>
+            <td><span class="dots"><i class="dot on"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></span></td>
+            <td><span class="verdict no">мимо</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><strong>Парадокс доказательной базы.</strong> Вариант В — единственная боль во всём ресёрче, пережившая проверку со счётом 3–0, но именно у него хуже всего с дырой: рынок аналитики маркетплейсов перегрет. Вариант Б — наоборот: доказанности почти нет, зато его физически нельзя повторить в Telegram, потому что Цифровой ID существует только в MAX.</p>
+
+    <div class="cards">
+
+      <article class="pcard pcard--win">
+        <div class="pcard-head">
+          <span class="badge">Б</span>
+          <h3>Проверка возраста на кассе через Цифровой ID</h3>
+          <span class="chip go">второй номер</span>
+        </div>
+        <p class="thesis">Единственная идея из семи, которую нельзя повторить в Telegram ни за какие деньги: Цифровой ID существует только в MAX и тянет документы из Госуслуг.</p>
+        <div class="pcols">
+          <div class="pcol">
+            <h4>Сегмент и процесс</h4>
+            <ul>
+              <li>магазины у дома с алкоголем, табачные и вейп-точки; 1–3 кассы, высокая текучка кассиров, нет СБ и юриста</li>
+              <li>второй сегмент, про который забывают: Цифровой ID подтверждает и льготные статусы — фитнес, кино, музеи, транспорт, курсы</li>
+              <li>кассир проверяет паспорт глазами, в очереди это конфликт и потеря времени</li>
+              <li><strong>Отказ:</strong> молодой кассир не хочет ссориться и пробивает без проверки</li>
+              <li><strong>Отказ:</strong> пришла контрольная закупка — доказать, что проверка была, нечем. Журнала не существует</li>
+            </ul>
+          </div>
+          <div class="pcol pcol--kill">
+            <h4>Что убивает</h4>
+            <ul>
+              <li>для продавцов доступно только юрлицам и ИП; подключение через API с токеном на год — это интеграция в кассу, а не «поставил мини-апп»</li>
+              <li>покупатель должен заранее добавить документы в Цифровой ID; пока этого не сделала масса, кассир всё равно смотрит паспорт</li>
+              <li>кассовые вендоры и сети встроят это у себя и раздадут бесплатно</li>
+              <li>суммы штрафов по КоАП в ресёрче не проверены — бюджет поиска исчерпан</li>
+            </ul>
+          </div>
+        </div>
+        <p class="check"><span class="lbl">Одна проверка, которая решает</span>Считается ли предъявление Цифрового ID надлежащей проверкой при контрольной закупке. Если нет — журнал ничего не доказывает и идея мёртвая. Закрывается одним разговором с юристом, а не десятью интервью.</p>
+      </article>
+
+      <article class="pcard">
+        <div class="pcard-head">
+          <span class="badge">В</span>
+          <h3>Утренняя сводка по нескольким кабинетам маркетплейсов</h3>
+          <span class="chip">только алерты</span>
+        </div>
+        <p class="thesis">Единственная боль во всём ресёрче, пережившая состязательную проверку со счётом 3–0 — и одновременно самая занятая ниша из семи.</p>
+        <div class="pcols">
+          <div class="pcol">
+            <h4>Сегмент и процесс</h4>
+            <ul>
+              <li>26,6 % селлеров торгуют на 2–3 площадках сразу, со сдвигом в высокооборотных; доля растёт: 21 % → 22 % → 26,6 %</li>
+              <li>это нижняя граница: в выборке нет Мегамаркета, Lamoda, Avito, Flowwow</li>
+              <li>каждое утро — три кабинета по очереди: заказы, остатки, возвраты, штрафы, сдвиги в выдаче</li>
+              <li><strong>Отказ:</strong> товар кончился на одной площадке, на другой ещё продаётся — оверселл и штраф</li>
+              <li><strong>Отказ:</strong> выплата пришла не та, что ждали; расхождение с отчётом о реализации ловится через неделю</li>
+            </ul>
+          </div>
+          <div class="pcol pcol--kill">
+            <h4>Что убивает</h4>
+            <ul>
+              <li>дыра не в данных, а в форме подачи — MPStats, Moneyplace, Seller24 добавят такую карточку за спринт</li>
+              <li>доступ к кабинетам — это API-ключи площадок; хранение чужих ключей означает ответственность и риск</li>
+              <li>сегмент платёжеспособен, но <strong>уже платит</strong> за аналитику: отбивать пользователя дороже, чем заходить туда, где системы нет вовсе</li>
+              <li><strong>Главное:</strong> это не мессенджерный процесс, а уведомление. Уведомление шлёт обычный бот без мини-аппа — MAX не даёт ничего сверх Telegram</li>
+            </ul>
+          </div>
+        </div>
+        <p class="check"><span class="lbl">Одна проверка, которая решает</span>Заплатят ли за сводку те, кто уже купил аналитику. И что площадки разрешают делать с их API-ключами.</p>
+      </article>
+
+      <article class="pcard">
+        <div class="pcard-head">
+          <span class="badge">Г</span>
+          <h3>Табель часов и смен</h3>
+          <span class="chip">модуль внутри А</span>
+        </div>
+        <p class="thesis">Самый простой в реализации и самый слабый в монетизации — но единственный, который напрямую кормит дедлайн 01.10.2026.</p>
+        <div class="pcols">
+          <div class="pcol">
+            <h4>Сегмент и процесс</h4>
+            <ul>
+              <li>те же, что в основной идее, плюс точки со сменным персоналом: кофейни, ПВЗ, склады, мойки, клининг</li>
+              <li>график меняется внутри недели — подмены, больничные, «я завтра не могу»</li>
+              <li><strong>Отказ:</strong> кто-то не вышел, потому что смотрел старую закреплённую версию</li>
+              <li><strong>Отказ:</strong> спор «я выходил 12 смен, а не 10» разрешается прокруткой переписки</li>
+              <li><strong>Отказ, новый с 01.10.2026:</strong> никто не считает 160 часов на одного заказчика, а это теперь триггер блокировки</li>
+            </ul>
+          </div>
+          <div class="pcol pcol--kill">
+            <h4>Что убивает</h4>
+            <ul>
+              <li>готовность платить близка к нулю: график на десять человек прекрасно живёт в закреплённом сообщении бесплатно</li>
+              <li>двусторонняя адопция — нужен не только владелец, но и все исполнители. Половина не подтверждает смены → данные мусорные, ценность нулевая</li>
+              <li>в бьюти ниша занята встроенными графиками YCLIENTS и DIKIDI</li>
+              <li>витамин, а не обезболивающее: от бардака в графике никто не разорился</li>
+            </ul>
+          </div>
+        </div>
+        <p class="check"><span class="lbl">Вывод</span>Не отдельный продукт, а второй экран внутри А — и там он бесплатный крючок. Логика: табель нужен, чтобы считались часы, а часы нужны, чтобы работал светофор риска, за который и платят.</p>
+      </article>
+
+      <article class="pcard">
+        <div class="pcard-head">
+          <span class="badge">Д</span>
+          <h3>Личный календарь маркировки</h3>
+          <span class="chip">точка входа</span>
+        </div>
+        <p class="thesis">Самая твёрдая фактура из семи — даты зафиксированы нормативно и не требуют доказательств — и самая тонкая ценность.</p>
+        <div class="pcols">
+          <div class="pcol">
+            <h4>Сегмент и процесс</h4>
+            <ul>
+              <li>малая продуктовая розница, пекарни, кофейни с витриной, локальные производства; отдельно — техника, оптики и медтехника, спецодежда</li>
+              <li>квалификатор: одна–три точки, товароведа нет, владелец не знает своих кодов</li>
+              <li>о дате узнают от поставщика или из новостей, то есть поздно</li>
+              <li><strong>Отказ:</strong> узнал за неделю — не успевает ни подпись, ни ЭДО, ни сканер, ни обучение кассира</li>
+              <li><strong>Отказ:</strong> товар не принимается в ЭДО и остаток зависает; касса не пропускает продажу, очередь стоит</li>
+            </ul>
+          </div>
+          <div class="pcol pcol--kill">
+            <h4>Что убивает</h4>
+            <ul>
+              <li>календарь — это контент, а не продукт: операторы ЭДО и кассовые вендоры раздают его бесплатно как лидогенерацию</li>
+              <li>реальная работа — касса, сканер, ЭДО и подпись. Мини-апп туда не лезет и не может залезть</li>
+              <li>за напоминание не платят: монетизация возможна только партнёрская, а это уже агентский бизнес, а не продукт</li>
+              <li>поддерживать надо вечно — даты двигаются, группы добавляются</li>
+            </ul>
+          </div>
+        </div>
+        <p class="check"><span class="lbl">Вывод</span>Годная верхушка воронки для чего-то платного, но не самостоятельная ставка.</p>
+      </article>
+
+      <article class="pcard">
+        <div class="pcard-head">
+          <span class="badge">Е</span>
+          <h3>НДС на УСН: выбор ставки и календарь платежей</h3>
+          <span class="chip stop">мимо</span>
+        </div>
+        <p class="thesis">Единственный вариант, где цена боли считается точно и сразу — и ровно поэтому её считает бухгалтер, а не мини-апп.</p>
+        <div class="pcols">
+          <div class="pcol">
+            <h4>Сегмент и процесс</h4>
+            <ul>
+              <li>ИП на УСН, перешагнувшие порог 20 млн ₽ <strong>впервые в этом году</strong> — ни привычек, ни настроенных процессов</li>
+              <li>выбрать ставку: 5 % до 272,5 млн ₽, 7 % при 272,5–490,5 млн, либо общий порядок 22 % с вычетами</li>
+              <li>счёт-фактура или УПД с выделенным налогом на каждую продажу, реестры входящих</li>
+              <li>декларация до 25 числа, платёж тремя равными долями до 28</li>
+              <li><strong>Отказ:</strong> выбрал 5 % ради простоты при большом входящем НДС — переплатил, а передумать когда угодно нельзя</li>
+            </ul>
+          </div>
+          <div class="pcol pcol--kill">
+            <h4>Что убивает</h4>
+            <ul>
+              <li>порог — движущаяся цель: обсуждается заморозка на 2027, что выведет из-под НДС около 50 тыс. компаний</li>
+              <li><strong>Ответственность:</strong> ошибка в калькуляторе стоит пользователю реальных денег, и он придёт с претензией</li>
+              <li>Эльба, Моё дело, СБИС, 1С и банковские бухгалтерии — у всех это в подписке, которая у сегмента часто уже куплена</li>
+              <li>в этот момент предприниматель идёт к бухгалтеру, а не в мессенджер. Канал не тот</li>
+            </ul>
+          </div>
+        </div>
+        <p class="check"><span class="lbl">Одна проверка, которая решает</span>Судьба порога на 2027. Заморозят — сегмент схлопнется до того, как вы что-то запустите.</p>
+      </article>
+
+      <article class="pcard pcard--dead">
+        <div class="pcard-head">
+          <span class="badge">Ж</span>
+          <h3>Приём заявок после блокировки звонков</h3>
+          <span class="chip stop">закрыто</span>
+        </div>
+        <p class="thesis">Первое, что приходит в голову про мини-апп в мессенджере — и тупик. Включён в список не как кандидат, а чтобы закрыть вопрос.</p>
+        <div class="pcols">
+          <div class="pcol">
+            <h4>Аргумент за</h4>
+            <ul>
+              <li>голосовые звонки в Telegram и WhatsApp заблокированы с августа 2025, канал связи бизнеса с клиентом нестабилен</li>
+              <li>Telegram потерял 33 % дневной аудитории, WhatsApp — 24 %; предприниматель вынужденно ищет замену</li>
+            </ul>
+          </div>
+          <div class="pcol pcol--kill">
+            <h4>Почему всё равно не работает</h4>
+            <ul>
+              <li>в MAX нет дискавери: клиента надо приводить снаружи и за свои деньги</li>
+              <li>критерий № 1 при выборе решения — лидогенерация, ровно то, чего MAX не даёт</li>
+              <li>приведённый клиент всё равно напишет в личку, потому что так быстрее</li>
+              <li>регуляторика сужает рассылки и обзвон: продукт должен быть учётным, а не коммуникационным</li>
+              <li>ниша занята сверху — DIKIDI, Авито Услуги, Яндекс Услуги, у всех витрина и свой спрос</li>
+            </ul>
+          </div>
+        </div>
+        <p class="check"><span class="lbl">Вывод</span>Закрыто без проверки. Если хочется в клиентские сценарии — заходить надо через то, ради чего клиент и так открывает MAX: Госуслуги и Цифровой ID. То есть обратно в вариант Б.</p>
+      </article>
+
+    </div>
+
+    <div class="groups">
+      <div class="grp a">
+        <b>Ставки на регулятора</b>
+        А, Г, Д, Е. Государство создало дедлайн, продукт продаётся страхом. Общий риск: мягкое правоприменение — и страх не конвертируется в покупку.
+      </div>
+      <div class="grp b">
+        <b>Ставка на платформу</b>
+        Б. Единственный вариант, где выбор MAX обоснован не конъюнктурой, а функцией, которой больше нет нигде.
+      </div>
+      <div class="grp c">
+        <b>Ставки на удобство</b>
+        В и Ж. Самые слабые: удобство копируется за спринт, а мессенджер в них ничего не решает.
+      </div>
+    </div>
+
+    <p class="note"><strong>Две проверки закрывают четыре варианта из семи и стоят пары дней.</strong> Первая — юрист про Цифровой ID: ответ «да» выводит Б на первое место, потому что его никто не скопирует. Вторая — тарифы Консоль.Про, Рокет Ворк и аналогов: комиссия с оборота или подписка, есть ли минимальный объём. Это закрывает А и Г разом. Интервью имеет смысл начинать после этих двух ответов, иначе десять разговоров уйдут на направление, которое закрывается одним звонком.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">04 — процесс</p>
+      <h2>Как закрывается неделя сейчас и как должна</h2>
+    </div>
+    <div class="flows">
+      <div class="flow flow--as">
+        <h3><span class="tag">как есть</span> в чате и Excel</h3>
+        <ol class="steps">
+          <li>Мастер отработал смену или заказ</li>
+          <li>Владелец считает сумму в Excel</li>
+          <li>Перевод на карту</li>
+          <li class="fail">Чек НПД не пробит — напоминание в переписке, круг повторяется</li>
+          <li class="fail">Чек прислан скриншотом и тонет в чате</li>
+          <li class="fail">Акт не оформлен, договор один на всех</li>
+          <li class="fail">Расход не подтверждён, лимиты никто не считал</li>
+        </ol>
+      </div>
+      <div class="flow flow--to">
+        <h3><span class="tag">как будет</span> мини-апп внутри бота</h3>
+        <ol class="steps">
+          <li>Смена закрыта — сумма уже в реестре</li>
+          <li class="gain">Владелец жмёт «запросить чек» по всем сразу</li>
+          <li class="gain">Мастеру прилетает карточка в MAX, подключение по номеру в один тап</li>
+          <li class="gain">Чек прикладывается и падает в реестр, а не в чат</li>
+          <li class="gain">Акт формируется по шаблону за период</li>
+          <li class="gain">Светофор показывает, кто подходит к 6 месяцам и 160 часам</li>
+          <li class="gain">Папка по каждому исполнителю собрана к проверке</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">05 — регуляторные часы</p>
+      <h2>Откуда взялась свежая боль</h2>
+    </div>
+    <div class="timeline">
+      <div class="tl-scroll">
+        <svg viewBox="0 0 900 190" width="900" height="190" role="img" aria-label="Таймлайн: приказ Минтруда 19.11.2025, скоринг ФНС с 16.02.2026, сегодня 20.09.2026, блокировки платформ с 01.10.2026">
+          <line x1="60" y1="96" x2="850" y2="96" stroke="var(--line-strong)" stroke-width="2"/>
+          <line x1="60" y1="96" x2="792" y2="96" stroke="var(--accent)" stroke-width="2"/>
+
+          <g>
+            <circle cx="60" cy="96" r="6" fill="var(--accent)"/>
+            <text x="60" y="72" text-anchor="start" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">19.11.2025</text>
+            <text x="60" y="126" text-anchor="start" fill="var(--ink-2)" font-family="IBM Plex Sans, sans-serif" font-size="13">Приказ Минтруда № 657н</text>
+            <text x="60" y="144" text-anchor="start" fill="var(--ink-3)" font-family="IBM Plex Sans, sans-serif" font-size="12">задал критерии скоринга</text>
+          </g>
+
+          <g>
+            <circle cx="300" cy="96" r="6" fill="var(--accent)"/>
+            <text x="300" y="72" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">16.02.2026</text>
+            <text x="300" y="126" text-anchor="middle" fill="var(--ink-2)" font-family="IBM Plex Sans, sans-serif" font-size="13">Двухуровневый скоринг ФНС</text>
+            <text x="300" y="144" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Sans, sans-serif" font-size="12">квартальный — уже от 10 исполнителей</text>
+          </g>
+
+          <g>
+            <line x1="612" y1="60" x2="612" y2="132" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="3 3"/>
+            <circle cx="612" cy="96" r="4.5" fill="var(--ground)" stroke="var(--ink-3)" stroke-width="2"/>
+            <text x="612" y="50" text-anchor="middle" fill="var(--ink-3)" font-family="IBM Plex Mono, monospace" font-size="12">сегодня 20.09.2026</text>
+          </g>
+
+          <g>
+            <circle cx="792" cy="96" r="8" fill="var(--stop)"/>
+            <text x="850" y="72" text-anchor="end" fill="var(--stop)" font-family="IBM Plex Mono, monospace" font-size="13" font-weight="600">01.10.2026</text>
+            <text x="850" y="126" text-anchor="end" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Платформы блокируют связку</text>
+            <text x="850" y="144" text-anchor="end" fill="var(--ink-2)" font-family="IBM Plex Sans, sans-serif" font-size="12">&gt; 6 месяцев и &gt; 160 часов в месяц → стоп на 2 месяца</text>
+            <text x="850" y="166" text-anchor="end" fill="var(--ink-3)" font-family="IBM Plex Sans, sans-serif" font-size="12">штраф 50–200 тыс. ₽ + НДФЛ, взносы и 20 % по ст. 123 НК</text>
+          </g>
+        </svg>
+      </div>
+      <p class="tl-legend">ФНС уже видит признаки подмены трудовых отношений у 182 тыс. самозанятых — 1,25 % реестра на момент замера.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">06 — платформа</p>
+      <h2>Чего в MAX нет — и почему здесь это не мешает</h2>
+      <p class="lede">Мини-приложение запускается только внутри чат-бота: автономной точки входа нет, дистрибуция идёт через бота, диплинки и шеринг в чат.</p>
+    </div>
+    <div class="fit">
+      <div class="card">
+        <h3>Что даёт платформа</h3>
+        <ul>
+          <li><span class="mark has">＋</span><span><code class="mono">requestContact</code> — подключение мастера по номеру в один тап, без формы и пароля</span></li>
+          <li><span class="mark has">＋</span><span><code class="mono">initData</code> с серверной валидацией подписи — кто открыл и из какого чата</span></li>
+          <li><span class="mark has">＋</span><span>DeviceStorage и SecureStorage, биометрия, QR-сканер, NFC на Android</span></li>
+          <li><span class="mark has">＋</span><span>шеринг внутрь MAX и диплинки — владелец сам зовёт своих мастеров</span></li>
+          <li><span class="mark has">＋</span><span>верификация издателя через Госуслуги, Т-Бизнес ID или Альфа ID; самозанятым открыли доступ 15.06.2026</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Чего нет</h3>
+        <ul>
+          <li><span class="mark no">−</span><span><strong>Нативных платежей</strong> нет ни в Bridge, ни в Bot API — оплата только через внешнего провайдера</span></li>
+          <li><span class="mark ok">→</span><span class="why">Процессу они не нужны: владелец переводит деньги как переводил, продукт про документы</span></li>
+          <li><span class="mark no">−</span><span><strong>Геолокации</strong> в Bridge нет</span></li>
+          <li><span class="mark no">−</span><span><strong>Дискавери и спроса</strong> нет — в MAX некому вас найти</span></li>
+          <li><span class="mark ok">→</span><span class="why">Продукт внутренний: вторую сторону приводит владелец, а не платформа. Ровно то, что хоронит клиентские сценарии, здесь безразлично</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Ставка на MAX — это ставка на то, что давление на Telegram и WhatsApp продолжится, а не на то, что MAX сейчас удобнее. По Mediascope: MAX 69,9 млн DAU, Telegram 33,8 млн (−33 %), WhatsApp 22,6 млн (−24 %); сама платформа заявляет 85 млн. Значимая часть заходов в MAX — авторизация через Госуслуги с быстрым выходом.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <p class="eyebrow">07 — доказательная база</p>
+      <h2>Что не пережило проверку</h2>
+    </div>
+    <div class="evid">
+      <div class="funnel-nums">
+        <div class="fn"><div class="n">115</div><div class="l">утверждений извлечено</div></div>
+        <div class="fn"><div class="n">25</div><div class="l">проверено по три голоса</div></div>
+        <div class="fn kept"><div class="n">6</div><div class="l">выжило</div></div>
+      </div>
+      <div class="killed">
+        <h3>Убитые опоры — и почему это важно</h3>
+        <ul>
+          <li><code>«у 3/4 микробизнеса нет CRM»</code> — 0–3. Вендорский пресс-релиз без раскрытия выборки; 27 % там про «отдельные CRM». Встречные опросы дают 49 % и ~70 %.</li>
+          <li><code>«предприниматели хотят интеграцию с мессенджерами»</code> — 0–3 и перевёрнуто: в опросе речь про «уже <em>встроенные</em>» мессенджеры, а критерий № 1 — лидогенерация (40 %), которой MAX не даёт. Формально это довод за Telegram, а не за MAX.</li>
+          <li><code>«бьюти теряет 10–15 % выручки на хаосе в записи»</code> — методология не раскрыта. Не опровергнуто, но и не доказано.</li>
+          <li><code>«более 7 млн субъектов МСП»</code> — было верно только на 10.06.2026. После июльского пересоздания реестра — 6 767 441 на 10.09.2026.</li>
+        </ul>
+        <p class="note" style="margin-top:14px">Предпосылка «микробизнес не автоматизирован, его среда — мессенджер» держалась на трёх отклонённых источниках. Аргумент «почему мессенджер» теперь опирается не на опросы, а на структуру процесса: вторая сторона — исполнитель, и он уже в чате у владельца.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Слабое место рекомендации: размер сегмента и цена боли в часах не измерены ни одним публичным источником — процессный слой в российских опросах почти не замерен. Регуляторная часть твёрдая, коммерческая — гипотеза. Первые 8–10 интервью должны закрывать именно это, а не подтверждать идею.</p>
+  </footer>
+
+</div>
+
+</body></html>
