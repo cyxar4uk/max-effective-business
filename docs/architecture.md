@@ -6,35 +6,33 @@
 ## Компоненты
 
 ```mermaid
-flowchart LR
-  subgraph MAX["MAX (внешний сервис)"]
-    client["Клиент MAX<br/>мобильный и веб"]
-    botapi["MAX Bot API<br/>platform-api2.max.ru"]
-  end
+flowchart TB
+  client["Клиент MAX<br/>мобильный и веб"]
+  botapi["MAX Bot API<br/>platform-api2.max.ru"]
 
-  subgraph VPS["Наш сервер (Docker Compose)"]
-    caddy["Caddy<br/>HTTPS :443"]
+  subgraph VPS["Наш сервер · Docker Compose"]
+    caddy["Caddy · HTTPS :443"]
     miniapp["miniapp<br/>React, статика"]
-    subgraph server["server — один процесс Node.js"]
-      auth["auth<br/>проверка подписи initData"]
+    subgraph server["server · один процесс Node.js"]
+      direction TB
+      auth["auth<br/>подпись initData"]
       api["api<br/>маршруты, права, статусы"]
       matching["matching<br/>расчёт совпадения"]
-      bus(("события"))
       bot["bot<br/>очередь уведомлений"]
     end
     db[("PostgreSQL")]
   end
 
-  client -- "открывает мини-приложение" --> caddy
+  client -->|"мини-приложение"| caddy
   caddy --> miniapp
-  caddy -- "/api/*" --> auth --> api
+  caddy -->|"/api/*"| auth --> api
   api --> matching
+  api -->|"события"| bot
   api --> db
-  api -- "internship.created<br/>interest.created<br/>interest.invited" --> bus --> bot
   bot --> db
-  bot -- "POST /messages" --> botapi
-  botapi -- "вебхук /bot/webhook" --> caddy
-  botapi -. "сообщения и кнопки" .-> client
+  bot -->|"POST /messages"| botapi
+  botapi -->|"вебхук /bot/webhook"| caddy
+  botapi -.->|"сообщения от бота"| client
 ```
 
 | Компонент | Роль | Связи |
@@ -76,7 +74,7 @@ sequenceDiagram
   E->>M: список кандидатов по убыванию совпадения
   M->>A: POST …/candidates/:id/invite
   A-->>B: interest.invited
-  B->>X: студенту — контакт работодателя и чек-лист; работодателю — контакт студента
+  B->>X: студенту — контакт работодателя и чек-лист, работодателю — контакт студента
   Note over A: телефон и фамилия студента раскрываются<br/>только после приглашения
 ```
 
