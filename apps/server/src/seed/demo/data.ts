@@ -187,6 +187,12 @@ export const DEMO_STUDENTS: DemoStudent[] = [
   student(34, 'Алиса', 'Королёва', 4, 'Дизайн', IOM, ['figma', 'ui_ux', 'graphic_design', 'presentations', 'photoshop', 'video_editing']),
   student(35, 'Василиса', 'Мельникова', 2, 'Дизайн', IOM, ['figma', 'ui_ux']),
   student(36, 'Святослав', 'Гусев', 3, 'Дизайн', IOM, ['graphic_design', 'photoshop', 'html_css'], { formats: ['office'] }),
+  // Не из Москвы, с ходовыми навыками и любым форматом: проверяющий из другого города (финал — в Казани)
+  // публикует очную стажировку у себя и видит кандидатов
+  student(37, 'Камила', 'Хайруллина', 3, 'Бизнес-информатика', IBDA, ['excel', 'google_sheets', 'sql', 'presentations', 'business_writing'], { city: 'Казань' }),
+  student(38, 'Айдар', 'Сафин', 2, 'Маркетинг', IBDA, ['excel', 'smm', 'copywriting', 'content_marketing', 'photoshop'], { city: 'Казань' }),
+  student(39, 'Регина', 'Галиева', 4, 'Экономика', IEF, ['excel', 'accounting', '1c_accounting', 'budgeting', 'english_b1'], { city: 'Казань' }),
+  student(40, 'Олеся', 'Воронина', 3, 'Менеджмент', IOM, ['excel', 'sales', 'crm', 'negotiations', 'recruiting', 'business_writing'], { city: 'Санкт-Петербург' }),
 ];
 
 /** Стажировки, где у первого подходящего кандидата уже «приглашён», а у третьего — «отказ», чтобы в демо были видны все статусы. */

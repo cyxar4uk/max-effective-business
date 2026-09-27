@@ -11,23 +11,39 @@ import { matchStudentToInternship, type InternshipMatchInput, type MatchResult, 
 
 /** Сколько демо-студентов откликается на стажировку проверяющего. */
 export const DEMO_RESPONSES_LIMIT = 5;
+/** Сколько мест оставляем студентам «с пробелами» (совпадение ниже STRONG_SCORE), чтобы была видна расшифровка. */
+export const DEMO_PARTIAL_SLOTS = 2;
+export const STRONG_SCORE = 80;
 
 export interface DemoCandidate extends StudentMatchInput {
   userId: number;
 }
 
-/** Лучшие подходящие демо-студенты: прошли фильтры, совпадение не ниже порога, по убыванию процента. */
+/**
+ * Демо-студенты для стажировки проверяющего: прошли фильтры, совпадение не ниже порога.
+ * Берём до трёх сильных (от 80 %) и до двух с пробелами (от порога до 79 %): если откликнутся только
+ * стопроцентные, не будет видно главного — что совпало и чего не хватает. Если одной группы мало, добираем другой.
+ * Результат — по убыванию процента.
+ */
 export function pickDemoResponders(
   internship: InternshipMatchInput,
   students: readonly DemoCandidate[],
   threshold: number,
   limit: number = DEMO_RESPONSES_LIMIT,
 ): { userId: number; match: MatchResult }[] {
-  return students
+  const ranked = students
     .map((s, order) => ({ userId: s.userId, order, match: matchStudentToInternship(s, internship) }))
     .filter(({ match }) => match.passesFilters && match.score >= threshold)
+    .sort((a, b) => b.match.score - a.match.score || a.order - b.order);
+
+  const strong = ranked.filter((x) => x.match.score >= STRONG_SCORE);
+  const partial = ranked.filter((x) => x.match.score < STRONG_SCORE);
+  const partialCount = Math.min(partial.length, DEMO_PARTIAL_SLOTS, limit);
+  const strongCount = Math.min(strong.length, limit - partialCount);
+  const extraPartial = Math.min(partial.length - partialCount, limit - partialCount - strongCount);
+
+  return [...strong.slice(0, strongCount), ...partial.slice(0, partialCount + extraPartial)]
     .sort((a, b) => b.match.score - a.match.score || a.order - b.order)
-    .slice(0, limit)
     .map(({ userId, match }) => ({ userId, match }));
 }
 
