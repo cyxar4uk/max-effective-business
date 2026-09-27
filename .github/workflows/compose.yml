@@ -74,8 +74,11 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/health)" = 308
           # API и подпись MAX через Caddy
           NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/smoke.mjs https://localhost | tee -a "$GITHUB_STEP_SUMMARY"
-          # Вебхук доходит до сервера и проверяет секрет
-          test "$(curl -sk -o /dev/null -w '%{http_code}' -X POST https://localhost/bot/webhook -H 'Content-Type: application/json' -d '{}')" = 401
+          # /bot/* доходит до сервера (ответ в формате API, а не 502 от Caddy). Без секрета — 401,
+          # пока модуль бота не подключён — 404 от сервера
+          body=$(curl -sk -w ' %{http_code}' -X POST https://localhost/bot/webhook -H 'Content-Type: application/json' -d '{}')
+          echo "вебхук без секрета: $body"
+          echo "$body" | grep -qE '"code":"(UNAUTHORIZED|NOT_FOUND)".* (401|404)$'
           # Сервер и БД наружу не опубликованы
           if curl -s --max-time 3 http://localhost:3000/api/health; then echo "сервер опубликован наружу"; exit 1; fi
           if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then echo "БД опубликована наружу"; exit 1; fi
