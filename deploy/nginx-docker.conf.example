@@ -1,0 +1,34 @@
+# Блок для nginx, который работает в Docker-контейнере. Контейнер nginx подключить к сети meb-edge:
+#   docker network connect meb-edge <контейнер-nginx>
+# или, если nginx поднимается через compose соседнего проекта, в его compose:
+#   services: { nginx: { networks: [default, meb-edge] } }
+#   networks: { meb-edge: { external: true } }
+# Заменить app.example.ru на наш поддомен, проверить `nginx -t` и перезагрузить: nginx -s reload.
+# Сертификат — как у остальных сайтов этого nginx (certbot/acme в контейнере или смонтированные файлы).
+
+server {
+    listen 80;
+    server_name app.example.ru;
+
+    access_log /var/log/nginx/max-effective-business.access.log;
+    client_max_body_size 1m;
+
+    # DNS Docker разрешает имя при каждом запросе. Если записать адрес прямо в proxy_pass, nginx разрешит его
+    # при старте и не запустится, пока наш сервер лежит, — вместе со всеми соседними сайтами.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $meb_server http://meb-server:3000;
+
+    # API мини-приложения и вебхук бота → наш сервер
+    location ~ ^/(api|bot)/ {
+        proxy_pass $meb_server;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+    }
+
+    # Мини-приложение (статика Ильи): когда появится контейнер miniapp, сюда его алиас в сети meb-edge.
+    location / {
+        return 503;
+    }
+}

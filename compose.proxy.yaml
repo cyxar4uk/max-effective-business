@@ -1,15 +1,29 @@
 # Прод за уже работающим на сервере прокси (nginx или Caddy соседнего проекта), без своего Caddy.
+#   docker network create meb-edge     # один раз; scripts/deploy.sh в режиме proxy делает это сам
 #   docker compose -f compose.yaml -f compose.proxy.yaml up -d --build
-# Сервер слушает только 127.0.0.1:${SERVER_PORT}; TLS и домен — на существующем прокси
-# (примеры: deploy/nginx.conf.example, deploy/Caddyfile.snippet). Подробно — docs/deploy.md.
+# TLS и домен — на существующем прокси. Как прокси достучится до сервера:
+#   - прокси на хосте      → 127.0.0.1:${SERVER_PORT} (deploy/nginx.conf.example, deploy/Caddyfile.snippet);
+#   - прокси в контейнере  → подключить его к сети meb-edge и ходить на meb-server:3000
+#     (deploy/nginx-docker.conf.example). Подробно — docs/deploy.md.
 
 services:
   server:
-    # Только локальный интерфейс: снаружи сервер доступен лишь через прокси
+    # Только локальный интерфейс хоста: снаружи сервер доступен лишь через прокси
     ports: !override
       - "127.0.0.1:${SERVER_PORT:-3000}:3000"
+    networks:
+      default: {}
+      # Общая с прокси сеть. БД в неё не входит. Уникальный алиас — чтобы не пересечься с сервисами соседей
+      edge:
+        aliases: [meb-server]
     environment:
       TRUST_PROXY: 1
       MINIAPP_URL: https://${DOMAIN:?Задайте DOMAIN в .env}
       MAX_WEBHOOK_SECRET: ${MAX_WEBHOOK_SECRET:?Задайте MAX_WEBHOOK_SECRET в .env}
       SEED_DEMO: ${SEED_DEMO:-true}
+
+networks:
+  # Создаётся отдельно и живёт независимо от обоих стеков: остановка одного не ломает другой
+  edge:
+    name: meb-edge
+    external: true
