@@ -2,3 +2,4 @@
 // Справочник грузится при каждом старте; демо-данные — при SEED_DEMO=true или командой npm run seed:demo.
 export { SKILL_GROUPS, seedSkills, skillRows } from './skills.js';
 export { seedDemo, type DemoSeedResult } from './demo/load.js';
+export { registerDemoResponder, respondWithDemoStudents } from './demo/responder.js';

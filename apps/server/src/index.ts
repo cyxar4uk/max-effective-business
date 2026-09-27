@@ -5,7 +5,7 @@ import { createRepos } from './db/repos.js';
 import { EventBus } from './events.js';
 import { createLogger } from './logger.js';
 import { matcher } from './matching/index.js';
-import { seedDemo, seedSkills } from './seed/index.js';
+import { registerDemoResponder, seedDemo, seedSkills } from './seed/index.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL);
@@ -21,6 +21,8 @@ log.info({ skills: await seedSkills(ds) }, 'Справочник навыков 
 if (config.SEED_DEMO) log.info(await seedDemo(ds), 'Демо-данные загружены');
 
 const events = new EventBus(log);
+// Демо-режим: на стажировку проверяющего сразу откликаются подходящие демо-студенты (см. src/seed/demo/responder.ts)
+if (config.SEED_DEMO) registerDemoResponder({ events, ds, log, threshold: config.MATCH_NOTIFY_THRESHOLD });
 // Сюда подключается модуль бота Тимура: registerBot({ events, ds, config, log })
 
 const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher } });
