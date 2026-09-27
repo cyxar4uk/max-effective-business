@@ -82,11 +82,22 @@ describe.skipIf(!url)('botData', () => {
 
     const demo = claimed.find((c) => c.dedupeKey === 'x:demo')!;
     await bot.markFailed(demo.id, 'HTTP 403');
-    const rows = await ds.query('SELECT dedupe_key, status, last_error, sent_at IS NOT NULL AS sent FROM notifications ORDER BY id');
+    const rows = await ds.query('SELECT dedupe_key, status, last_error, sent_at IS NOT NULL AS sent, payload FROM notifications ORDER BY id');
+    // После отправки и после окончательной ошибки текста (с телефонами) в базе нет
     expect(rows).toEqual([
-      { dedupe_key: n.dedupeKey, status: 'sent', last_error: null, sent: true },
-      { dedupe_key: 'x:demo', status: 'failed', last_error: 'HTTP 403', sent: false },
+      { dedupe_key: n.dedupeKey, status: 'sent', last_error: null, sent: true, payload: {} },
+      { dedupe_key: 'x:demo', status: 'failed', last_error: 'HTTP 403', sent: false, payload: {} },
     ]);
+  });
+
+  it('claimDue отдаёт уведомления в порядке постановки в очередь', async () => {
+    const keys = ['order:1', 'order:2', 'order:3', 'order:4', 'order:5'];
+    for (const k of keys) await bot.enqueue({ userId: ids.student, kind: 'k', dedupeKey: k, payload: { k } });
+    const claimed = await bot.claimDue(10);
+    const ours = claimed.filter((c) => c.dedupeKey?.startsWith('order:'));
+    expect(ours.map((c) => c.dedupeKey)).toEqual(keys);
+    expect(claimed.map((c) => c.id)).toEqual([...claimed.map((c) => c.id)].sort((a, b) => a - b));
+    for (const c of claimed) await bot.markSent(c.id);
   });
 
   it('аренда истекает — запись возвращается в очередь', async () => {
