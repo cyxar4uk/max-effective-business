@@ -1,0 +1,35 @@
+# Прод поверх compose.yaml: HTTPS через Caddy, наружу открыты только 80 и 443.
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+# Или scripts/deploy.sh. Переменные — в .env на сервере.
+
+services:
+  server:
+    # Наружу сервер не публикуем: доступ только через Caddy
+    ports: !reset []
+    environment:
+      TRUST_PROXY: 1
+      MINIAPP_URL: https://${DOMAIN:?Задайте DOMAIN в .env}
+      MAX_WEBHOOK_SECRET: ${MAX_WEBHOOK_SECRET:?Задайте MAX_WEBHOOK_SECRET в .env}
+      SEED_DEMO: ${SEED_DEMO:-true}
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Задайте ACME_EMAIL в .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:

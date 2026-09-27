@@ -1,0 +1,29 @@
+# Прод: один домен, TLS от Let's Encrypt выпускается автоматически.
+# MAX принимает вебхук только на 443 и только с сертификатом доверенного УЦ.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# API мини-приложения и вебхук бота
+	handle /api/* {
+		reverse_proxy server:3000
+	}
+	handle /bot/* {
+		reverse_proxy server:3000
+	}
+
+	# Мини-приложение (статика за nginx, контейнер miniapp — Илья)
+	handle {
+		reverse_proxy miniapp:80
+	}
+
+	# В журнал доступа не пишем заголовки: в них initData
+	log {
+		format filter {
+			request>headers delete
+		}
+	}
+}
