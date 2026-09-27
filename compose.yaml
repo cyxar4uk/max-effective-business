@@ -1,0 +1,45 @@
+# Запуск всего одной командой: docker compose up --build
+# Переменные — в .env (скопировать из .env.example).
+
+services:
+  db:
+    image: postgres:18.6-alpine3.24
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в .env}
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  server:
+    build: ./apps/server
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-app}
+      RUN_MIGRATIONS: "true"
+      SEED_DEMO: ${SEED_DEMO:-true}
+      MAX_BOT_TOKEN: ${MAX_BOT_TOKEN:?Задайте MAX_BOT_TOKEN в .env}
+      INIT_DATA_MAX_AGE_SEC: ${INIT_DATA_MAX_AGE_SEC:-86400}
+      MINIAPP_URL: ${MINIAPP_URL:-}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-120}
+      MATCH_NOTIFY_THRESHOLD: ${MATCH_NOTIFY_THRESHOLD:-60}
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+    restart: unless-stopped
+
+  # miniapp (Илья): статика за nginx, добавится вместе с apps/miniapp
+
+volumes:
+  db-data:
