@@ -9,6 +9,7 @@ import type { DomainDeps } from './api/context.js';
 import { internshipsRouter } from './api/internships.js';
 import { profilesRouter } from './api/profiles.js';
 import { apiRouter } from './api/routes.js';
+import { webhookRouter, type UpdateHandler } from './api/webhook.js';
 import { requireMaxUser } from './auth/middleware.js';
 import type { Config } from './config.js';
 import type { User } from './db/entities.js';
@@ -31,9 +32,11 @@ export interface AppDeps {
   events: EventBus;
   // Маршруты профилей и стажировок работают поверх БД; в тестах без БД их нет
   domain?: Omit<DomainDeps, 'events'>;
+  // Обработчик обновлений MAX Bot API от модуля bot; без него вебхук не подключается
+  onBotUpdate?: UpdateHandler;
 }
 
-export function createApp({ config, log, repos, events, domain }: AppDeps): Express {
+export function createApp({ config, log, repos, events, domain, onBotUpdate }: AppDeps): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', config.TRUST_PROXY);
@@ -69,6 +72,10 @@ export function createApp({ config, log, repos, events, domain }: AppDeps): Expr
       res.status(503).json({ status: 'degraded', db: 'unavailable' });
     }
   });
+
+  if (config.MAX_WEBHOOK_SECRET && onBotUpdate) {
+    app.use(webhookRouter({ secret: config.MAX_WEBHOOK_SECRET, onUpdate: onBotUpdate }));
+  }
 
   app.use(
     '/api',
