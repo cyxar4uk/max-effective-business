@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { EntityManager } from 'typeorm';
+import { In, type EntityManager } from 'typeorm';
 import { currentUser } from '../auth/middleware.js';
 import { Interest, Internship, StudentProfile, User } from '../db/entities.js';
 import type { InterestStatus } from '../db/entities.js';
@@ -193,7 +193,12 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
       .andWhere(`x.status <> 'skipped'`)
       .orderBy('x.updated_at', 'DESC')
       .getMany();
-    const byId = new Map((await internships.findBy(list.map((x) => ({ id: x.internshipId })))).map((i) => [i.id, i]));
+    // findBy([]) в TypeORM — запрос без WHERE, поэтому пустой список обрабатываем отдельно
+    if (!list.length) {
+      res.json({ items: [] });
+      return;
+    }
+    const byId = new Map((await internships.findBy({ id: In(list.map((x) => x.internshipId)) })).map((i) => [i.id, i]));
     const employers = await employersById(ds, [...byId.values()]);
     // Контакт работодателя — только после приглашения
     const invitedOwners = list
@@ -201,7 +206,7 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
       .map((x) => employers.get(byId.get(x.internshipId)?.employerId ?? -1)?.ownerUserId)
       .filter((id): id is number => id !== undefined);
     const owners = new Map(
-      (invitedOwners.length ? await ds.getRepository(User).findBy(invitedOwners.map((id) => ({ id }))) : []).map((u) => [u.id, u]),
+      (invitedOwners.length ? await ds.getRepository(User).findBy({ id: In(invitedOwners) }) : []).map((u) => [u.id, u]),
     );
 
     res.json({
