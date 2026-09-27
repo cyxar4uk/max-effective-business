@@ -5,7 +5,7 @@ import { pino } from 'pino';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { temporaryMatcher } from '../src/api/matcher.js';
+import { matcher } from '../src/matching/index.js';
 import { CONSENT_VERSION } from '../src/api/routes.js';
 import { createApp } from '../src/app.js';
 import { signContact } from '../src/auth/contact.js';
@@ -54,7 +54,7 @@ describe.skipIf(!url)('основной сценарий', () => {
       events.on(name, (payload) => void emitted.push({ name, payload }));
     }
     const config = loadConfig({ NODE_ENV: 'test', DATABASE_URL: url, MAX_BOT_TOKEN: TOKEN, RATE_LIMIT_PER_MIN: '10000' });
-    app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher: temporaryMatcher } });
+    app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher } });
   });
 
   afterAll(async () => {
