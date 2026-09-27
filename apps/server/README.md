@@ -45,9 +45,8 @@ src/
 
 ## Для модулей Тимура
 
-- **Совпадение:** API зовёт функцию с типом `Matcher` из `src/api/matcher.ts`. Сейчас там временная
-  `temporaryMatcher`, чтобы сценарий работал сквозь. Когда `matching` готов — экспортируй функцию того же типа и
-  замени её в `src/index.ts` (одна строка), `temporaryMatcher` удалим.
+- **Совпадение:** API зовёт функцию с типом `Matcher` из `src/api/matcher.ts`; реализация — `matcher` из
+  `src/matching`, подключена в `src/index.ts`.
 - **События:** `events.on('internship.created', async ({ internshipId }) => …)`. Ошибка в обработчике логируется
   и не ломает запрос пользователя. Подключение — в `src/index.ts`, там оставлено место.
 - **Данные для бота — `createBotData(ds)` из `src/db/botData.ts`:**
