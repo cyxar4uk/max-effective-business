@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths: ['apps/**', 'compose*.yaml', '.env.example', 'scripts/smoke.mjs', '.github/workflows/compose.yml']
+    paths: ['apps/**', 'compose*.yaml', 'deploy/**', '.env.example', 'scripts/smoke.mjs', '.github/workflows/compose.yml']
 
 jobs:
   up:
@@ -48,4 +48,45 @@ jobs:
         run: docker compose logs --tail 200
 
       - run: docker compose down -v
+        if: always()
+
+  # Прод-связка вживую: Caddy с HTTPS перед сервером. DOMAIN=localhost — Caddy выпускает локальный сертификат
+  # своим CA вместо Let's Encrypt, остальное как на настоящем сервере.
+  prod:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: .env как на сервере
+        run: |
+          cp .env.example .env
+          sed -i 's/^MAX_BOT_TOKEN=.*/MAX_BOT_TOKEN=ci-token/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-pass/; s/^DOMAIN=.*/DOMAIN=localhost/; s/^ACME_EMAIL=.*/ACME_EMAIL=ci@example.test/; s/^MAX_WEBHOOK_SECRET=.*/MAX_WEBHOOK_SECRET=ci_webhook_secret/' .env
+
+      - name: docker compose (prod) up
+        run: docker compose -f compose.yaml -f compose.prod.yaml up -d --build --wait --wait-timeout 300
+
+      - name: HTTPS через Caddy
+        env:
+          MAX_BOT_TOKEN: ci-token
+        run: |
+          # HTTP → HTTPS
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/health)" = 308
+          # API и подпись MAX через Caddy
+          NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/smoke.mjs https://localhost | tee -a "$GITHUB_STEP_SUMMARY"
+          # Вебхук доходит до сервера и проверяет секрет
+          test "$(curl -sk -o /dev/null -w '%{http_code}' -X POST https://localhost/bot/webhook -H 'Content-Type: application/json' -d '{}')" = 401
+          # Сервер и БД наружу не опубликованы
+          if curl -s --max-time 3 http://localhost:3000/api/health; then echo "сервер опубликован наружу"; exit 1; fi
+          if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then echo "БД опубликована наружу"; exit 1; fi
+          # В журнале Caddy нет заголовков запросов (там initData)
+          curl -sk -o /dev/null https://localhost/api/me -H 'X-Max-Init-Data: secret-marker-123'
+          sleep 1
+          if docker compose -f compose.yaml -f compose.prod.yaml logs caddy | grep -q secret-marker-123; then echo "заголовки в журнале Caddy"; exit 1; fi
+
+      - name: Логи при ошибке
+        if: failure()
+        run: docker compose -f compose.yaml -f compose.prod.yaml logs --tail 200
+
+      - run: docker compose -f compose.yaml -f compose.prod.yaml down -v
         if: always()
