@@ -5,7 +5,7 @@ import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDataSource } from '../src/db/dataSource.js';
 import { DEMO_EMPLOYERS, DEMO_INTERNSHIPS, DEMO_STUDENTS } from '../src/seed/demo/data.js';
-import { seedDemo, seedSkills, skillRows } from '../src/seed/index.js';
+import { respondWithDemoStudents, seedDemo, seedSkills, skillRows } from '../src/seed/index.js';
 
 const url = process.env.TEST_DATABASE_URL;
 const SCHEMA = 'seed_demo_test';
@@ -65,5 +65,37 @@ describe.skipIf(!url)('загрузка демо-данных', () => {
     expect(await count('SELECT count(*) AS n FROM skills')).toBe(skillRows().length);
     const [row] = await ds.query('SELECT status FROM interests WHERE id = $1', [target.id]);
     expect(row.status).toBe('invited');
+  });
+
+  it('на стажировку проверяющего откликаются демо-студенты, повторно — без дублей; на демо-стажировку — нет', async () => {
+    const [user] = await ds.query(`INSERT INTO users (max_user_id, first_name) VALUES (777, 'Проверяющий') RETURNING id`);
+    const [employer] = await ds.query(
+      `INSERT INTO employers (owner_user_id, company_name, city, contact_name) VALUES ($1, 'Моя компания', 'Москва', 'Проверяющий') RETURNING id`,
+      [user.id],
+    );
+    const [internship] = await ds.query(
+      `INSERT INTO internships (employer_id, title, required_skills, nice_skills, format) VALUES ($1, 'Аналитик', '{excel,sql}', '{power_bi}', 'remote') RETURNING id`,
+      [employer.id],
+    );
+
+    const created = await respondWithDemoStudents(ds, internship.id, 60);
+    expect(created).toBeGreaterThan(0);
+    const rows: { status: string; is_demo: boolean; match_score: number }[] = await ds.query(
+      'SELECT status, is_demo, match_score FROM interests WHERE internship_id = $1',
+      [internship.id],
+    );
+    expect(rows).toHaveLength(created);
+    for (const r of rows) {
+      expect(r.status).toBe('interested');
+      expect(r.is_demo).toBe(true);
+      expect(r.match_score).toBeGreaterThanOrEqual(60);
+    }
+
+    expect(await respondWithDemoStudents(ds, internship.id, 60)).toBe(0);
+
+    const [demo] = await ds.query(`SELECT id FROM internships WHERE source = 'demo' ORDER BY id LIMIT 1`);
+    const before = await count('SELECT count(*) AS n FROM interests');
+    expect(await respondWithDemoStudents(ds, demo.id, 60)).toBe(0);
+    expect(await count('SELECT count(*) AS n FROM interests')).toBe(before);
   });
 });
