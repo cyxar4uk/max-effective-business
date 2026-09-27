@@ -1,0 +1,15 @@
+# Прод за уже работающим на сервере прокси (nginx или Caddy соседнего проекта), без своего Caddy.
+#   docker compose -f compose.yaml -f compose.proxy.yaml up -d --build
+# Сервер слушает только 127.0.0.1:${SERVER_PORT}; TLS и домен — на существующем прокси
+# (примеры: deploy/nginx.conf.example, deploy/Caddyfile.snippet). Подробно — docs/deploy.md.
+
+services:
+  server:
+    # Только локальный интерфейс: снаружи сервер доступен лишь через прокси
+    ports: !override
+      - "127.0.0.1:${SERVER_PORT:-3000}:3000"
+    environment:
+      TRUST_PROXY: 1
+      MINIAPP_URL: https://${DOMAIN:?Задайте DOMAIN в .env}
+      MAX_WEBHOOK_SECRET: ${MAX_WEBHOOK_SECRET:?Задайте MAX_WEBHOOK_SECRET в .env}
+      SEED_DEMO: ${SEED_DEMO:-true}

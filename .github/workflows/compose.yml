@@ -93,3 +93,36 @@ jobs:
 
       - run: docker compose -f compose.yaml -f compose.prod.yaml down -v
         if: always()
+
+  # Вариант за чужим прокси: наш сервер на 127.0.0.1, перед ним nginx по примеру из deploy/nginx.conf.example
+  behind-proxy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: .env
+        run: |
+          cp .env.example .env
+          sed -i 's/^MAX_BOT_TOKEN=.*/MAX_BOT_TOKEN=ci-token/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-pass/; s/^DOMAIN=.*/DOMAIN=localhost/; s/^MAX_WEBHOOK_SECRET=.*/MAX_WEBHOOK_SECRET=ci_webhook_secret/' .env
+      - name: docker compose (proxy) up
+        run: docker compose -f compose.yaml -f compose.proxy.yaml up -d --build --wait --wait-timeout 300
+      - name: Сервер только на 127.0.0.1
+        run: |
+          docker compose -f compose.yaml -f compose.proxy.yaml ps --format '{{.Publishers}}' | tee /dev/stderr | grep -q '127.0.0.1:3000->3000'
+          if docker compose -f compose.yaml -f compose.proxy.yaml ps --format '{{.Publishers}}' | grep -q '0.0.0.0'; then echo "порт открыт наружу"; exit 1; fi
+      - name: nginx из примера перед сервером
+        env:
+          MAX_BOT_TOKEN: ci-token
+        run: |
+          sed 's/app.example.ru/localhost/' deploy/nginx.conf.example > /tmp/site.conf
+          docker run -d --name nginx --network host -v /tmp/site.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.29-alpine
+          sleep 2
+          docker exec nginx nginx -t
+          node scripts/smoke.mjs http://localhost | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Логи при ошибке
+        if: failure()
+        run: |
+          docker compose -f compose.yaml -f compose.proxy.yaml logs --tail 100
+          docker logs nginx || true
+      - run: docker compose -f compose.yaml -f compose.proxy.yaml down -v
+        if: always()
