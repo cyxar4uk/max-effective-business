@@ -113,6 +113,9 @@ export function createBotData(ds: DataSource) {
          RETURNING n.id, n.user_id, n.kind, n.dedupe_key, n.payload, n.attempts, u.max_user_id, u.is_demo`,
         [limit, leaseSec],
       )) as [Record<string, unknown>[], number];
+      // UPDATE … RETURNING не гарантирует порядок строк: сортируем по id, чтобы сообщения одному человеку
+      // уходили в порядке постановки в очередь
+      rows.sort((a, b) => (a.id as number) - (b.id as number));
       return rows.map((r) => ({
         id: r.id as number,
         userId: r.user_id as number,
@@ -125,8 +128,9 @@ export function createBotData(ds: DataSource) {
       })) as (Notification & { maxUserId: number; isDemo: boolean })[];
     },
 
+    // После отправки текст больше не нужен, а в нём бывают телефоны: payload очищаем (минимум хранимых ПД)
     async markSent(id: number): Promise<void> {
-      await ds.query(`UPDATE notifications SET status = 'sent', sent_at = now(), last_error = NULL WHERE id = $1`, [id]);
+      await ds.query(`UPDATE notifications SET status = 'sent', sent_at = now(), last_error = NULL, payload = '{}' WHERE id = $1`, [id]);
     },
 
     // Временная ошибка (429, 5xx, сеть): повторить через delaySec
@@ -137,9 +141,9 @@ export function createBotData(ds: DataSource) {
       );
     },
 
-    // Окончательная ошибка (403 — пользователь остановил бота, исчерпаны попытки)
+    // Окончательная ошибка (403 — пользователь остановил бота, исчерпаны попытки). Текст тоже очищаем.
     async markFailed(id: number, error: string): Promise<void> {
-      await ds.query(`UPDATE notifications SET status = 'failed', last_error = $2 WHERE id = $1`, [id, error.slice(0, 1000)]);
+      await ds.query(`UPDATE notifications SET status = 'failed', last_error = $2, payload = '{}' WHERE id = $1`, [id, error.slice(0, 1000)]);
     },
   };
 }
