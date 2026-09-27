@@ -25,7 +25,7 @@ export type InitDataError = 'MISSING' | 'MALFORMED' | 'BAD_SIGNATURE' | 'EXPIRED
 
 export type ValidationResult = { ok: true; data: InitData } | { ok: false; error: InitDataError };
 
-function parsePairs(raw: string): Map<string, string> | null {
+function parsePairs(raw: string, plusAsSpace = false): Map<string, string> | null {
   const pairs = new Map<string, string>();
   for (const part of raw.split('&')) {
     if (!part) continue;
@@ -33,7 +33,8 @@ function parsePairs(raw: string): Map<string, string> | null {
     if (eq <= 0) return null;
     const key = part.slice(0, eq);
     try {
-      pairs.set(key, decodeURIComponent(part.slice(eq + 1)));
+      const value = part.slice(eq + 1);
+      pairs.set(key, decodeURIComponent(plusAsSpace ? value.replace(/\+/g, ' ') : value));
     } catch {
       return null;
     }
@@ -68,14 +69,21 @@ export function validateInitData(
 ): ValidationResult {
   if (!raw) return { ok: false, error: 'MISSING' };
 
-  const pairs = parsePairs(raw);
+  let pairs = parsePairs(raw);
   const hash = pairs?.get('hash');
   if (!pairs || !hash || !/^[0-9a-f]{64}$/i.test(hash)) return { ok: false, error: 'MALFORMED' };
 
-  const expected = Buffer.from(signDataCheckString(dataCheckString(pairs), botToken), 'hex');
   const received = Buffer.from(hash.toLowerCase(), 'hex');
-  if (expected.length !== received.length || !timingSafeEqual(expected, received)) {
-    return { ok: false, error: 'BAD_SIGNATURE' };
+  const signatureMatches = (p: Map<string, string>) => {
+    const expected = Buffer.from(signDataCheckString(dataCheckString(p), botToken), 'hex');
+    return expected.length === received.length && timingSafeEqual(expected, received);
+  };
+  if (!signatureMatches(pairs)) {
+    // Документация MAX не уточняет, как кодируются пробелы. Если клиент закодировал их как «+» (form-encoding),
+    // строгий decodeURIComponent их не раскроет. Второй вариант тоже требует подписи токеном бота.
+    const alt = raw.includes('+') ? parsePairs(raw, true) : null;
+    if (!alt || !signatureMatches(alt)) return { ok: false, error: 'BAD_SIGNATURE' };
+    pairs = alt;
   }
 
   const authDate = parseAuthDate(pairs.get('auth_date'));
