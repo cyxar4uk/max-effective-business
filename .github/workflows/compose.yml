@@ -105,7 +105,9 @@ jobs:
           cp .env.example .env
           sed -i 's/^MAX_BOT_TOKEN=.*/MAX_BOT_TOKEN=ci-token/; s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=ci-pass/; s/^DOMAIN=.*/DOMAIN=localhost/; s/^MAX_WEBHOOK_SECRET=.*/MAX_WEBHOOK_SECRET=ci_webhook_secret/' .env
       - name: docker compose (proxy) up
-        run: docker compose -f compose.yaml -f compose.proxy.yaml up -d --build --wait --wait-timeout 300
+        run: |
+          docker network create meb-edge
+          docker compose -f compose.yaml -f compose.proxy.yaml up -d --build --wait --wait-timeout 300
       - name: Сервер только на 127.0.0.1
         run: |
           docker compose -f compose.yaml -f compose.proxy.yaml ps server --format '{{.Ports}}' | tee /dev/stderr | grep -q '127.0.0.1:3000->3000'
@@ -119,10 +121,32 @@ jobs:
           sleep 2
           docker exec nginx nginx -t
           node scripts/smoke.mjs http://localhost | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: nginx в контейнере через сеть meb-edge
+        env:
+          MAX_BOT_TOKEN: ci-token
+        run: |
+          sed 's/app.example.ru/localhost/; s/listen 80;/listen 8081;/' deploy/nginx-docker.conf.example > /tmp/docker-site.conf
+          docker run -d --name nginx-docker --network meb-edge -p 127.0.0.1:8081:8081 -v /tmp/docker-site.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.29-alpine
+          sleep 2
+          docker exec nginx-docker nginx -t
+          node scripts/smoke.mjs http://localhost:8081 | tee -a "$GITHUB_STEP_SUMMARY"
+          # БД в общей сети не видна
+          if docker exec nginx-docker getent hosts db; then echo "БД видна из сети прокси"; exit 1; fi
+      - name: nginx в контейнере переживает остановку нашего сервера
+        run: |
+          docker compose -f compose.yaml -f compose.proxy.yaml stop server
+          docker restart nginx-docker
+          sleep 2
+          test "$(docker inspect -f '{{.State.Running}}' nginx-docker)" = true
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/health); echo "без сервера: $code"; test "$code" = 502
+          docker compose -f compose.yaml -f compose.proxy.yaml start server
+          sleep 5
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/health)" = 200
       - name: Логи при ошибке
         if: failure()
         run: |
           docker compose -f compose.yaml -f compose.proxy.yaml logs --tail 100
           docker logs nginx || true
+          docker logs nginx-docker || true
       - run: docker compose -f compose.yaml -f compose.proxy.yaml down -v
         if: always()
