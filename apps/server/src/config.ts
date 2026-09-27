@@ -17,6 +17,8 @@ const schema = z.object({
   SEED_DEMO: bool.default(false),
 
   MAX_BOT_TOKEN: z.string().min(1),
+  // Секрет вебхука бота (POST /subscriptions): 5–256 символов [A-Za-z0-9_-]. Пусто — вебхук выключен.
+  MAX_WEBHOOK_SECRET: z.preprocess(emptyAsUndefined, z.string().regex(/^[A-Za-z0-9_-]{5,256}$/).optional()),
   // Сколько секунд после auth_date принимаем initData
   INIT_DATA_MAX_AGE_SEC: z.coerce.number().int().positive().default(86400),
 
