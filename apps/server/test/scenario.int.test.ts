@@ -127,6 +127,12 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect(res.body).toMatchObject({ faculty: null, skills: ['excel', 'power_bi'] });
   });
 
+  it('«Мои отклики» без откликов — пустой список', async () => {
+    const res = await as(STUDENT).get('/api/student/interests');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ items: [] });
+  });
+
   it('лента: стажировка с процентом и расшифровкой', async () => {
     const res = await as(STUDENT).get('/api/student/feed');
     expect(res.status).toBe(200);
