@@ -1,4 +1,4 @@
-// Справочник навыков. ЧЕРНОВИК Тимура по направлениям РАНХиГС — правит Артём (team/timur/skills_format.md).
+// Справочник навыков: направления РАНХиГС + задачи малого бизнеса. Согласован Артёмом 28.09 (team/artyom/skills_edits.md).
 // Код навыка после загрузки не меняем: на него ссылаются анкеты и стажировки. Название и группу менять можно.
 // Навык, который убрали отсюда, из базы не удаляется — чтобы не сломать сохранённые анкеты.
 
@@ -27,6 +27,18 @@ export const SKILL_GROUPS: SkillGroupSeed[] = [
     ],
   },
   {
+    group: 'Маркетплейсы и онлайн-продажи',
+    skills: [
+      { code: 'marketplace_cards', name: 'Карточки товаров на маркетплейсах' },
+      { code: 'wildberries', name: 'Личный кабинет Wildberries' },
+      { code: 'ozon', name: 'Личный кабинет Ozon' },
+      { code: 'marketplace_analytics', name: 'Аналитика продаж на маркетплейсах' },
+      { code: 'unit_economics', name: 'Юнит-экономика' },
+      { code: 'avito', name: 'Продвижение на Авито' },
+      { code: 'product_photo', name: 'Предметная фотосъёмка' },
+    ],
+  },
+  {
     group: 'Экономика и финансы',
     skills: [
       { code: 'financial_analysis', name: 'Финансовый анализ' },
@@ -34,6 +46,7 @@ export const SKILL_GROUPS: SkillGroupSeed[] = [
       { code: 'budgeting', name: 'Бюджетирование' },
       { code: 'accounting', name: 'Бухгалтерский учёт' },
       { code: '1c_accounting', name: '1С: Бухгалтерия' },
+      { code: '1c_trade', name: '1С: Управление торговлей' },
       { code: 'tax_accounting', name: 'Налоговый учёт' },
       { code: 'ifrs', name: 'МСФО' },
       { code: 'investment_analysis', name: 'Инвестиционный анализ' },
@@ -46,11 +59,13 @@ export const SKILL_GROUPS: SkillGroupSeed[] = [
       { code: 'copywriting', name: 'Копирайтинг' },
       { code: 'content_marketing', name: 'Контент-маркетинг' },
       { code: 'targeted_ads', name: 'Таргетированная реклама' },
-      { code: 'context_ads', name: 'Контекстная реклама' },
+      { code: 'context_ads', name: 'Контекстная реклама (Яндекс Директ)' },
       { code: 'seo', name: 'SEO' },
-      { code: 'web_analytics', name: 'Веб-аналитика' },
+      { code: 'web_analytics', name: 'Веб-аналитика (Яндекс Метрика)' },
       { code: 'pr', name: 'PR и работа со СМИ' },
       { code: 'event_management', name: 'Организация мероприятий' },
+      { code: 'email_marketing', name: 'Email-рассылки' },
+      { code: 'reviews_management', name: 'Работа с отзывами' },
     ],
   },
   {
@@ -84,6 +99,7 @@ export const SKILL_GROUPS: SkillGroupSeed[] = [
       { code: 'records_management', name: 'Делопроизводство' },
       { code: 'recruiting', name: 'Подбор персонала' },
       { code: 'hr_admin', name: 'Кадровое делопроизводство' },
+      { code: '1c_zup', name: '1С: Зарплата и кадры' },
       { code: 'training', name: 'Обучение персонала' },
     ],
   },
@@ -97,7 +113,9 @@ export const SKILL_GROUPS: SkillGroupSeed[] = [
       { code: 'git', name: 'Git' },
       { code: 'qa_testing', name: 'Тестирование ПО' },
       { code: '1c_programming', name: 'Программирование 1С' },
-      { code: 'no_code', name: 'No-code (Tilda, конструкторы)' },
+      { code: 'no_code', name: 'Tilda и конструкторы сайтов' },
+      { code: 'wordpress', name: 'WordPress' },
+      { code: 'chatbots', name: 'Чат-боты без программирования' },
     ],
   },
   {
@@ -109,6 +127,7 @@ export const SKILL_GROUPS: SkillGroupSeed[] = [
       { code: 'photoshop', name: 'Photoshop' },
       { code: 'video_editing', name: 'Монтаж видео' },
       { code: 'presentations', name: 'Презентации' },
+      { code: 'canva', name: 'Canva' },
     ],
   },
   {
@@ -147,10 +166,13 @@ export interface SkillRow {
   sort: number;
 }
 
-/** Плоский список для таблицы skills: sort — порядок внутри группы, с шагом 10, чтобы вставлять между. */
+/**
+ * Плоский список для таблицы skills. sort сквозной: номер группы × 100 + позиция в группе × 5, —
+ * по нему одному идут и группы в заданном порядке, и навыки внутри группы (до 19 навыков в группе).
+ */
 export function skillRows(groups: readonly SkillGroupSeed[] = SKILL_GROUPS): SkillRow[] {
-  return groups.flatMap(({ group, skills }) =>
-    skills.map((s, i) => ({ code: s.code, name: s.name, groupName: group, sort: (i + 1) * 10 })),
+  return groups.flatMap(({ group, skills }, g) =>
+    skills.map((s, i) => ({ code: s.code, name: s.name, groupName: group, sort: (g + 1) * 100 + (i + 1) * 5 })),
   );
 }
 
