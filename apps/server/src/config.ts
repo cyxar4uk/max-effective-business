@@ -4,6 +4,9 @@ const bool = z
   .enum(['true', 'false', '1', '0'])
   .transform((v) => v === 'true' || v === '1');
 
+// Пустая переменная (compose подставляет "" для незаданных) — то же, что её отсутствие
+const emptyAsUndefined = (v: unknown) => (v === '' ? undefined : v);
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -18,7 +21,7 @@ const schema = z.object({
   INIT_DATA_MAX_AGE_SEC: z.coerce.number().int().positive().default(86400),
 
   // Публичный адрес мини-приложения: отсюда берётся origin для CORS
-  MINIAPP_URL: z.url().optional(),
+  MINIAPP_URL: z.preprocess(emptyAsUndefined, z.url().optional()),
   // Сколько reverse-proxy стоит перед сервером (для корректного IP в лимите запросов)
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(120),
