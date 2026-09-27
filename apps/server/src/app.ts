@@ -10,6 +10,7 @@ import { requireMaxUser } from './auth/middleware.js';
 import type { Config } from './config.js';
 import type { UsersRepo } from './db/users.js';
 import type { EventBus } from './events.js';
+import { safeErr } from './logger.js';
 
 // Всё, что API нужно от хранилища. Реализация — db/repos.ts, в тестах — заглушки.
 export interface Repos {
@@ -39,6 +40,7 @@ export function createApp({ config, log, repos }: AppDeps): Express {
       serializers: {
         req: (req: { id: unknown; method: string; url: string }) => ({ id: req.id, method: req.method, url: req.url }),
         res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+        err: safeErr,
       },
     }),
   );
