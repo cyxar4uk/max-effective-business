@@ -16,7 +16,7 @@
 ## Стек по умолчанию
 
 - **Мини-приложение:** React + TypeScript + Vite, MAX UI, MAX Bridge.
-- **Сервер:** Node.js 20 + TypeScript, один процесс для API и бота.
+- **Сервер:** Node.js 24 + TypeScript, один процесс для API и бота.
 - **БД:** PostgreSQL.
 - **Docker:** `db` + `server` + `miniapp` (статика за nginx); в проде reverse-proxy с TLS.
 
