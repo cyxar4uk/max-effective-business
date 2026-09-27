@@ -2,6 +2,7 @@
 
 > **Для команды** (этот блок удалить перед сдачей)
 >
+> - Разбор для созвона одной страницей: https://claude.ai/artifact/9dFfTSrBJoWvE6sQvCcvzD (открывается после того, как Илья поделится)
 > - Кейс, требования к сдаче и критерии: [docs/00_case.md](docs/00_case.md)
 > - Варианты идеи и рекомендация: [docs/01_options.md](docs/01_options.md)
 > - Роли, стек и план по дням: [docs/02_team_plan.md](docs/02_team_plan.md)
