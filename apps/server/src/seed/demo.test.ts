@@ -1,0 +1,121 @@
+import { describe, expect, it } from 'vitest';
+import { matchStudentToInternship } from '../matching/index.js';
+import { DEMO_EMPLOYERS, DEMO_INTERNSHIPS, DEMO_INVITE_KEYS, DEMO_STUDENTS } from './demo/data.js';
+import { INTERESTS_PER_INTERNSHIP, planDemoInterests } from './demo/plan.js';
+import { skillRows } from './skills.js';
+
+const skillCodes = new Set(skillRows().map((r) => r.code));
+const unique = <T>(xs: T[]) => new Set(xs).size === xs.length;
+const PHONE = /^\+7000000\d{4}$/;
+
+describe('демо-данные: объём и ключи', () => {
+  it('объём по плану', () => {
+    expect(DEMO_EMPLOYERS).toHaveLength(12);
+    expect(DEMO_INTERNSHIPS.length).toBeGreaterThanOrEqual(20);
+    expect(DEMO_INTERNSHIPS.length).toBeLessThanOrEqual(30);
+    expect(DEMO_STUDENTS.length).toBeGreaterThanOrEqual(30);
+    expect(DEMO_STUDENTS.length).toBeLessThanOrEqual(40);
+  });
+
+  it('max_user_id отрицательные и уникальные — не пересекаются с настоящими пользователями MAX', () => {
+    const ids = [...DEMO_EMPLOYERS, ...DEMO_STUDENTS].map((u) => u.maxUserId);
+    expect(unique(ids)).toBe(true);
+    for (const id of ids) expect(id).toBeLessThan(0);
+  });
+
+  it('ключи уникальны, у каждой стажировки есть работодатель, у каждого работодателя — стажировка', () => {
+    expect(unique(DEMO_EMPLOYERS.map((e) => e.key))).toBe(true);
+    expect(unique(DEMO_INTERNSHIPS.map((i) => i.key))).toBe(true);
+    expect(unique(DEMO_STUDENTS.map((s) => s.key))).toBe(true);
+    const employers = new Set(DEMO_EMPLOYERS.map((e) => e.key));
+    for (const i of DEMO_INTERNSHIPS) expect(employers.has(i.employer)).toBe(true);
+    for (const e of DEMO_EMPLOYERS) expect(DEMO_INTERNSHIPS.some((i) => i.employer === e.key)).toBe(true);
+  });
+
+  it('телефоны заведомо тестовые и уникальные', () => {
+    const phones = [...DEMO_EMPLOYERS, ...DEMO_STUDENTS].map((u) => u.phone);
+    expect(unique(phones)).toBe(true);
+    for (const p of phones) expect(p).toMatch(PHONE);
+  });
+});
+
+describe('демо-данные: те же правила, что у API и БД', () => {
+  it('стажировки: навыки из справочника, обязательные есть, без пересечения, город для очных, даты по порядку', () => {
+    for (const i of DEMO_INTERNSHIPS) {
+      expect(i.requiredSkills.length, i.key).toBeGreaterThan(0);
+      for (const s of [...i.requiredSkills, ...i.niceSkills]) expect(skillCodes.has(s), `${i.key}: ${s}`).toBe(true);
+      expect(i.niceSkills.some((s) => i.requiredSkills.includes(s)), i.key).toBe(false);
+      if (i.format !== 'remote') expect(i.city, i.key).toBeTruthy();
+      expect(i.endsOn >= i.startsOn, i.key).toBe(true);
+      expect(i.slots).toBeGreaterThanOrEqual(1);
+      expect(i.title.length).toBeLessThanOrEqual(200);
+    }
+  });
+
+  it('студенты: навыки из справочника без повторов, курс 1–6, хотя бы один формат', () => {
+    for (const s of DEMO_STUDENTS) {
+      for (const code of s.skills) expect(skillCodes.has(code), `${s.key}: ${code}`).toBe(true);
+      expect(unique(s.skills), s.key).toBe(true);
+      expect(s.skills.length).toBeLessThanOrEqual(30);
+      expect(s.course).toBeGreaterThanOrEqual(1);
+      expect(s.course).toBeLessThanOrEqual(6);
+      expect(s.formats.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('демо-данные: разный процент у каждой стажировки', () => {
+  it.each(DEMO_INTERNSHIPS.map((i) => [i.key, i] as const))('%s: есть подходящие кандидаты с ≥ 80, 60–79 и < 60', (_key, internship) => {
+    const scores = DEMO_STUDENTS.map((s) => matchStudentToInternship(s, internship))
+      .filter((r) => r.passesFilters)
+      .map((r) => r.score);
+    expect(scores.some((x) => x >= 80)).toBe(true);
+    expect(scores.some((x) => x >= 60 && x < 80)).toBe(true);
+    expect(scores.some((x) => x < 60)).toBe(true);
+  });
+
+  it('есть студенты, которые не проходят фильтры по городу и по формату', () => {
+    const failures = DEMO_STUDENTS.flatMap((s) => DEMO_INTERNSHIPS.flatMap((i) => matchStudentToInternship(s, i).filterFailures));
+    expect(failures).toContain('city');
+    expect(failures).toContain('format');
+  });
+
+  it('у нового студента из Москвы с базовыми навыками лента не пустая', () => {
+    const newcomer = { skills: ['excel', 'copywriting', 'smm'], formats: ['remote' as const], city: 'Москва' };
+    const feed = DEMO_INTERNSHIPS.map((i) => matchStudentToInternship(newcomer, i)).filter((r) => r.passesFilters);
+    expect(feed.length).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('planDemoInterests', () => {
+  const interests = planDemoInterests(DEMO_INTERNSHIPS, DEMO_STUDENTS, DEMO_INVITE_KEYS);
+
+  it('у каждой стажировки есть отклики, не больше трёх, все — от подходящих студентов с совпадением ≥ 60', () => {
+    for (const i of DEMO_INTERNSHIPS) {
+      const own = interests.filter((x) => x.internship === i.key);
+      expect(own.length, i.key).toBeGreaterThanOrEqual(2);
+      expect(own.length).toBeLessThanOrEqual(INTERESTS_PER_INTERNSHIP);
+      for (const x of own) {
+        expect(x.match.passesFilters).toBe(true);
+        expect(x.match.score).toBeGreaterThanOrEqual(60);
+      }
+    }
+  });
+
+  it('пара студент + стажировка не повторяется', () => {
+    expect(unique(interests.map((x) => `${x.student}:${x.internship}`))).toBe(true);
+  });
+
+  it('в стажировках со статусами: первый приглашён, третий получил отказ; в остальных — только «интересно»', () => {
+    for (const key of DEMO_INVITE_KEYS) {
+      const own = interests.filter((x) => x.internship === key).map((x) => x.status);
+      expect(own, key).toEqual(['invited', 'interested', 'declined']);
+    }
+    const rest = interests.filter((x) => !DEMO_INVITE_KEYS.includes(x.internship));
+    expect(rest.every((x) => x.status === 'interested')).toBe(true);
+  });
+
+  it('детерминирован: два вызова дают одно и то же', () => {
+    expect(planDemoInterests(DEMO_INTERNSHIPS, DEMO_STUDENTS, DEMO_INVITE_KEYS)).toEqual(interests);
+  });
+});
