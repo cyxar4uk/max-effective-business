@@ -1,0 +1,114 @@
+import { describe, expect, it } from 'vitest';
+import type { EnqueueInput, InterestContext, Recipient, StudentCandidate } from '../db/botData.js';
+import type { Employer, Interest, Internship, StudentProfile } from '../db/entities.js';
+import { onInterestCreated, onInterestInvited, onInternshipCreated, type NotifyDeps } from './notify.js';
+
+const recipient = (userId: number, over: Partial<Recipient> = {}): Recipient => ({ userId, maxUserId: 1000 + userId, firstName: `U${userId}`, isDemo: false, ...over });
+
+const internship = {
+  id: 7, title: 'Аналитик', companyName: null, employerId: 1, status: 'open',
+  requiredSkills: ['excel', 'sql'], niceSkills: ['power_bi'], format: 'remote', city: null,
+} as unknown as Internship;
+const employer = { id: 1, ownerUserId: 50, companyName: 'Луч', contactName: 'Олег Самойлов' } as unknown as Employer;
+
+const student = (userId: number, skills: string[], over: Partial<Recipient> = {}): StudentCandidate => ({
+  user: recipient(userId, over),
+  profile: { userId, skills, formats: ['remote'], city: 'Москва' } as unknown as StudentProfile,
+});
+
+function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | null; seen?: Set<string> } = {}) {
+  const queued: EnqueueInput[] = [];
+  const seen = over.seen ?? new Set<string>();
+  let excluded: number | undefined;
+  const d: NotifyDeps = {
+    threshold: 60,
+    skillNames: async () => new Map([['excel', 'Excel'], ['sql', 'SQL'], ['power_bi', 'Power BI']]),
+    data: {
+      internship: async (id) => (id === 7 ? { internship, employer } : null),
+      studentsWithProfiles: async (ex) => ((excluded = ex), over.students ?? []),
+      interestContext: async () => over.ctx ?? null,
+      enqueue: async (n) => {
+        if (seen.has(n.dedupeKey)) return false;
+        seen.add(n.dedupeKey);
+        queued.push(n);
+        return true;
+      },
+    },
+  };
+  return { d, queued, excluded: () => excluded };
+}
+
+describe('onInternshipCreated', () => {
+  it('пишет только подходящим студентам с совпадением от порога, кроме автора и демо', async () => {
+    const { d, queued, excluded } = deps({
+      students: [
+        student(1, ['excel', 'sql', 'power_bi']), // 100
+        student(2, ['excel', 'sql']), // 70
+        student(3, ['excel']), // 35 — ниже порога
+        student(4, ['excel', 'sql'], { isDemo: true, maxUserId: -2004 }), // демо
+      ],
+    });
+    expect(await onInternshipCreated(d, { internshipId: 7 })).toBe(2);
+    expect(excluded()).toBe(50);
+    expect(queued.map((q) => [q.userId, q.dedupeKey])).toEqual([
+      [1, 'internship:7:student:1'],
+      [2, 'internship:7:student:2'],
+    ]);
+    expect(String(queued[0]!.payload.text)).toContain('Excel, SQL, Power BI');
+  });
+
+  it('повтор события не ставит уведомления второй раз', async () => {
+    const seen = new Set<string>();
+    const students = [student(1, ['excel', 'sql'])];
+    expect(await onInternshipCreated(deps({ students, seen }).d, { internshipId: 7 })).toBe(1);
+    expect(await onInternshipCreated(deps({ students, seen }).d, { internshipId: 7 })).toBe(0);
+  });
+
+  it('нет стажировки — ничего', async () => {
+    expect(await onInternshipCreated(deps().d, { internshipId: 999 })).toBe(0);
+  });
+});
+
+const ctx = (over: Partial<InterestContext> = {}): InterestContext => ({
+  interest: { id: 30, matchScore: 85 } as Interest,
+  internship,
+  employer,
+  student: { ...student(1, ['excel']), phone: '+70000002001', lastName: 'Соколова' },
+  employerOwner: { ...recipient(50), phone: '+70000001001' },
+  ...over,
+});
+
+describe('onInterestCreated', () => {
+  it('interested → владельцу компании с процентом', async () => {
+    const { d, queued } = deps({ ctx: ctx() });
+    expect(await onInterestCreated(d, { interestId: 30, internshipId: 7, studentUserId: 1, status: 'interested' })).toBe(1);
+    expect(queued[0]).toMatchObject({ userId: 50, kind: 'new_candidate', dedupeKey: 'interest:30:employer' });
+    expect(String(queued[0]!.payload.text)).toContain('85 %');
+  });
+
+  it('skipped и работодатель-демо — без уведомления', async () => {
+    expect(await onInterestCreated(deps({ ctx: ctx() }).d, { interestId: 30, internshipId: 7, studentUserId: 1, status: 'skipped' })).toBe(0);
+    const demoOwner = ctx({ employerOwner: { ...recipient(50, { isDemo: true, maxUserId: -1001 }), phone: null } });
+    expect(await onInterestCreated(deps({ ctx: demoOwner }).d, { interestId: 30, internshipId: 7, studentUserId: 1, status: 'interested' })).toBe(0);
+  });
+});
+
+describe('onInterestInvited', () => {
+  it('обоим: студенту контакт работодателя и чек-лист, работодателю контакт студента', async () => {
+    const { d, queued } = deps({ ctx: ctx() });
+    expect(await onInterestInvited(d, { interestId: 30, internshipId: 7, studentUserId: 1 })).toBe(2);
+    const [toStudent, toEmployer] = queued;
+    expect(toStudent).toMatchObject({ userId: 1, dedupeKey: 'invite:30:student' });
+    expect(String(toStudent!.payload.text)).toContain('Олег Самойлов, +70000001001');
+    expect(String(toStudent!.payload.text)).toContain('Что дальше:');
+    expect(toEmployer).toMatchObject({ userId: 50, dedupeKey: 'invite:30:employer' });
+    expect(String(toEmployer!.payload.text)).toContain('U1 Соколова, +70000002001');
+  });
+
+  it('демо-студент приглашён проверяющим — пишем только проверяющему', async () => {
+    const demoStudent = ctx({ student: { ...student(1, ['excel'], { isDemo: true, maxUserId: -2001 }), phone: '+70000002001', lastName: 'Соколова' } });
+    const { d, queued } = deps({ ctx: demoStudent });
+    expect(await onInterestInvited(d, { interestId: 30, internshipId: 7, studentUserId: 1 })).toBe(1);
+    expect(queued[0]!.userId).toBe(50);
+  });
+});
