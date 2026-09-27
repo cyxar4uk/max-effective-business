@@ -112,6 +112,14 @@ describe('POST /api/me/consent', () => {
   });
 });
 
+describe('конфиг', () => {
+  it('пустой MINIAPP_URL из compose не ломает запуск', () => {
+    const env = { DATABASE_URL: 'postgres://x', MAX_BOT_TOKEN: 't', MINIAPP_URL: '' };
+    expect(loadConfig(env).MINIAPP_URL).toBeUndefined();
+    expect(() => loadConfig({ ...env, MINIAPP_URL: 'не url' })).toThrow('MINIAPP_URL');
+  });
+});
+
 describe('прочее', () => {
   it('GET /api/skills отдаёт справочник по группам', async () => {
     const res = await request(app).get('/api/skills').set('X-Max-Init-Data', initData());
