@@ -1,11 +1,16 @@
 import type { DataSource } from 'typeorm';
 import type { Repos } from '../app.js';
-import { Employer, Skill, StudentProfile } from './entities.js';
+import { Employer, Skill, StudentProfile, User } from './entities.js';
 import { createUsersRepo } from './users.js';
 
 export function createRepos(ds: DataSource): Repos {
   return {
     users: createUsersRepo(ds),
+
+    async savePhone(userId, phone) {
+      await ds.getRepository(User).update({ id: userId }, { phone, phoneSavedAt: new Date() });
+      return ds.getRepository(User).findOneByOrFail({ id: userId });
+    },
 
     async roles(userId) {
       const [student, employer] = await Promise.all([

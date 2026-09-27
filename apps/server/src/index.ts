@@ -1,3 +1,4 @@
+import { temporaryMatcher } from './api/matcher.js';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDataSource } from './db/dataSource.js';
@@ -18,7 +19,8 @@ if (config.RUN_MIGRATIONS) {
 const events = new EventBus(log);
 // Сюда подключаются модули Тимура: registerBot({ events, ds, config, log }), сид при SEED_DEMO=true
 
-const app = createApp({ config, log, repos: createRepos(ds), events });
+// temporaryMatcher — до модуля matching Тимура, см. src/api/matcher.ts
+const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher: temporaryMatcher } });
 const server = app.listen(config.PORT, () => log.info({ port: config.PORT }, 'Сервер запущен'));
 server.requestTimeout = 15_000;
 
