@@ -11,7 +11,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "dev:contact": "tsx --env-file-if-exists=../../.env scripts/sign-contact.ts"
+    "dev:contact": "tsx --env-file-if-exists=../../.env scripts/sign-contact.ts",
+    "seed": "node dist/seed/run.js",
+    "seed:demo": "tsx --env-file-if-exists=../../.env src/seed/run.ts"
   },
   "type": "module",
   "dependencies": {
