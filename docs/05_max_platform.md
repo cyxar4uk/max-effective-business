@@ -40,17 +40,75 @@
 
 ## Bot API
 
-- Базовый адрес: `https://platform-api.max.ru`. Токен передаётся в заголовке `Authorization`
-  (в query больше не поддерживается). Точный формат заголовка сверить в документации.
-  В одном стороннем источнике упоминается домен `platform-api2.max.ru`: сверить.
+Сверено 27.09.2026 (Тимур) по [обзору API](https://dev.max.ru/docs-api),
+[OpenAPI-схеме](https://github.com/max-messenger/api-schema/blob/main/schema.yaml) (версия 0.0.33) и коду
+SDK `@maxhub/max-bot-api` 0.3.1 ([client.ts](https://github.com/max-messenger/max-bot-api-client-ts/blob/main/src/core/network/api/client.ts)).
+
+- **Базовый адрес: `https://platform-api2.max.ru`.** Старый `platform-api.max.ru` в SDK помечен как устаревший
+  (`@deprecated: use botapi v2`), документация требует `platform-api2`.
+- **Заголовок: `Authorization: <токен>`** — сам токен, **без** `Bearer` и других префиксов. В query токен больше
+  не принимается. Так в схеме (`securitySchemes.access_token`: `in: header`, `name: Authorization`), в примерах
+  `curl -H 'Authorization: %access_token%'` и в SDK: `headers = { Authorization: token }`.
 - События: либо long polling `GET /updates`, либо вебхук `POST /subscriptions`. Одновременно нельзя: при
   подписке на вебхук polling отключается. Секрет вебхука приходит в заголовке `X-Max-Bot-Api-Secret`
-  ([подписки](https://dev.max.ru/docs-api/methods/POST/subscriptions)).
-- Отправка: `POST /messages` с `user_id` (личный диалог) или `chat_id`
-  ([messages](https://dev.max.ru/docs-api/methods/POST/messages)). Разметка — `format: "markdown" | "html"`.
-- Кнопки inline-клавиатуры: `link`, `callback`, `request_contact`, `open_app`, `message`.
+  ([подписки](https://dev.max.ru/docs-api/methods/POST/subscriptions)). Long polling документация называет
+  неподходящим для прода. Вебхук — только HTTPS с сертификатом доверенного УЦ, самоподписанные не принимаются
+  ([подготовка](https://dev.max.ru/docs/chatbots/bots-coding/prepare)). Недоставленный вебхук (не `200`)
+  платформа повторяет с растущей паузой до 8 часов, поэтому **обработчик вебхука должен быть идемпотентным**.
+- Отправка: `POST /messages?user_id=<id>` (личный диалог) или `?chat_id=<id>`
+  ([messages](https://dev.max.ru/docs-api/methods/POST/messages)). Тело: `text` до 4000 символов, `attachments`,
+  `notify` (по умолчанию `true`), `format: "markdown" | "html"`. В SDK: `bot.api.sendMessageToUser(userId, text, extra)`.
+- Кнопки inline-клавиатуры: `callback`, `link`, `open_app`, `message`, `request_contact`, `request_geo_location`,
+  `clipboard`. Текст кнопки 1–128 символов.
 - Вложения: `image`, `video`, `audio`, `file`, `sticker`, `contact`, `inline_keyboard`, `share`, `location`.
-- Лимиты: не больше 2 сообщений в секунду в один диалог; общий лимит около 30 запросов в секунду.
+- Лимиты: **не больше 2 сообщений в секунду в один диалог** ([messages](https://dev.max.ru/docs-api/methods/POST/messages));
+  **не больше 30 запросов в секунду на `platform-api2.max.ru`** ([подготовка](https://dev.max.ru/docs/chatbots/bots-coding/prepare)).
+  Превышение — `429`. SDK сам повторяет long polling при `429` и `5xx`; для отправки сообщений повторы делаем сами.
+- Ошибки: JSON `{ code, message }`. `403` на `POST /messages` — пользователь остановил бота, у бота нет доступа к
+  чату или пересылка запрещена. Повторять `403` бессмысленно: помечаем уведомление как `failed`.
+
+### Кнопка `open_app` и параметр запуска
+
+Схема `OpenAppButton` ([schema.yaml](https://github.com/max-messenger/api-schema/blob/main/schema.yaml)):
+
+```json
+{ "type": "open_app", "text": "Я студент", "web_app": "<ник_бота>", "payload": "student" }
+```
+
+- `web_app` (обязательно) — публичное имя (ник) бота, к которому привязано мини-приложение. Для своего
+  мини-приложения — ник нашего бота. Альтернатива — `contact_id` (числовой id бота).
+- `payload` — строка до 512 символов по шаблону `^[\w-]*$` (латиница, цифры, `_`, `-`). Те же ограничения,
+  что у `startapp` в диплинке ([введение](https://dev.max.ru/docs/webapps/introduction)).
+- В мини-приложении параметр читается из `window.WebApp.initDataUnsafe.start_param` и входит в подписанную строку
+  `initData` ([Bridge](https://dev.max.ru/docs/webapps/bridge)). Документация явно описывает это для диплинка
+  `?startapp=`; что `payload` кнопки попадает туда же — следует из схемы, но **проверить руками на живом боте**.
+- SDK: `Keyboard.button.openApp(text, webApp, contactId?, payload?)`.
+- Для нашего бота: `student`, `employer`, `internship_<id>` — все укладываются в шаблон.
+
+### Диплинк на бота (`?start=`) против диплинка на мини-приложение (`?startapp=`)
+
+- `https://max.ru/<ник_бота>?start=<payload>` открывает **диалог с ботом**, бот получает событие `bot_started`
+  с полем `payload` ([схема, раздел Deep linking](https://github.com/max-messenger/api-schema/blob/main/schema.yaml)).
+  Ограничение длины в документации противоречиво: в тексте 128 символов, в схеме `BotStartedUpdate.payload` — 512.
+  Держимся ≤ 128.
+- `https://max.ru/<ник_бота>?startapp=<payload>` открывает **сразу мини-приложение**, бот события не получает.
+  Для QR-кода на ярмарке это то, что нужно.
+
+### Как получить `user_id` и можно ли писать после `/start`
+
+- Нажатие «Начать» (или переход по `?start=`) присылает боту `bot_started`: `chat_id` диалога, объект `user`
+  с `user_id`, `first_name`, `username`, и необязательный `payload`. SDK: `bot.on('bot_started', ctx => …)`,
+  `ctx.startPayload`, `ctx.user`.
+- Сообщение пользователя в диалоге приходит как `message_created`, отправитель — `message.sender.user_id`.
+- После `bot_started` бот **может писать пользователю сам** через `POST /messages?user_id=…`: это обычный
+  личный диалог. Запрет только один — пользователь остановил бота (событие `bot_stopped`, при отправке `403`).
+- `user.id` в `initData` мини-приложения и `user_id` в Bot API — один и тот же идентификатор пользователя MAX
+  по смыслу, но **документация этого прямо не пишет**. Проверить на живом боте: открыть мини-приложение,
+  взять `user.id`, отправить на него сообщение ботом.
+- **Не проверено:** получит ли сообщение пользователь, который открыл мини-приложение по `?startapp=`, но ни разу
+  не нажал «Начать» в диалоге с ботом. Документация об этом молчит. Поэтому основной путь — через `/start`,
+  а в мини-приложении стоит подсказка «Чтобы получать уведомления, запустите бота» со ссылкой `?start=`.
+  Ошибку отправки пишем в `notifications`, сценарий не ломаем.
 
 ## Официальные библиотеки
 
