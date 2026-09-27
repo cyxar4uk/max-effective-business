@@ -5,7 +5,7 @@ import { createRepos } from './db/repos.js';
 import { EventBus } from './events.js';
 import { createLogger } from './logger.js';
 import { matcher } from './matching/index.js';
-import { seedSkills } from './seed/index.js';
+import { seedDemo, seedSkills } from './seed/index.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL);
@@ -18,9 +18,10 @@ if (config.RUN_MIGRATIONS) {
 }
 // Справочник навыков нужен и в проде: без него не сохранить анкету и стажировку. Загрузка идемпотентна.
 log.info({ skills: await seedSkills(ds) }, 'Справочник навыков загружен');
+if (config.SEED_DEMO) log.info(await seedDemo(ds), 'Демо-данные загружены');
 
 const events = new EventBus(log);
-// Сюда подключаются модули Тимура: registerBot({ events, ds, config, log }), сид при SEED_DEMO=true
+// Сюда подключается модуль бота Тимура: registerBot({ events, ds, config, log })
 
 const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher } });
 const server = app.listen(config.PORT, () => log.info({ port: config.PORT }, 'Сервер запущен'));
