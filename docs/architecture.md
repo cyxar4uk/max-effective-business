@@ -11,14 +11,15 @@ flowchart TB
   botapi["MAX Bot API<br/>platform-api2.max.ru"]
 
   subgraph VPS["Наш сервер · Docker Compose"]
-    caddy["Caddy · HTTPS :443"]
-    miniapp["miniapp<br/>React, статика"]
+    caddy["прокси · HTTPS :443<br/>свой Caddy или nginx/Caddy сервера"]
+    miniapp["miniapp<br/>React, статика<br/>(подключается)"]
     subgraph server["server · один процесс Node.js"]
       direction TB
       auth["auth<br/>подпись initData"]
       api["api<br/>маршруты, права, статусы"]
       matching["matching<br/>расчёт совпадения"]
       bot["bot<br/>очередь уведомлений"]
+      seed["seed<br/>справочники, демо-данные,<br/>демо-отклики"]
     end
     db[("PostgreSQL")]
   end
@@ -28,8 +29,10 @@ flowchart TB
   caddy -->|"/api/*"| auth --> api
   api --> matching
   api -->|"события"| bot
+  api -.->|"internship.created<br/>(SEED_DEMO)"| seed
   api --> db
   bot --> db
+  seed --> db
   bot -->|"POST /messages"| botapi
   botapi -->|"вебхук /bot/webhook"| caddy
   botapi -.->|"сообщения от бота"| client
@@ -38,12 +41,13 @@ flowchart TB
 | Компонент | Роль | Связи |
 |---|---|---|
 | Клиент MAX | открывает бота и мини-приложение, подписывает данные запуска | → Caddy по HTTPS |
-| Caddy | TLS-сертификат, маршрутизация по пути | `/api/*`, `/bot/*` → server; остальное → miniapp |
-| miniapp | экраны студента и работодателя | → `/api` с заголовком `X-Max-Init-Data` |
+| Прокси | TLS-сертификат, маршрутизация по пути: свой Caddy (`compose.prod.yaml`) или уже работающий на сервере nginx/Caddy (`compose.proxy.yaml`) | `/api/*`, `/bot/*` → server; остальное → miniapp |
+| miniapp | экраны студента и работодателя; в `compose.yaml` подключается вместе с `apps/miniapp` | → `/api` с заголовком `X-Max-Init-Data` |
 | server · auth | проверяет подпись MAX на каждом запросе, находит пользователя | → db |
 | server · api | профили, стажировки, лента, отклики, кандидаты; права и статусы | → matching, → db, публикует события |
 | server · matching | чистые функции: фильтры и процент с расшифровкой | без БД и сети |
 | server · bot | `/start`, уведомления по событиям, очередь с лимитами MAX | ← события, → db, → MAX Bot API |
+| server · seed | при старте — справочники навыков и тегов задач (всегда) и тестовые данные (`SEED_DEMO=true`); в демо-режиме на новое место сразу откликаются до 5 подходящих тестовых студентов, без уведомлений | ← `internship.created`, → db |
 | PostgreSQL | все данные | только внутри сети Docker |
 
 **Почему так:** один процесс для API и бота — меньше движущихся частей; события внутри процесса — API не знает про
@@ -106,6 +110,8 @@ erDiagram
   users ||--o{ notifications : "получает"
   skills }o..o{ student_profiles : "коды в skills[]"
   skills }o..o{ internships : "коды в required_skills[], nice_skills[]"
+  task_tags }o..o{ internships : "коды в tags[] (0–3)"
+  task_tags }o..o{ skills : "подставляет skills[] в форму"
 
   users {
     bigint max_user_id UK
@@ -116,9 +122,11 @@ erDiagram
   student_profiles {
     text university
     smallint course
+    text direction
     text city
     text_arr formats
-    text_arr skills
+    text_arr skills "от 3 (API)"
+    text practice_month "ГГГГ-ММ, по желанию"
   }
   employers {
     text company_name
@@ -126,12 +134,21 @@ erDiagram
     text contact_name
   }
   internships {
-    text title
+    text type "practice, internship, part_time"
+    text title "задача"
     text_arr required_skills
     text_arr nice_skills
+    text_arr tags "0–3 кода task_tags"
     text format
+    bool paid "NULL — не указано"
+    int salary "₽/мес, только при paid"
     text status "open, closed"
-    text source "employer, demo, trudvsem"
+    text source "employer, demo, trudvsem, career_center"
+  }
+  task_tags {
+    text code PK
+    text name
+    text_arr skills
   }
   interests {
     text status "skipped, interested, invited, declined"

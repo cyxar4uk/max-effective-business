@@ -6,8 +6,11 @@ Node.js 24 + TypeScript, Express 5, TypeORM + PostgreSQL. Один процес�
 ## Запуск для разработки
 
 ```bash
-# из корня репозитория: БД в Docker (или docker compose up db), сервер локально
+# из корня репозитория: БД в Docker, сервер локально
 cp .env.example .env            # заполнить MAX_BOT_TOKEN, POSTGRES_PASSWORD, раскомментировать NODE_ENV и DATABASE_URL
+# в compose порт БД на хост не выведен, поэтому для разработки — отдельный контейнер на 127.0.0.1:5432
+docker run -d --name meb-dev-db -e POSTGRES_USER=app -e POSTGRES_PASSWORD=<пароль из .env> -e POSTGRES_DB=app \
+  -p 127.0.0.1:5432:5432 postgres:18.6-alpine3.24
 cd apps/server
 npm ci
 npm run dev                     # миграции применяются при старте (RUN_MIGRATIONS=true)
@@ -48,7 +51,8 @@ src/
 - **Совпадение:** API зовёт функцию с типом `Matcher` из `src/api/matcher.ts`; реализация — `matcher` из
   `src/matching`, подключена в `src/index.ts`.
 - **События:** `events.on('internship.created', async ({ internshipId }) => …)`. Ошибка в обработчике логируется
-  и не ломает запрос пользователя. Подключение — в `src/index.ts`, там оставлено место.
+  и не ломает запрос пользователя. Подписки — в `src/index.ts`: `registerBot` (bot) и при `SEED_DEMO=true` —
+  `registerDemoResponder` (`src/seed/demo/responder.ts`).
 - **Данные для бота — `createBotData(ds)` из `src/db/botData.ts`:**
   - `internship(id)` — стажировка с работодателем; `studentsWithProfiles(excludeUserId)` — все студенты с анкетой
     (для `internship.created`: дальше фильтр и порог — в `matching`);
@@ -64,6 +68,10 @@ src/
   схему меняем только миграциями.
 - **Навыки** хранятся массивами кодов (`text[]`): `student_profiles.skills`, `internships.required_skills`,
   `internships.nice_skills`. Справочник — таблица `skills (code, name, group_name, sort)`.
+- **Теги задач** — `internships.tags` (0–3 кода), справочник — `task_tags (code, name, sort, skills)`. Данные —
+  `TASK_TAGS` в `src/seed/tags.ts`, грузятся при каждом старте через `loadTaskTags` (`src/db/taskTags.ts`).
+- **Тип места и оплата** — `internships.type` (`practice` / `internship` / `part_time`, по умолчанию `internship`),
+  `paid` (`NULL` — не указано), `salary` (₽/мес, только при `paid = true`).
 - **Уведомления:** таблица `notifications` с `dedupe_key UNIQUE` — ключ идемпотентности, например
   `invite:<interestId>:student`, чтобы повтор события не отправил сообщение дважды. Работа с ней — через `botData`.
 - **Вебхук:** `createApp({ …, onBotUpdate })` — обновления MAX Bot API приходят туда после проверки секрета.
