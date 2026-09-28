@@ -22,7 +22,7 @@
 - Черновик служебного слайда — [service_slide.md](service_slide.md); список для Ильи — [for_ilya.md](for_ilya.md).
 - **#6 CI и деплой за чужим прокси:** `docker compose up --build` на чистой машине (~30 с при лимите 5 минут) со
   smoke-проверкой; прод-связка с HTTPS через Caddy; вариант за уже работающим nginx/Caddy — на хосте
-  (`127.0.0.1:3000`) или в Docker (общая сеть `meb-edge`, алиас `meb-server`; nginx соседей не падает, если наш
+  (`127.0.0.1:3000`) или в Docker (общая сеть `meb-edge`, имя `meb-server`; nginx соседей не падает, если наш
   сервер лежит); откат `scripts/deploy.sh <хеш>`.
 - **#40 (задача #22):** у места тип (`practice`/`internship`/`part_time`), оплата (`paid`, `salary` ₽/мес), теги задач
   (`task_tags`, `GET /api/tags`, фильтр ленты `?tags=`); обязательные поля публикации по решениям Артёма; анкета —

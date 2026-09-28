@@ -3,7 +3,7 @@
 # Или scripts/deploy.sh. Переменные — в .env на сервере.
 
 services:
-  server:
+  meb-server:
     # Наружу сервер не публикуем: доступ только через Caddy
     ports: !reset []
     environment:
@@ -20,7 +20,7 @@ services:
         max-size: "10m"
         max-file: "3"
     depends_on:
-      server:
+      meb-server:
         condition: service_healthy
     environment:
       DOMAIN: ${DOMAIN}

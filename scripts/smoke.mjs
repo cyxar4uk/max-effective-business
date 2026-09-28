@@ -1,10 +1,12 @@
 // Smoke-проверка поднятого стека: живость, отказ без подписи, вход с подписью MAX.
-//   node scripts/smoke.mjs http://localhost:3000          # локально и в CI, токен — из MAX_BOT_TOKEN
+//   node --env-file=.env scripts/smoke.mjs                # локально: токен и SERVER_PORT из .env (Node.js 20.6+)
+//   node scripts/smoke.mjs http://localhost:3000          # CI, токен — из MAX_BOT_TOKEN
 //   node scripts/smoke.mjs https://<домен> --no-auth      # прод: без создания тестового пользователя
-// Без зависимостей: только Node.js 20+.
+// Без зависимостей.
 import { createHmac } from 'node:crypto';
 
-const base = (process.argv[2] ?? 'http://localhost:3000').replace(/\/$/, '');
+const url = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
+const base = (url ?? `http://localhost:${process.env.SERVER_PORT || 3000}`).replace(/\/$/, '');
 const withAuth = !process.argv.includes('--no-auth');
 let failed = 0;
 
