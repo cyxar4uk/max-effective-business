@@ -110,6 +110,9 @@ export const DEMO_INTERNSHIPS: DemoInternship[] = [
   { key: 'i2', employer: 'luch', title: 'Стажёр-тестировщик', description: 'Ручное тестирование сайтов и приложений, заведение задач на ошибки.', requiredSkills: ['qa_testing', 'git'], niceSkills: ['sql', 'javascript'], format: 'hybrid', city: MSK, ...winter, slots: 1 },
   { key: 'i3', employer: 'vecher', title: 'Стажёр-дизайнер интерфейсов', description: 'Макеты страниц курсов и личного кабинета ученика в Figma.', requiredSkills: ['figma', 'ui_ux'], niceSkills: ['graphic_design', 'presentations'], format: 'remote', city: null, ...autumn, slots: 1 },
   { key: 'i4', employer: 'polka', title: 'Стажёр-дизайнер для соцсетей', description: 'Баннеры, карточки товаров и обложки для соцсетей магазина.', requiredSkills: ['graphic_design', 'photoshop'], niceSkills: ['figma', 'video_editing'], format: 'remote', city: null, ...winter, slots: 1 },
+  // Задачи малого бизнеса: маркетплейсы и сайт (справочник от 28.09)
+  { key: 'b1', employer: 'polka', title: 'Менеджер маркетплейсов', description: 'Карточки товаров магазина на Wildberries и Ozon: тексты, фото, цены, ответы на вопросы покупателей.', requiredSkills: ['marketplace_cards', 'wildberries'], niceSkills: ['ozon', 'product_photo', 'unit_economics'], format: 'remote', city: null, ...autumn, slots: 2 },
+  { key: 'b2', employer: 'zerna', title: 'Помощник по сайту и рассылкам', description: 'Обновлять сайт сети кофеен на Tilda, собирать рассылки о новинках и акциях, отвечать на отзывы.', requiredSkills: ['no_code', 'email_marketing'], niceSkills: ['seo', 'canva', 'reviews_management'], format: 'remote', city: null, ...winter, slots: 1 },
 ];
 
 const ALL: WorkFormat[] = ['office', 'hybrid', 'remote'];
@@ -150,13 +153,13 @@ export const DEMO_STUDENTS: DemoStudent[] = [
   student(2, 'Максим', 'Орлов', 3, 'Экономика', IEF, ['excel', 'sql', 'power_bi', 'google_sheets', 'english_b1']),
   student(3, 'Дарья', 'Ковалёва', 2, 'Экономика', IEF, ['excel', 'google_sheets', 'market_research', 'presentations']),
   student(4, 'Илья', 'Фёдоров', 3, 'Прикладная информатика', IBDA, ['sql', 'python', 'git', 'english_b1']),
-  student(5, 'Ксения', 'Белова', 2, 'Маркетинг', IBDA, ['excel', 'sql', 'smm', 'copywriting']),
+  student(5, 'Ксения', 'Белова', 2, 'Маркетинг', IBDA, ['excel', 'sql', 'smm', 'copywriting', 'marketplace_cards']),
   student(6, 'Роман', 'Жуков', 4, 'Бизнес-информатика', IBDA, ['excel', 'sql', 'power_bi', 'statistics'], { city: 'Санкт-Петербург', formats: ['office', 'hybrid'] }),
   // Маркетинг и PR
   student(7, 'Екатерина', 'Морозова', 4, 'Реклама и связи с общественностью', IOM, ['smm', 'copywriting', 'content_marketing', 'seo', 'photoshop', 'video_editing', 'pr', 'public_speaking']),
-  student(8, 'Артём', 'Волков', 3, 'Маркетинг', IBDA, ['smm', 'copywriting', 'targeted_ads', 'web_analytics', 'excel', 'sales', 'crm']),
+  student(8, 'Артём', 'Волков', 3, 'Маркетинг', IBDA, ['smm', 'copywriting', 'targeted_ads', 'web_analytics', 'excel', 'sales', 'crm', 'marketplace_cards', 'wildberries']),
   student(9, 'Полина', 'Никитина', 3, 'Реклама и связи с общественностью', IOM, ['event_management', 'negotiations', 'pr', 'smm', 'public_speaking']),
-  student(10, 'Кирилл', 'Андреев', 2, 'Маркетинг', IBDA, ['copywriting', 'content_marketing', 'targeted_ads', 'web_analytics']),
+  student(10, 'Кирилл', 'Андреев', 2, 'Маркетинг', IBDA, ['copywriting', 'content_marketing', 'targeted_ads', 'web_analytics', 'no_code', 'email_marketing', 'canva']),
   student(11, 'Виктория', 'Лебедева', 2, 'Менеджмент', IOM, ['event_management', 'negotiations', 'copywriting', 'excel']),
   student(12, 'Тимофей', 'Козлов', 3, 'Реклама и связи с общественностью', IOM, ['smm', 'copywriting', 'targeted_ads'], { city: 'Казань', formats: ['office', 'hybrid'] }),
   // Экономика и финансы
@@ -182,15 +185,15 @@ export const DEMO_STUDENTS: DemoStudent[] = [
   student(30, 'Лев', 'Романов', 3, 'Менеджмент', IOM, ['sales', 'crm', 'project_management', 'business_processes'], { city: 'Санкт-Петербург', formats: ['office', 'hybrid'] }),
   // IT и дизайн
   student(31, 'Станислав', 'Беляев', 4, 'Прикладная информатика', IBDA, ['html_css', 'javascript', 'react', 'git', 'qa_testing', 'sql', 'nodejs']),
-  student(32, 'Милана', 'Тихонова', 2, 'Прикладная информатика', IBDA, ['html_css', 'javascript', 'graphic_design', 'photoshop']),
+  student(32, 'Милана', 'Тихонова', 2, 'Прикладная информатика', IBDA, ['html_css', 'javascript', 'graphic_design', 'photoshop', 'no_code', 'email_marketing']),
   student(33, 'Фёдор', 'Крылов', 3, 'Бизнес-информатика', IBDA, ['qa_testing', 'git', 'english_b1']),
   student(34, 'Алиса', 'Королёва', 4, 'Дизайн', IOM, ['figma', 'ui_ux', 'graphic_design', 'presentations', 'photoshop', 'video_editing']),
   student(35, 'Василиса', 'Мельникова', 2, 'Дизайн', IOM, ['figma', 'ui_ux']),
   student(36, 'Святослав', 'Гусев', 3, 'Дизайн', IOM, ['graphic_design', 'photoshop', 'html_css'], { formats: ['office'] }),
   // Не из Москвы, с ходовыми навыками и любым форматом: проверяющий из другого города (финал — в Казани)
   // публикует очную стажировку у себя и видит кандидатов
-  student(37, 'Камила', 'Хайруллина', 3, 'Бизнес-информатика', IBDA, ['excel', 'google_sheets', 'sql', 'presentations', 'business_writing'], { city: 'Казань' }),
-  student(38, 'Айдар', 'Сафин', 2, 'Маркетинг', IBDA, ['excel', 'smm', 'copywriting', 'content_marketing', 'photoshop'], { city: 'Казань' }),
+  student(37, 'Камила', 'Хайруллина', 3, 'Бизнес-информатика', IBDA, ['excel', 'google_sheets', 'sql', 'presentations', 'business_writing', 'no_code'], { city: 'Казань' }),
+  student(38, 'Айдар', 'Сафин', 2, 'Маркетинг', IBDA, ['excel', 'smm', 'copywriting', 'content_marketing', 'photoshop', 'marketplace_cards', 'wildberries', 'ozon', 'product_photo'], { city: 'Казань' }),
   student(39, 'Регина', 'Галиева', 4, 'Экономика', IEF, ['excel', 'accounting', '1c_accounting', 'budgeting', 'english_b1'], { city: 'Казань' }),
   student(40, 'Олеся', 'Воронина', 3, 'Менеджмент', IOM, ['excel', 'sales', 'crm', 'negotiations', 'recruiting', 'business_writing'], { city: 'Санкт-Петербург' }),
 ];
