@@ -3,11 +3,12 @@ import { registerBot } from './bot/index.js';
 import { loadConfig } from './config.js';
 import { createDataSource } from './db/dataSource.js';
 import { createRepos } from './db/repos.js';
+import { loadTaskTags } from './db/taskTags.js';
 import { EventBus } from './events.js';
 import { registerTrudvsemImport } from './import/index.js';
 import { createLogger } from './logger.js';
 import { matcher } from './matching/index.js';
-import { registerDemoResponder, seedDemo, seedSkills } from './seed/index.js';
+import { registerDemoResponder, seedDemo, seedSkills, TASK_TAGS } from './seed/index.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL);
@@ -20,6 +21,7 @@ if (config.RUN_MIGRATIONS) {
 }
 // Справочник навыков нужен и в проде: без него не сохранить анкету и стажировку. Загрузка идемпотентна.
 log.info({ skills: await seedSkills(ds) }, 'Справочник навыков загружен');
+log.info({ tags: await loadTaskTags(ds, TASK_TAGS) }, 'Справочник тегов задач загружен');
 if (config.SEED_DEMO) log.info(await seedDemo(ds), 'Демо-данные загружены');
 
 const events = new EventBus(log);
