@@ -67,6 +67,22 @@ describe.skipIf(!url)('основной сценарий', () => {
     await ds?.destroy();
   });
 
+  it('профили до заполнения — 404', async () => {
+    expect((await as(EMPLOYER).get('/api/employer/profile')).status).toBe(404);
+    expect((await as(STUDENT).get('/api/student/profile')).status).toBe(404);
+  });
+
+  it('до согласия храним только id MAX и имя; фамилию — после согласия', async () => {
+    const before = await as(OTHER_EMPLOYER).get('/api/me');
+    expect(before.body).toMatchObject({ firstName: `U${OTHER_EMPLOYER}`, lastName: null, consent: null });
+    const [row] = await ds.query('SELECT last_name FROM users WHERE max_user_id = $1', [OTHER_EMPLOYER]);
+    expect(row.last_name).toBeNull();
+    const after = await as(OTHER_EMPLOYER).post('/api/me/consent', { version: CONSENT_VERSION });
+    expect(after.body).toMatchObject({ lastName: 'Тестов' });
+    const cols = await ds.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'username'`);
+    expect(cols).toEqual([]);
+  });
+
   it('без согласия профиль не сохраняется', async () => {
     const res = await as(EMPLOYER).put('/api/employer/profile', { companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга' });
     expect(res.status).toBe(403);
@@ -75,6 +91,7 @@ describe.skipIf(!url)('основной сценарий', () => {
   it('работодатель заполняет профиль и публикует стажировку', async () => {
     await as(EMPLOYER).post('/api/me/consent', { version: CONSENT_VERSION }).expect(200);
     await as(EMPLOYER).put('/api/employer/profile', { companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга' }).expect(200);
+    expect((await as(EMPLOYER).get('/api/employer/profile')).body).toEqual({ companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга', isDemo: false });
     expect((await as(EMPLOYER).get('/api/me')).body.roles).toEqual({ student: false, employer: true });
 
     const res = await as(EMPLOYER).post('/api/internships', {
@@ -148,7 +165,12 @@ describe.skipIf(!url)('основной сценарий', () => {
     const me = await as(STUDENT).get('/api/me');
     studentUserId = me.body.id;
 
-    const contact = { phone: '+79990001122', authDate: '1790500000' };
+    const contact = { phone: '+79990001122', authDate: String(Math.floor(Date.now() / 1000)) };
+    // Подпись номера старше срока данных запуска не принимается
+    const stale = { phone: '+79990001122', authDate: '1690000000' };
+    const stalePhone = await as(STUDENT).post('/api/me/phone', { ...stale, hash: signContact(stale, STUDENT, TOKEN) });
+    expect(stalePhone.status).toBe(400);
+    expect(stalePhone.body.error.fields.phone).toContain('устарела');
     const badPhone = await as(STUDENT).post('/api/me/phone', { ...contact, hash: signContact(contact, STUDENT + 1, TOKEN) });
     expect(badPhone.status).toBe(400);
     const phone = await as(STUDENT).post('/api/me/phone', { ...contact, hash: signContact(contact, STUDENT, TOKEN) });
@@ -165,6 +187,7 @@ describe.skipIf(!url)('основной сценарий', () => {
     const res = await as(STUDENT).put('/api/student/profile', { ...profile, skills: ['excel', 'power_bi', 'figma'], practiceMonth: '2026-11' });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ faculty: null, skills: ['excel', 'power_bi', 'figma'], practiceMonth: '2026-11' });
+    expect((await as(STUDENT).get('/api/student/profile')).body).toMatchObject({ university: 'РАНХиГС', practiceMonth: '2026-11' });
   });
 
   it('«Мои отклики» без откликов — пустой список', async () => {
@@ -337,5 +360,56 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect(res.body.items.slice(0, TASK_TAGS.length)).toEqual(fromSeed);
     const [{ n }] = await ds.query('SELECT count(*) AS n FROM task_tags WHERE code = ANY($1)', [TASK_TAGS.map((t) => t.code)]);
     expect(n).toBe(TASK_TAGS.length);
+  });
+
+  it('мусор во входных данных — 400, а не 500', async () => {
+    const nul = await as(EMPLOYER).post('/api/internships', { ...PLACE, title: 'С нулём\u0000', requiredSkills: ['excel'], format: 'remote' });
+    expect(nul.status).toBe(400);
+    expect(nul.body.error.fields.title).toBe('Недопустимый символ');
+    const nulSkill = await as(EMPLOYER).post('/api/internships', { ...PLACE, title: 'X', requiredSkills: ['ex\u0000cel'], format: 'remote' });
+    expect(nulSkill.status).toBe(400);
+    const year0 = await as(EMPLOYER).post('/api/internships', { ...PLACE, startsOn: '0000-01-01', title: 'X', requiredSkills: ['excel'], format: 'remote' });
+    expect(year0.status).toBe(400);
+    expect(year0.body.error.fields.startsOn).toBeDefined();
+    const longCode = await as(EMPLOYER).post('/api/internships', { ...PLACE, title: 'X', requiredSkills: ['x'.repeat(65)], format: 'remote' });
+    expect(longCode.status).toBe(400);
+    const badDate = await as(EMPLOYER).post('/api/me/phone', { phone: '+79990000000', authDate: 'abc', hash: 'a'.repeat(64) });
+    expect(badDate.status).toBe(400);
+    // Битое кодирование в параметре адреса — 400, а не 500
+    expect((await as(EMPLOYER).get('/api/internships/%E0%A4%A')).status).toBe(400);
+    expect((await as(EMPLOYER).post('/api/internships/1/candidates/%FF/invite')).status).toBe(400);
+  });
+
+  it('не больше 20 открытых мест у работодателя', async () => {
+    const OWNER = 200099;
+    await as(OWNER).post('/api/me/consent', { version: CONSENT_VERSION });
+    await as(OWNER).put('/api/employer/profile', { companyName: 'Спам', city: 'Москва', contactName: 'С' }).expect(200);
+    const ids: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const r = await as(OWNER).post('/api/internships', { ...PLACE, title: `Место ${i}`, requiredSkills: ['excel'], format: 'remote' });
+      expect(r.status).toBe(201);
+      ids.push(r.body.id);
+    }
+    const over = await as(OWNER).post('/api/internships', { ...PLACE, title: 'Лишнее', requiredSkills: ['excel'], format: 'remote' });
+    expect(over.status).toBe(409);
+    await as(OWNER).patch(`/api/internships/${ids[0]}`, { status: 'closed' }).expect(200);
+    await as(OWNER).post('/api/internships', { ...PLACE, title: 'После закрытия', requiredSkills: ['excel'], format: 'remote' }).expect(201);
+    // Переоткрыть закрытое сверх лимита тоже нельзя
+    expect((await as(OWNER).patch(`/api/internships/${ids[0]}`, { status: 'open' })).status).toBe(409);
+  });
+
+  it('лента отбрасывает места без общих навыков и в чужом формате ещё в SQL', async () => {
+    const profile = { university: 'РАНХиГС', course: 3, direction: 'БИ', city: 'Москва', formats: ['remote'], skills: ['excel', 'sql', 'power_bi'] };
+    await as(STUDENT).put('/api/student/profile', profile).expect(200);
+    const E3 = 200077;
+    await as(E3).post('/api/me/consent', { version: CONSENT_VERSION });
+    await as(E3).put('/api/employer/profile', { companyName: 'Фильтр', city: 'Москва', contactName: 'Ф' }).expect(200);
+    const match = await as(E3).post('/api/internships', { ...PLACE, title: 'Подходит', requiredSkills: ['sql'], format: 'remote' });
+    const noSkill = await as(E3).post('/api/internships', { ...PLACE, title: 'Нет навыков', requiredSkills: ['figma'], format: 'remote' });
+    const office = await as(E3).post('/api/internships', { ...PLACE, title: 'Очно', requiredSkills: ['sql'], format: 'office', city: 'Москва' });
+    const feed = (await as(STUDENT).get('/api/student/feed')).body.items.map((i: { id: number }) => i.id);
+    expect(feed).toContain(match.body.id);
+    expect(feed).not.toContain(noSkill.body.id);
+    expect(feed).not.toContain(office.body.id);
   });
 });

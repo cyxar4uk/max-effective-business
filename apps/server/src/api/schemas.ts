@@ -1,16 +1,24 @@
 import { z } from 'zod';
 
-const text = (max: number) => z.string({ error: 'Обязательное поле' }).trim().min(1, 'Обязательное поле').max(max, `Не длиннее ${max} символов`);
+// Нулевой байт PostgreSQL в text не принимает — отсекаем на входе, а не получаем 500
+const noNul = (s: string) => !s.includes('\u0000');
+const NUL_MESSAGE = 'Недопустимый символ';
+const text = (max: number) =>
+  z.string({ error: 'Обязательное поле' }).trim().min(1, 'Обязательное поле').max(max, `Не длиннее ${max} символов`).refine(noNul, NUL_MESSAGE);
+// Код из справочника: короткий и без мусора, чтобы не раздувать ответы с ошибками
+const code = z.string({ error: 'Код — строка' }).min(1).max(64, 'Слишком длинный код').refine(noNul, NUL_MESSAGE);
+const description = z.string({ error: 'Описание — строка' }).trim().max(4000, 'Не длиннее 4000 символов').refine(noNul, NUL_MESSAGE);
 const format = z.enum(['office', 'remote', 'hybrid'], { error: 'Выберите формат: office, remote или hybrid' });
-const skillList = (max: number) => z.array(z.string().min(1), { error: 'Нужен список навыков' }).max(max, `Не больше ${max} навыков`);
-const date = z.iso.date({ error: 'Дата в формате ГГГГ-ММ-ДД' });
+const skillList = (max: number) => z.array(code, { error: 'Нужен список навыков' }).max(max, `Не больше ${max} навыков`);
+// z.iso.date пропускает год 0000, который PostgreSQL отвергает; для мест разумен диапазон 2000–2100
+const date = z.iso.date({ error: 'Дата в формате ГГГГ-ММ-ДД' }).refine((d) => d >= '2000-01-01' && d <= '2100-12-31', 'Дата вне допустимого диапазона');
 const placeType = z.enum(['practice', 'internship', 'part_time'], { error: 'Выберите тип: practice, internship или part_time' });
 const paid = z.boolean({ error: 'Укажите, оплачивается ли место' });
 // Сумма по желанию, ₽ в месяц
 const salary = z.number({ error: 'Сумма — целое число рублей' }).int('Сумма — целое число рублей').min(1, 'Сумма больше нуля').max(10_000_000, 'Слишком большая сумма');
 // Сначала убираем дубли, потом проверяем лимит: ['a','a','a','a'] — это один тег
 const tagList = z
-  .array(z.string({ error: 'Код тега — строка' }).min(1), { error: 'Нужен список тегов' })
+  .array(code, { error: 'Нужен список тегов' })
   .transform((v) => [...new Set(v)])
   .refine((v) => v.length <= 3, 'Не больше 3 тегов');
 // Пустая строка из формы — «не указан»
@@ -24,7 +32,10 @@ const practiceMonth = z.preprocess(
 
 export const phoneBody = z.object({
   phone: z.string().regex(/^\+?\d{10,15}$/, 'Номер в формате +79990000000'),
-  authDate: z.union([z.string(), z.number()]).transform(String),
+  authDate: z
+    .union([z.string(), z.number()], { error: 'Некорректная подпись номера' })
+    .transform(String)
+    .refine((v) => /^\d{9,13}$/.test(v), 'Некорректная подпись номера'),
   hash: z.string().regex(/^[0-9a-fA-F]{64}$/, 'Некорректная подпись номера'),
 });
 
@@ -54,7 +65,7 @@ const internshipFields = {
   type: placeType,
   title: text(200),
   // Необязательные поля: можно не передавать или передать null
-  description: z.string({ error: 'Описание — строка' }).trim().max(4000, 'Не длиннее 4000 символов').nullish().transform((v) => v ?? ''),
+  description: description.nullish().transform((v) => v ?? ''),
   requiredSkills: skillList(20).min(1, 'Укажите хотя бы один обязательный навык').transform((v) => [...new Set(v)]),
   niceSkills: skillList(20).nullish().transform((v) => [...new Set(v ?? [])]),
   tags: tagList.nullish().transform((v) => v ?? []),
@@ -99,7 +110,7 @@ export const internshipPatch = z
   .object({
     type: placeType,
     title: internshipFields.title,
-    description: z.string({ error: 'Описание — строка' }).trim().max(4000, 'Не длиннее 4000 символов').nullable().transform((v) => v ?? ''),
+    description: description.nullable().transform((v) => v ?? ''),
     requiredSkills: skillList(20).min(1, 'Укажите хотя бы один обязательный навык').transform((v) => [...new Set(v)]),
     niceSkills: skillList(20).nullable().transform((v) => [...new Set(v ?? [])]),
     tags: tagList.nullable().transform((v) => v ?? []),
