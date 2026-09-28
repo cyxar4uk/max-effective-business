@@ -1,4 +1,6 @@
 import { X509Certificate } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import tls from 'node:tls';
 import { describe, expect, it } from 'vitest';
 import { RUSSIAN_TRUSTED_ROOT_CA, RUSSIAN_TRUSTED_ROOT_CA_SHA256, trustRussianRootCa } from './russianRootCa.js';
@@ -11,6 +13,11 @@ describe('корень Минцифры для MAX Bot API', () => {
     expect(cert.issuer).toBe(cert.subject);
     expect(cert.ca).toBe(true);
     expect(cert.fingerprint256).toBe(RUSSIAN_TRUSTED_ROOT_CA_SHA256);
+  });
+
+  it('файл для curl (deploy/russian_trusted_root_ca.crt) — тот же сертификат', () => {
+    const file = readFileSync(fileURLToPath(new URL('../../../../deploy/russian_trusted_root_ca.crt', import.meta.url)), 'utf8');
+    expect(new X509Certificate(file).fingerprint256).toBe(RUSSIAN_TRUSTED_ROOT_CA_SHA256);
   });
 
   it('действует ещё не меньше года', () => {
