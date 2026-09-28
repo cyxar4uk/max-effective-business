@@ -23,17 +23,18 @@ type Query = (sql: string, params?: unknown[]) => Promise<unknown>;
 async function upsert(db: { query: Query }, p: ImportedPlace, fromSnapshot: boolean): Promise<void> {
   await db.query(
     `INSERT INTO internships (company_name, title, description, required_skills, nice_skills, format, city, slots,
-                              source, source_id, source_url, is_demo, status)
-     VALUES ($1, $2, $3, $4, '{}', $5, $6, $7, 'trudvsem', $8, $9, false, 'open')
+                              type, paid, salary, source, source_id, source_url, is_demo, status)
+     VALUES ($1, $2, $3, $4, '{}', $5, $6, $7, $10, $11, $12, 'trudvsem', $8, $9, false, 'open')
      ON CONFLICT (source, source_id) ${
        fromSnapshot
          ? 'DO NOTHING'
          : `DO UPDATE SET
        company_name = EXCLUDED.company_name, title = EXCLUDED.title, description = EXCLUDED.description,
        required_skills = EXCLUDED.required_skills, format = EXCLUDED.format, city = EXCLUDED.city,
-       slots = EXCLUDED.slots, source_url = EXCLUDED.source_url, status = 'open', updated_at = now()`
+       slots = EXCLUDED.slots, source_url = EXCLUDED.source_url, type = EXCLUDED.type, paid = EXCLUDED.paid,
+       salary = EXCLUDED.salary, status = 'open', updated_at = now()`
      }`,
-    [p.companyName, p.title, p.description, p.requiredSkills, p.format, p.city, p.slots, p.sourceId, p.sourceUrl],
+    [p.companyName, p.title, p.description, p.requiredSkills, p.format, p.city, p.slots, p.sourceId, p.sourceUrl, p.type, p.paid, p.salary],
   );
 }
 

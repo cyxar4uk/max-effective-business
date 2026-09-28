@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { skillRows } from '../seed/skills.js';
 import { importTrudvsem } from './index.js';
 import { mapSkills, SKILL_MAP_CODES } from './skillMap.js';
-import { cityOf, fetchAll, fetchPilotVacancies, formatOf, mapVacancy, pickFields, safeSourceUrl, stripContacts, type TrudvsemVacancy } from './trudvsem.js';
+import { cityOf, fetchAll, fetchPilotVacancies, formatOf, mapVacancy, pickFields, placeTypeOf, safeSourceUrl, stripContacts, type TrudvsemVacancy } from './trudvsem.js';
 import { TRUDVSEM_SNAPSHOT } from './trudvsemSnapshot.js';
 
 const vacancy = (over: Partial<TrudvsemVacancy> = {}): TrudvsemVacancy => ({
@@ -99,6 +99,14 @@ describe('mapVacancy', () => {
     );
     const p = mapVacancy(vacancy({ duty: 'Первичная документация. Вопросы: +7 (495) 000-00-00, hr@firm.ru' }))!;
     expect(p.description).not.toMatch(/000-00-00|hr@firm\.ru/);
+  });
+
+  it('тип места и оплата (#22)', () => {
+    expect(placeTypeOf(vacancy({ 'job-name': 'Практикант в отдел аудита' }))).toBe('practice');
+    expect(placeTypeOf(vacancy({ schedule: 'Неполный рабочий день/неполная рабочая неделя' }))).toBe('part_time');
+    expect(placeTypeOf(vacancy())).toBe('internship');
+    expect(mapVacancy(vacancy({ salary_min: 50000 }))).toMatchObject({ paid: true, salary: 50000 });
+    expect(mapVacancy(vacancy({ salary_min: 0 }))).toMatchObject({ paid: null, salary: null });
   });
 
   it('ссылка на оригинал — только trudvsem.ru, по https', () => {

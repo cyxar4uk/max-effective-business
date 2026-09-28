@@ -52,6 +52,11 @@ export interface ImportedPlace {
   format: 'office' | 'remote';
   city: string | null;
   slots: number;
+  /** Тип места (#22): «практикант» — практика, неполный день или временная работа — подработка, иначе стажировка. */
+  type: 'practice' | 'internship' | 'part_time';
+  /** Оплата: зарплата указана — оплачиваемое, сумма из вакансии; не указана — неизвестно (null). */
+  paid: boolean | null;
+  salary: number | null;
 }
 
 /** Копия только нужных полей: в снимок и в лог не попадают контакты отдела кадров. */
@@ -154,8 +159,20 @@ export function mapVacancy(v: TrudvsemVacancy): ImportedPlace | null {
     format,
     city,
     slots: Math.min(Math.max(v.work_places ?? 1, 1), 100),
+    type: placeTypeOf(v),
+    paid: salaryOf(v) ? true : null,
+    salary: salaryOf(v),
   };
 }
+
+export function placeTypeOf(v: TrudvsemVacancy): ImportedPlace['type'] {
+  if (/практикант|практик[аи]/i.test(v['job-name'] ?? '')) return 'practice';
+  if (/неполн|частичн|временн|подработк/i.test(`${v.schedule ?? ''} ${v.employment ?? ''}`)) return 'part_time';
+  return 'internship';
+}
+
+/** Зарплата в месяц, ₽: минимальная из вакансии, если она есть и положительная. */
+export const salaryOf = (v: TrudvsemVacancy): number | null => (v.salary_min && v.salary_min > 0 ? Math.round(v.salary_min) : null);
 
 /** Вакансий на страницу. */
 export const PAGE_LIMIT = 50;
