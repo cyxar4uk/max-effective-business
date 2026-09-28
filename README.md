@@ -110,7 +110,7 @@ docker compose up --build
 `POSTGRES_PASSWORD`: API, подпись данных запуска для smoke-проверки и тестовые данные работают, бот только не
 отправит сообщений. Проверка в самом MAX — через нашего развёрнутого бота, токен для этого не нужен.
 
-Поднимаются `db` и `server`; при старте сервер применяет миграции, загружает справочники и (при `SEED_DEMO=true`)
+Поднимаются `db` и `meb-server`; при старте сервер применяет миграции, загружает справочники и (при `SEED_DEMO=true`)
 тестовые данные. Проверка: `curl http://localhost:3000/api/health` → `{"status":"ok","db":"ok"}` или полная
 smoke-проверка `node --env-file=.env scripts/smoke.mjs` (токен и порт берутся из `.env`; нужен Node.js 20.6+ на хосте;
 создаёт служебного пользователя «Smoke»).
@@ -153,7 +153,7 @@ smoke-проверка `node --env-file=.env scripts/smoke.mjs` (токен и �
 
 | Порт | Кто | Где открыт |
 |---|---|---|
-| 3000 | `server`: API `/api/*`, вебхук `/bot/webhook` (только при заданном `MAX_WEBHOOK_SECRET`) | локально — на хосте (`SERVER_PORT`); в проде со своим Caddy — только внутри сети Docker; за чужим прокси — `127.0.0.1:SERVER_PORT` и сеть `meb-edge` |
+| 3000 | `meb-server`: API `/api/*`, вебхук `/bot/webhook` (только при заданном `MAX_WEBHOOK_SECRET`) | локально — на хосте (`SERVER_PORT`); в проде со своим Caddy — только внутри сети Docker; за чужим прокси — `127.0.0.1:SERVER_PORT` и сеть `meb-edge` |
 | 5432 | `db` | только внутри сети Docker |
 | 80, 443 | прокси | только прод: свой Caddy (`compose.prod.yaml`) или уже работающий на сервере nginx/Caddy |
 
