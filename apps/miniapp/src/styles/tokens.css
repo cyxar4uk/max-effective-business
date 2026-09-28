@@ -1,0 +1,39 @@
+/* «Тандем» · токены. Тема — по устройству: светлая по умолчанию, тёмная через prefers-color-scheme.
+   Источник — макет tandem.css (.scr — светлая, .t-dark — тёмная). */
+:root {
+  color-scheme: light dark;
+  --bg: #f3f4f7; --surf: #ffffff; --surf2: #eceef3; --ink: #0c0d11; --ink2: rgba(12, 13, 17, .74); --ink3: rgba(12, 13, 17, .6);
+  --line: rgba(12, 13, 17, .08); --line2: rgba(12, 13, 17, .16); --chip: rgba(12, 13, 17, .06); --btn: #0c0d11; --btn-ink: #ffffff;
+  --ok-bg: #dcf5e6; --ok-ink: #0b7a3d; --wait-bg: #e3ebff; --wait-ink: #1d4fd6; --warn-bg: #fff0d6; --warn-ink: #8a4b00;
+  --neg-bg: #ffe5e6; --neg-ink: #c42b33; --grab: rgba(12, 13, 17, .2);
+  --st: #3d6fff; --em: #ff9f1a; --em-ink: #a85300; --hi: #16a35a; --md: #3d6fff; --lo: #8a909b; --nope: #e2383f;
+  --shadow: 0 18px 40px rgba(12, 13, 17, .16);
+  --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Unbounded", "Onest", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0d11; --surf: #17181e; --surf2: #23242c; --ink: #f4f5f7; --ink2: rgba(244, 245, 247, .74); --ink3: rgba(244, 245, 247, .58);
+    --line: rgba(255, 255, 255, .08); --line2: rgba(255, 255, 255, .16); --chip: rgba(255, 255, 255, .08); --btn: #f4f5f7; --btn-ink: #0c0d11;
+    --ok-bg: rgba(70, 217, 137, .16); --ok-ink: #86f0b6; --wait-bg: rgba(111, 160, 255, .16); --wait-ink: #a9c4ff; --warn-bg: rgba(255, 165, 31, .16); --warn-ink: #ffc46b;
+    --neg-bg: rgba(255, 92, 98, .16); --neg-ink: #ff8a8f; --grab: rgba(255, 255, 255, .28);
+    --st: #4f7dff; --em: #ffa51f; --em-ink: #ffc46b; --hi: #46d989; --md: #6fa0ff; --lo: #9aa0aa; --nope: #ff5c62;
+    --shadow: 0 24px 60px rgba(0, 0, 0, .4);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.4;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
