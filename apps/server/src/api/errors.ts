@@ -65,6 +65,11 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
     res.status(400).json(errorBody('VALIDATION_ERROR', 'Тело запроса — некорректный JSON'));
     return;
   }
+  // Тело больше лимита express.json (100 КБ) — ошибка клиента, а не сервера
+  if (err?.type === 'entity.too.large') {
+    res.status(413).json(errorBody('VALIDATION_ERROR', 'Слишком большой запрос'));
+    return;
+  }
   req.log.error({ err }, 'Необработанная ошибка');
   res.status(500).json(errorBody('INTERNAL', 'Что-то пошло не так. Попробуйте ещё раз'));
 };
