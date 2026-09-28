@@ -51,7 +51,7 @@ SDK `@maxhub/max-bot-api` 0.3.1 ([client.ts](https://github.com/max-messenger/ma
   `*.max.ru`). Его нет ни в стандартном наборе Node.js и образе `node:alpine`, ни в системном наборе Windows/Ubuntu:
   без него любой запрос к Bot API падает (`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, в curl — «untrusted root»). Сервер
   добавляет этот корень к доверенным при старте (`apps/server/src/tls/russianRootCa.ts`, Node 24.5+), для curl —
-  `--cacert deploy/russian_trusted_root_ca.pem`. Проверку сертификатов **не отключаем**. Корень — с Госуслуг
+  `--cacert deploy/russian_trusted_root_ca.crt`. Проверку сертификатов **не отключаем**. Корень — с Госуслуг
   (`gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt`), SHA-256 `D2:6D:2D:02:…:CA:8E:CF:31`.
 - **Базовый адрес: `https://platform-api2.max.ru`.** Старый `platform-api.max.ru` в SDK помечен как устаревший
   (`@deprecated: use botapi v2`), документация требует `platform-api2`.
