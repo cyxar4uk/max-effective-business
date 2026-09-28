@@ -10,7 +10,6 @@ import {
   internshipMatchMessage,
   newCandidateMessage,
   studentInvitedMessage,
-  type PlaceType,
   type QueuedMessage,
 } from './messages.js';
 
@@ -120,8 +119,7 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
         company,
         contactName: employer?.contactName ?? null,
         phone: employerOwner?.phone ?? null,
-        // Поле «тип места» добавляет #22; до него — undefined, и студент получает общий чек-лист
-        type: (internship as { type?: PlaceType | null }).type,
+        type: internship.type,
       }),
     );
     if (ok) queued++;

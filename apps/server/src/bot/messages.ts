@@ -16,8 +16,9 @@ export interface QueuedMessage {
   buttons: AppButton[][];
 }
 
-/** Тип места (#22): практика, стажировка, подработка. Пока поля нет в БД — undefined. */
-export type PlaceType = 'practice' | 'internship' | 'part_time';
+/** Тип места (#22): практика, стажировка, подработка — поле internships.type. */
+export type { PlaceType } from '../db/entities.js';
+import type { PlaceType } from '../db/entities.js';
 
 /** Виды уведомлений (notifications.kind) — одно место для updates.ts, notify.ts и sender.ts. */
 export const KIND = {
