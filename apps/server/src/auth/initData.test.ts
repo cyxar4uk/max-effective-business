@@ -34,7 +34,8 @@ describe('validateInitData', () => {
     expect(validateInitData(strict, TOKEN, opts).ok).toBe(true);
     const formEncoded = strict.replace(/%20/g, '+');
     expect(formEncoded).toContain('+');
-    expect(validateInitData(formEncoded, TOKEN, opts)).toMatchObject({ ok: true, data: { user: { first_name: 'Анна Мария' } } });
+    expect(validateInitData(formEncoded, TOKEN, opts)).toMatchObject({ ok: true, data: { user: { first_name: 'Анна Мария' }, spacesAsPlus: true } });
+    expect(validateInitData(strict, TOKEN, opts)).toMatchObject({ ok: true, data: { spacesAsPlus: false } });
     // «+» как настоящий символ по-прежнему работает
     const plus = buildInitData({ auth_date: authDate, user: JSON.stringify({ id: 8, first_name: 'A+B' }) }, TOKEN);
     expect(validateInitData(plus, TOKEN, opts)).toMatchObject({ ok: true, data: { user: { first_name: 'A+B' } } });
@@ -71,13 +72,13 @@ describe('validateInitData', () => {
   it('отклоняет просроченные данные', () => {
     const old = String(Math.floor(now.getTime() / 1000) - 7200);
     const raw = buildInitData({ auth_date: old, user }, TOKEN);
-    expect(validateInitData(raw, TOKEN, opts)).toEqual({ ok: false, error: 'EXPIRED' });
+    expect(validateInitData(raw, TOKEN, opts)).toEqual({ ok: false, error: 'EXPIRED', ageSec: 7200 });
   });
 
   it('отклоняет auth_date из будущего', () => {
     const future = String(Math.floor(now.getTime() / 1000) + 3600);
     const raw = buildInitData({ auth_date: future, user }, TOKEN);
-    expect(validateInitData(raw, TOKEN, opts)).toEqual({ ok: false, error: 'EXPIRED' });
+    expect(validateInitData(raw, TOKEN, opts)).toEqual({ ok: false, error: 'EXPIRED', ageSec: -3600 });
   });
 
   it('понимает auth_date в миллисекундах', () => {
