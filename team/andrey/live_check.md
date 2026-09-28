@@ -1,6 +1,7 @@
 # Живая проверка в MAX (задачи #20 и #23)
 
-Порядок на день деплоя. Нужно: доступ к серверу Ильи (#13), поддомен, токен и ник бота от Артёма.
+Порядок на день деплоя. Нужно: доступ к серверу Ильи (#13), поддомен, deploy key в репозитории (добавляет Илья —
+[docs/deploy.md](../../docs/deploy.md), «Доступ к репозиторию на сервере»), токен и ник бота от Артёма.
 
 ## 1. Деплой (#20), ~15 минут
 
@@ -9,15 +10,17 @@
 ```bash
 # на сервере, один раз
 docker network create meb-edge
-git clone https://github.com/cyxar4uk/max-effective-business.git /opt/max-effective-business
+# клон по SSH с deploy key — docs/deploy.md, «Доступ к репозиторию на сервере»
 cd /opt/max-effective-business && cp .env.example .env && chmod 600 .env
 #   MAX_BOT_TOKEN, POSTGRES_PASSWORD (openssl rand -hex 24), MAX_WEBHOOK_SECRET (openssl rand -hex 32),
-#   DOMAIN=<поддомен>, SEED_DEMO=true
+#   DOMAIN=<поддомен>, SEED_DEMO=true, SERVER_PORT — свободный (ss -ltn), тот же — в блоке прокси
 docker compose -f compose.yaml -f compose.proxy.yaml up -d --build
 ```
 
 Прокси Ильи: блок из `deploy/nginx.conf.example` (nginx на хосте), `deploy/nginx-docker.conf.example` (nginx в Docker,
-плюс `docker network connect meb-edge <контейнер>`) или `deploy/Caddyfile.snippet`.
+плюс `docker network connect meb-edge <контейнер>`) или `deploy/Caddyfile.snippet`. Применять только через проверку
+и reload (`nginx -t && nginx -s reload`, `caddy validate && caddy reload`), контейнер прокси не перезапускать. Для
+прокси в Docker: до и после `network connect` сверить `getent hosts <имя их бэкенда>` — адрес не должен смениться.
 
 ```bash
 node scripts/smoke.mjs https://<поддомен> --no-auth     # health и 401 без подписи
@@ -33,7 +36,7 @@ business.max.ru → «Чат-боты» → бот → ⋮ → «Настрой�
 В одном окне — логи сервера:
 
 ```bash
-docker compose -f compose.yaml -f compose.proxy.yaml logs -f server | grep --line-buffered -E 'initData|contactScheme|Уведомлен|webhook|"level":(40|50)'
+docker compose -f compose.yaml -f compose.proxy.yaml logs -f meb-server | grep --line-buffered -E 'initData|contactScheme|Уведомлен|webhook|"level":(40|50)'
 ```
 
 | Шаг | Что смотреть | Что записать в `docs/05_max_platform.md` |
