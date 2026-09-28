@@ -52,7 +52,7 @@ done
 rm -f "$envf"
 for s in scripts/*.sh; do bash -n "$s" && ok "bash -n $s" || fail "bash -n $s"; done
 [ -d apps/miniapp ] && ok "apps/miniapp есть" || warn "apps/miniapp нет — README и compose описывают мини-приложение"
-grep -qE '^\s+miniapp:' compose.yaml && ok "сервис miniapp в compose" || warn "сервиса miniapp в compose нет"
+grep -qE '^\s+meb-miniapp:' compose.yaml && ok "сервис meb-miniapp в compose" || warn "сервиса meb-miniapp в compose нет"
 
 step "Секреты во всей истории git, все ветки (gitleaks)"
 docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1 git /repo --no-banner --redact --log-opts="--all" >$logs/gitleaks.log 2>&1 \

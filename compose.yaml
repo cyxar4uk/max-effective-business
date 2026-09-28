@@ -54,7 +54,19 @@ services:
       - "${SERVER_PORT:-3000}:3000"
     restart: unless-stopped
 
-  # miniapp (Илья): статика за nginx, добавится вместе с apps/miniapp
+  # Мини-приложение (Илья): статика за nginx из apps/miniapp/Dockerfile. В проде /api/* и /bot/* до него
+  # не доходят — их забирает прокси (Caddy или nginx сервера). Имя уникальное — по той же причине, что у meb-server
+  meb-miniapp:
+    build: ./apps/miniapp
+    logging: *logging
+    ports:
+      - "${MINIAPP_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   db-data:

@@ -35,9 +35,10 @@ jobs:
       - name: Smoke
         env:
           MAX_BOT_TOKEN: ci-token
-        # Шаги идут под bash -e без pipefail: без проверки PIPESTATUS провал smoke съедает tee
+        # Без адреса — как у жюри: сервер на :3000, мини-приложение на :8080. Шаги идут под bash -e без pipefail:
+        # без проверки PIPESTATUS провал smoke съедает tee
         run: |
-          node scripts/smoke.mjs http://localhost:3000 | tee -a "$GITHUB_STEP_SUMMARY"; test "${PIPESTATUS[0]}" -eq 0
+          node scripts/smoke.mjs | tee -a "$GITHUB_STEP_SUMMARY"; test "${PIPESTATUS[0]}" -eq 0
 
       - name: Повторный запуск без потери данных
         run: |
@@ -81,8 +82,9 @@ jobs:
           body=$(curl -sk -w ' %{http_code}' -X POST https://localhost/bot/webhook -H 'Content-Type: application/json' -d '{}')
           echo "вебхук без секрета: $body"
           echo "$body" | grep -qE '"code":"(UNAUTHORIZED|NOT_FOUND)".* (401|404)$'
-          # Сервер и БД наружу не опубликованы
+          # Сервер, мини-приложение и БД наружу не опубликованы
           if curl -s --max-time 3 http://localhost:3000/api/health; then echo "сервер опубликован наружу"; exit 1; fi
+          if curl -s --max-time 3 -o /dev/null http://localhost:8080/; then echo "мини-приложение опубликовано наружу"; exit 1; fi
           if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then echo "БД опубликована наружу"; exit 1; fi
           # В журнале Caddy нет заголовков запросов (там initData)
           curl -sk -o /dev/null https://localhost/api/me -H 'X-Max-Init-Data: secret-marker-123'
@@ -104,7 +106,7 @@ jobs:
       - run: docker compose -f compose.yaml -f compose.prod.yaml down -v
         if: always()
 
-  # Вариант за чужим прокси: наш сервер на 127.0.0.1, перед ним nginx по примеру из deploy/nginx.conf.example
+  # Вариант за чужим прокси: сервер и мини-приложение на 127.0.0.1, перед ними nginx по примерам из deploy/
   behind-proxy:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -118,9 +120,10 @@ jobs:
         run: |
           docker network create meb-edge
           docker compose -f compose.yaml -f compose.proxy.yaml up -d --build --wait --wait-timeout 300
-      - name: Сервер только на 127.0.0.1
+      - name: Сервер и мини-приложение только на 127.0.0.1
         run: |
           docker compose -f compose.yaml -f compose.proxy.yaml ps meb-server --format '{{.Ports}}' | tee /dev/stderr | grep -q '127.0.0.1:3000->3000'
+          docker compose -f compose.yaml -f compose.proxy.yaml ps meb-miniapp --format '{{.Ports}}' | tee /dev/stderr | grep -q '127.0.0.1:8080->80'
           if docker compose -f compose.yaml -f compose.proxy.yaml ps --format '{{.Ports}}' | grep -qE '0\.0\.0\.0:|\[::\]:'; then echo "порт открыт наружу"; exit 1; fi
       - name: nginx из примера перед сервером
         env:
@@ -143,17 +146,21 @@ jobs:
           # БД в общей сети не видна; обычных имён сервисов там нет — иначе перехватим запросы соседей с такими же
           if docker exec nginx-docker getent hosts db; then echo "БД видна из сети прокси"; exit 1; fi
           if docker exec nginx-docker getent hosts server; then echo "имя server видно в общей сети"; exit 1; fi
+          if docker exec nginx-docker getent hosts miniapp; then echo "имя miniapp видно в общей сети"; exit 1; fi
           docker exec nginx-docker getent hosts meb-server
-      - name: nginx в контейнере переживает остановку нашего сервера
+          docker exec nginx-docker getent hosts meb-miniapp
+      - name: nginx в контейнере переживает остановку наших контейнеров
         run: |
-          docker compose -f compose.yaml -f compose.proxy.yaml stop meb-server
+          docker compose -f compose.yaml -f compose.proxy.yaml stop meb-server meb-miniapp
           docker restart nginx-docker
           sleep 2
           test "$(docker inspect -f '{{.State.Running}}' nginx-docker)" = true
           code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/health); echo "без сервера: $code"; test "$code" = 502
-          docker compose -f compose.yaml -f compose.proxy.yaml start meb-server
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/); echo "без мини-приложения: $code"; test "$code" = 502
+          docker compose -f compose.yaml -f compose.proxy.yaml start meb-server meb-miniapp
           sleep 5
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/health)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/)" = 200
       - name: Логи при ошибке
         if: failure()
         run: |

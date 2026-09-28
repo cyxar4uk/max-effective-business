@@ -1,13 +1,17 @@
-// Smoke-проверка поднятого стека: живость, отказ без подписи, вход с подписью MAX.
-//   node --env-file=.env scripts/smoke.mjs                # локально: токен и SERVER_PORT из .env (Node.js 20.6+)
-//   node scripts/smoke.mjs http://localhost:3000          # CI, токен — из MAX_BOT_TOKEN
-//   node scripts/smoke.mjs https://<домен> --no-auth      # прод: без создания тестового пользователя
+// Smoke-проверка поднятого стека: мини-приложение открывается, API живо, отказ без подписи, вход с подписью MAX.
+//   node --env-file=.env scripts/smoke.mjs                # локальный compose: токен и порты из .env (Node.js 20.6+)
+//   node scripts/smoke.mjs                                # то же, токен — из MAX_BOT_TOKEN, порты 3000 и 8080
+//   node scripts/smoke.mjs https://<домен> --no-auth      # прод: всё на одном домене, без тестового пользователя
+//   node scripts/smoke.mjs http://localhost:3000 --api-only   # только сервер, без мини-приложения
 // Без зависимостей.
 import { createHmac } from 'node:crypto';
 
 const url = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
+// Без адреса — локальный compose, где у сервера и мини-приложения свои порты. С адресом — прокси, всё на одном домене
 const base = (url ?? `http://localhost:${process.env.SERVER_PORT || 3000}`).replace(/\/$/, '');
+const appBase = url ? base : `http://localhost:${process.env.MINIAPP_PORT || 8080}`;
 const withAuth = !process.argv.includes('--no-auth');
+const withApp = !process.argv.includes('--api-only');
 let failed = 0;
 
 async function check(name, fn) {
@@ -36,6 +40,14 @@ function signedInitData(token, userId) {
   const secret = createHmac('sha256', 'WebAppData').update(token).digest();
   const hash = createHmac('sha256', secret).update(check).digest('hex');
   return new URLSearchParams({ ...fields, hash }).toString().replace(/\+/g, '%20');
+}
+
+if (withApp) {
+  await check(`GET ${appBase}/ → мини-приложение (HTML)`, async () => {
+    const res = await fetch(appBase + '/', { signal: AbortSignal.timeout(10_000) });
+    const type = res.headers.get('content-type') ?? '';
+    expect(res.status === 200 && type.includes('text/html'), `статус ${res.status}, ${type || 'без content-type'}`);
+  });
 }
 
 await check('GET /api/health → 200, БД доступна', async () => {

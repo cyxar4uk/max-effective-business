@@ -1,4 +1,4 @@
-# Прод поверх compose.yaml: HTTPS через Caddy, наружу открыты только 80 и 443.
+# Прод поверх compose.yaml: HTTPS через Caddy, наружу открыты только 80 и 443; сервер и мини-приложение — за ним.
 #   docker compose -f compose.yaml -f compose.prod.yaml up -d --build
 # Или scripts/deploy.sh. Переменные — в .env на сервере.
 
@@ -12,6 +12,9 @@ services:
       MAX_WEBHOOK_SECRET: ${MAX_WEBHOOK_SECRET:?Задайте MAX_WEBHOOK_SECRET в .env}
       SEED_DEMO: ${SEED_DEMO:-true}
 
+  meb-miniapp:
+    ports: !reset []
+
   caddy:
     image: caddy:2.11.4-alpine
     logging:
@@ -21,6 +24,8 @@ services:
         max-file: "3"
     depends_on:
       meb-server:
+        condition: service_healthy
+      meb-miniapp:
         condition: service_healthy
     environment:
       DOMAIN: ${DOMAIN}
