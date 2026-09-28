@@ -67,6 +67,11 @@ describe.skipIf(!url)('основной сценарий', () => {
     await ds?.destroy();
   });
 
+  it('профили до заполнения — 404', async () => {
+    expect((await as(EMPLOYER).get('/api/employer/profile')).status).toBe(404);
+    expect((await as(STUDENT).get('/api/student/profile')).status).toBe(404);
+  });
+
   it('без согласия профиль не сохраняется', async () => {
     const res = await as(EMPLOYER).put('/api/employer/profile', { companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга' });
     expect(res.status).toBe(403);
@@ -75,6 +80,7 @@ describe.skipIf(!url)('основной сценарий', () => {
   it('работодатель заполняет профиль и публикует стажировку', async () => {
     await as(EMPLOYER).post('/api/me/consent', { version: CONSENT_VERSION }).expect(200);
     await as(EMPLOYER).put('/api/employer/profile', { companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга' }).expect(200);
+    expect((await as(EMPLOYER).get('/api/employer/profile')).body).toEqual({ companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга', isDemo: false });
     expect((await as(EMPLOYER).get('/api/me')).body.roles).toEqual({ student: false, employer: true });
 
     const res = await as(EMPLOYER).post('/api/internships', {
@@ -165,6 +171,7 @@ describe.skipIf(!url)('основной сценарий', () => {
     const res = await as(STUDENT).put('/api/student/profile', { ...profile, skills: ['excel', 'power_bi', 'figma'], practiceMonth: '2026-11' });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ faculty: null, skills: ['excel', 'power_bi', 'figma'], practiceMonth: '2026-11' });
+    expect((await as(STUDENT).get('/api/student/profile')).body).toMatchObject({ university: 'РАНХиГС', practiceMonth: '2026-11' });
   });
 
   it('«Мои отклики» без откликов — пустой список', async () => {
