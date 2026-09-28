@@ -107,7 +107,7 @@ describe.skipIf(!url)('botData', () => {
   });
 
   it('отложить на тихие часы — без траты попытки', async () => {
-    await bot.enqueue({ userId: ids.student, kind: 'internship_match', dedupeKey: 'quiet', payload: {} });
+    await bot.enqueue({ userId: ids.student, kind: 'quiet_test', dedupeKey: 'quiet', payload: {} });
     const [n] = (await bot.claimDue(10)).filter((c) => c.dedupeKey === 'quiet');
     expect(n!.attempts).toBe(1);
     await bot.defer(n!.id, 'тихие часы', 3600);
@@ -116,16 +116,18 @@ describe.skipIf(!url)('botData', () => {
   });
 
   it('день рассылки для лимита бота — с 22:00 до 22:00 по Москве', async () => {
-    // 28.09 21:30, 28.09 22:30 и 29.09 08:00 по Москве; чужой вид и чужой пользователь не считаются
-    const add = (key: string, utc: string, kind = 'internship_match', userId = ids.student) =>
+    // 28.09 21:30, 28.09 22:30 и 29.09 08:00 по Москве; чужой вид и чужой пользователь не считаются.
+    // Свой вид уведомления: другие тесты создают уведомления в реальное время и не должны попадать в подсчёт
+    const KIND = 'dispatch_test';
+    const add = (key: string, utc: string, kind = KIND, userId = ids.student) =>
       ds.query(`INSERT INTO notifications (user_id, kind, dedupe_key, created_at) VALUES ($1, $2, $3, $4)`, [userId, kind, key, utc]);
     await add('d:1', '2026-09-28T18:30:00Z');
     await add('d:2', '2026-09-28T19:30:00Z');
     await add('d:3', '2026-09-29T05:00:00Z');
     await add('d:4', '2026-09-29T05:00:00Z', 'digest');
-    await add('d:5', '2026-09-29T05:00:00Z', 'internship_match', ids.other);
+    await add('d:5', '2026-09-29T05:00:00Z', KIND, ids.other);
 
-    const at = (utc: string) => bot.countInDispatchDay(ids.student, 'internship_match', new Date(utc));
+    const at = (utc: string) => bot.countInDispatchDay(ids.student, KIND, new Date(utc));
     expect(await at('2026-09-28T18:45:00Z')).toBe(1); // 21:45 МСК — день 28.09: только 21:30
     expect(await at('2026-09-28T19:45:00Z')).toBe(1); // 22:45 МСК — уже день 29.09: только 22:30
     expect(await at('2026-09-29T06:00:00Z')).toBe(2); // 09:00 МСК — день 29.09: 22:30 и 08:00
