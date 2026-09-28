@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { signDataCheckString } from './initData.js';
+import { parseAuthDate, signDataCheckString } from './initData.js';
 
 // Проверка номера из WebApp.requestContact() — https://dev.max.ru/docs/webapps/bridge (сверено 27.09.2026).
 // Клиент получает { phone, authDate, hash }. Документация: hash = HMAC_SHA256(authDate + phone + userId, botToken),
@@ -27,6 +27,14 @@ function sameHex(a: string, b: string): boolean {
   const x = Buffer.from(a, 'hex');
   const y = Buffer.from(b.toLowerCase(), 'hex');
   return x.length === 32 && x.length === y.length && timingSafeEqual(x, y);
+}
+
+// Подпись номера живёт столько же, сколько данные запуска: старый подписанный номер не принимаем
+export function contactFresh(c: Pick<ContactPayload, 'authDate'>, maxAgeSec: number, now = new Date()): boolean {
+  const at = parseAuthDate(c.authDate);
+  if (!at) return false;
+  const ageSec = (now.getTime() - at.getTime()) / 1000;
+  return ageSec <= maxAgeSec && ageSec >= -300;
 }
 
 export function verifyContact(c: ContactPayload, maxUserId: number, botToken: string): ContactScheme | null {

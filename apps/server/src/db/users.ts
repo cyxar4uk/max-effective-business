@@ -4,33 +4,34 @@ import { User } from './entities.js';
 
 export interface UsersRepo {
   upsertFromMax(maxUser: MaxUser): Promise<User>;
-  saveConsent(userId: number, version: string): Promise<User>;
+  // Фамилию берём из данных запуска в момент согласия: до него храним только id MAX и имя
+  saveConsent(userId: number, version: string, lastName?: string | null): Promise<User>;
 }
 
 export function createUsersRepo(ds: DataSource): UsersRepo {
   const repo = ds.getRepository(User);
   return {
-    // Имя и ник обновляются, если пользователь сменил их в MAX. Пишем в БД только при изменениях.
+    // До согласия на обработку ПД храним только id MAX и имя (для обращения). Фамилию — только после согласия;
+    // ник MAX не храним вовсе. Пишем в БД только при изменениях.
     async upsertFromMax(maxUser) {
-      const fields = {
-        firstName: maxUser.first_name ?? null,
-        lastName: maxUser.last_name ?? null,
-        username: maxUser.username ?? null,
-      };
+      const firstName = maxUser.first_name ?? null;
       const existing = await repo.findOneBy({ maxUserId: maxUser.id });
       if (existing) {
-        const changed = (Object.keys(fields) as (keyof typeof fields)[]).some((k) => existing[k] !== fields[k]);
-        if (!changed) return existing;
+        const fields: Partial<Pick<User, 'firstName' | 'lastName'>> = {};
+        if (existing.firstName !== firstName) fields.firstName = firstName;
+        const lastName = maxUser.last_name ?? null;
+        if (existing.consentAt && existing.lastName !== lastName) fields.lastName = lastName;
+        if (!Object.keys(fields).length) return existing;
         await repo.update({ id: existing.id }, fields);
         return Object.assign(existing, fields);
       }
       // Два первых запроса одного пользователя могут прийти одновременно
-      await repo.createQueryBuilder().insert().values({ maxUserId: maxUser.id, ...fields }).orIgnore().execute();
+      await repo.createQueryBuilder().insert().values({ maxUserId: maxUser.id, firstName }).orIgnore().execute();
       return repo.findOneByOrFail({ maxUserId: maxUser.id });
     },
 
-    async saveConsent(userId, version) {
-      await repo.update({ id: userId }, { consentAt: new Date(), consentVersion: version });
+    async saveConsent(userId, version, lastName) {
+      await repo.update({ id: userId }, { consentAt: new Date(), consentVersion: version, ...(lastName !== undefined ? { lastName } : {}) });
       return repo.findOneByOrFail({ id: userId });
     },
   };
