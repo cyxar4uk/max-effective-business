@@ -106,6 +106,15 @@ describe.skipIf(!url)('botData', () => {
     expect(await bot.claimDue(10)).toHaveLength(1);
   });
 
+  it('отложить на тихие часы — без траты попытки', async () => {
+    await bot.enqueue({ userId: ids.student, kind: 'internship_match', dedupeKey: 'quiet', payload: {} });
+    const [n] = (await bot.claimDue(10)).filter((c) => c.dedupeKey === 'quiet');
+    expect(n!.attempts).toBe(1);
+    await bot.defer(n!.id, 'тихие часы', 3600);
+    const [row] = await ds.query(`SELECT attempts, status, next_attempt_at > now() + interval '50 minutes' AS later FROM notifications WHERE id = $1`, [n!.id]);
+    expect(row).toEqual({ attempts: 0, status: 'pending', later: true });
+  });
+
   it('день рассылки для лимита бота — с 22:00 до 22:00 по Москве', async () => {
     // 28.09 21:30, 28.09 22:30 и 29.09 08:00 по Москве; чужой вид и чужой пользователь не считаются
     const add = (key: string, utc: string, kind = 'internship_match', userId = ids.student) =>

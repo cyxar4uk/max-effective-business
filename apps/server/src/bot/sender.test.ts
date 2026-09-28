@@ -23,6 +23,7 @@ function setup(rows: Row[], send: (userId: number, body: NewMessageBody) => Prom
       markSent: async (id) => void log.push(`sent ${id}`),
       markRetry: async (id, _e, delay) => void log.push(`retry ${id} ${delay}`),
       markFailed: async (id) => void log.push(`failed ${id}`),
+      defer: async (id, _r, delay) => void log.push(`defer ${id} ${delay}`),
     },
     api: {
       sendMessage: async (userId, body) => {
@@ -109,7 +110,8 @@ describe('тихие часы 22:00–9:00 по Москве', () => {
     const night = at('2026-09-28T20:00:00Z'); // 23:00 МСК
     const { sender, log, sentAt } = setup([row(1, 501, { kind: 'internship_match' }), row(2, 502, { kind: 'welcome' })], undefined, night);
     await sender.tick();
-    expect(log).toEqual([`retry 1 ${10 * 3600}`, 'sent 2']);
+    // отложено без траты попытки (defer), а не повтор после ошибки (retry)
+    expect(log).toEqual([`defer 1 ${10 * 3600}`, 'sent 2']);
     expect(sentAt.map((s) => s.userId)).toEqual([502]);
   });
 });

@@ -141,7 +141,16 @@ export function createBotData(ds: DataSource) {
       );
     },
 
-    // Окончательная ошибка (403 — пользователь остановил бота, исчерпаны попытки). Текст тоже очищаем.
+    // Отложить без траты попытки (тихие часы бота): claimDue уже увеличил attempts — возвращаем
+    async defer(id: number, reason: string, delaySec: number): Promise<void> {
+      await ds.query(
+        `UPDATE notifications SET last_error = $2, next_attempt_at = now() + make_interval(secs => $3),
+                                  attempts = greatest(attempts - 1, 0)
+         WHERE id = $1`,
+        [id, reason.slice(0, 1000), delaySec],
+      );
+    },
+
     // Сколько уведомлений вида kind у пользователя за день рассылки на момент at: с 22:00 до 22:00 по Москве
     // (лимит бота «3 новых места в день»: опубликованное после 22:00 уходит утром и считается в следующий день)
     async countInDispatchDay(userId: number, kind: string, at: Date = new Date()): Promise<number> {
@@ -155,6 +164,7 @@ export function createBotData(ds: DataSource) {
       return row?.n ?? 0;
     },
 
+    // Окончательная ошибка (403 — пользователь остановил бота, исчерпаны попытки). Текст тоже очищаем.
     async markFailed(id: number, error: string): Promise<void> {
       await ds.query(`UPDATE notifications SET status = 'failed', last_error = $2, payload = '{}' WHERE id = $1`, [id, error.slice(0, 1000)]);
     },

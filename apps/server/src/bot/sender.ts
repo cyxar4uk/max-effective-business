@@ -34,7 +34,7 @@ export function quietSecondsLeft(nowMs: number, quiet: { from: number; to: numbe
 export const retryDelaySec = (attempt: number) => Math.min(5 * 2 ** Math.max(0, attempt - 1), 300);
 
 export interface SenderDeps {
-  data: Pick<BotData, 'claimDue' | 'markSent' | 'markRetry' | 'markFailed'>;
+  data: Pick<BotData, 'claimDue' | 'markSent' | 'markRetry' | 'markFailed' | 'defer'>;
   api: Pick<MaxApi, 'sendMessage'>;
   botUsername(): Promise<string>;
   log: Logger;
@@ -70,7 +70,8 @@ export function createSender(deps: SenderDeps) {
       }
       const quietLeft = REPLY_KINDS.has(n.kind) ? 0 : quietSecondsLeft(now(), deps.quietHours === undefined ? QUIET_HOURS : deps.quietHours);
       if (quietLeft > 0) {
-        await deps.data.markRetry(n.id, 'тихие часы: отложено до 9:00', quietLeft);
+        // Не ошибка отправки: попытку не тратим
+        await deps.data.defer(n.id, 'тихие часы: отложено до 9:00', quietLeft);
         continue;
       }
       try {
