@@ -25,7 +25,14 @@ const messages = {
 export function requireMaxUser(opts: { botToken: string; maxAgeSec: number; users: UsersRepo }): RequestHandler {
   return async (req, _res, next) => {
     const result = validateInitData(req.get(INIT_DATA_HEADER), opts.botToken, { maxAgeSec: opts.maxAgeSec });
-    if (!result.ok) throw new ApiError('UNAUTHORIZED', messages[result.error]);
+    if (!result.ok) {
+      // Для диагностики — только код причины (и возраст для EXPIRED), самих данных запуска в логе нет.
+      // MISSING — обычный заход не из MAX, его не поднимаем до warn.
+      const level = result.error === 'MISSING' ? 'info' : 'warn';
+      req.log[level]({ initDataError: result.error, ...(result.ageSec !== undefined ? { initDataAgeSec: result.ageSec } : {}) }, 'initData отклонён');
+      throw new ApiError('UNAUTHORIZED', messages[result.error]);
+    }
+    if (result.data.spacesAsPlus) req.log.info({ initDataEncoding: 'plus' }, 'initData: пробелы закодированы как «+»');
     req.initData = result.data;
     req.user = await opts.users.upsertFromMax(result.data.user);
     next();
