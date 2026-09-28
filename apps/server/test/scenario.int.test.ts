@@ -13,6 +13,8 @@ import { buildInitData } from '../src/auth/initData.js';
 import { loadConfig } from '../src/config.js';
 import { createDataSource } from '../src/db/dataSource.js';
 import { createRepos } from '../src/db/repos.js';
+import { loadTaskTags } from '../src/db/taskTags.js';
+import { TASK_TAGS } from '../src/seed/index.js';
 import { EventBus, type AppEvents } from '../src/events.js';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -324,5 +326,16 @@ describe.skipIf(!url)('основной сценарий', () => {
        VALUES ('Импорт', 'Из импорта', '{excel}', 'remote', 'trudvsem', 'x-1') RETURNING type, paid, salary, tags`,
     );
     expect(row).toEqual({ type: 'internship', paid: null, salary: null, tags: [] });
+  });
+
+  it('справочник тегов из сида грузится в порядке TASK_TAGS, повторная загрузка без дублей', async () => {
+    expect(await loadTaskTags(ds, TASK_TAGS)).toBe(TASK_TAGS.length);
+    await loadTaskTags(ds, TASK_TAGS);
+    const res = await as(STUDENT).get('/api/tags');
+    const fromSeed = TASK_TAGS.map((t) => ({ code: t.code, name: t.name, skills: t.skills }));
+    // Теги из сида идут первыми и в своём порядке; тестовые из beforeAll с кодами вне сида — после
+    expect(res.body.items.slice(0, TASK_TAGS.length)).toEqual(fromSeed);
+    const [{ n }] = await ds.query('SELECT count(*) AS n FROM task_tags WHERE code = ANY($1)', [TASK_TAGS.map((t) => t.code)]);
+    expect(n).toBe(TASK_TAGS.length);
   });
 });
