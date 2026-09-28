@@ -59,7 +59,7 @@ export function signDataCheckString(checkString: string, botToken: string): stri
 }
 
 // auth_date в секундах; на случай миллисекунд различаем по порядку величины
-function parseAuthDate(value: string | undefined): Date | null {
+export function parseAuthDate(value: string | undefined): Date | null {
   if (!value || !/^\d+$/.test(value)) return null;
   const n = Number(value);
   return new Date(n > 1e12 ? n : n * 1000);

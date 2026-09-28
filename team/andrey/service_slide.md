@@ -18,7 +18,8 @@
 
 **Тестовые логины:** не нужны — вход через аккаунт MAX проверяющего.
 
-**Запуск у себя:** `cp .env.example .env` → `MAX_BOT_TOKEN`, `POSTGRES_PASSWORD` → `docker compose up --build`
-(с нуля ~30 с, замер в CI). Для проверки через MAX нужен токен бота — у команды.
+**Запуск у себя:** `cp .env.example .env` → `MAX_BOT_TOKEN=local-check` (любая непустая строка), `POSTGRES_PASSWORD` —
+любой → `docker compose up --build` (с нуля ~30 с, замер в CI). API и тестовые данные работают; бот локально на
+`/start` не отвечает — для проверки в MAX используйте нашего развёрнутого бота по ссылке выше, токен не нужен.
 
 **Внешние сервисы:** MAX Bot API и MAX Bridge (в Docker не поднимаются).

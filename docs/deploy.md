@@ -8,6 +8,11 @@ MAX ──HTTPS:443──> Caddy ─┬─ /api/*, /bot/* ──> server:3000 �
                           └─ всё остальное ───> miniapp:80
 ```
 
+**Сейчас контейнера `miniapp` нет:** `apps/miniapp` ещё не в репозитории (см. `compose.yaml`). Пока он не подключён,
+на `/` свой Caddy отвечает 502, nginx из примера для Docker — 503, а примеры для прокси на хосте — ошибкой
+соединения с `127.0.0.1:8080`. API и вебхук при этом работают. URL мини-приложения в настройках бота прописываем
+после подключения `miniapp`.
+
 Почему так:
 - MAX принимает вебхук только по HTTPS на **порту 443** с сертификатом доверенного УЦ (самоподписанный не подходит)
   и только с `https://`-адресом мини-приложения ([подписки](https://dev.max.ru/docs-api/methods/POST/subscriptions)).
@@ -38,7 +43,7 @@ chmod 600 .env
 
 # 4. Запуск
 docker compose -f compose.yaml -f compose.prod.yaml up -d --build
-curl -s https://$DOMAIN/api/health     # {"status":"ok","db":"ok"}
+curl -s https://<DOMAIN>/api/health     # {"status":"ok","db":"ok"}
 ```
 
 ## Если на сервере уже есть nginx или Caddy
@@ -58,9 +63,13 @@ curl -s https://$DOMAIN/api/health     # {"status":"ok","db":"ok"}
 
    | Прокси | Как ходит к серверу | Пример |
    |---|---|---|
-   | nginx на хосте | `127.0.0.1:3000` | [deploy/nginx.conf.example](../deploy/nginx.conf.example), сертификат — `certbot --nginx -d <поддомен>` |
+   | nginx на хосте | `127.0.0.1:$SERVER_PORT` | [deploy/nginx.conf.example](../deploy/nginx.conf.example), сертификат — `certbot --nginx -d <поддомен>` |
    | nginx в контейнере | подключить контейнер к `meb-edge`, `meb-server:3000` | [deploy/nginx-docker.conf.example](../deploy/nginx-docker.conf.example) |
-   | Caddy (хост или контейнер) | `127.0.0.1:3000` или `meb-server:3000` | [deploy/Caddyfile.snippet](../deploy/Caddyfile.snippet), сертификат выпустит сам |
+   | Caddy (хост или контейнер) | `127.0.0.1:$SERVER_PORT` или `meb-server:3000` | [deploy/Caddyfile.snippet](../deploy/Caddyfile.snippet), сертификат выпустит сам |
+
+   В примерах для прокси на хосте стоит `127.0.0.1:3000` — поменять на свой `SERVER_PORT`; внутри сети `meb-edge`
+   порт всегда 3000 (`meb-server:3000`). Мини-приложение в примерах — `127.0.0.1:8080` (хост) или заглушка 503
+   (nginx в Docker); адрес уточним, когда появится его контейнер.
 
    Подключить контейнер прокси к сети: `docker network connect meb-edge <контейнер>`. Если прокси поднимается
    через compose соседнего проекта — лучше прописать сеть там (`networks: [default, meb-edge]` у сервиса и
@@ -82,7 +91,7 @@ curl -s https://$DOMAIN/api/health     # {"status":"ok","db":"ok"}
    После подписки long polling с этим токеном перестаёт работать (одна среда на один токен).
 2. **URL мини-приложения:** business.max.ru → «Чат-боты» → бот → ⋮ → «Настройки» → `https://<DOMAIN>`.
 
-Проверка после запуска: `node scripts/smoke.mjs https://$DOMAIN --no-auth`.
+Проверка после запуска: `node scripts/smoke.mjs https://<DOMAIN> --no-auth`.
 
 ## Выкатить новую версию
 

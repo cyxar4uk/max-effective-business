@@ -3,8 +3,8 @@
 Внутренний API мини-приложения (публичный API не заявляем, см. `decisions.md`). Владелец — Андрей,
 потребитель — Илья. **После согласования меняется только через PR**, в котором Илья стоит ревьюером.
 
-Статус: черновик от 27.09, ждёт согласования с Ильёй (экраны) и Тимуром (формат `match`). Все эндпоинты реализованы
-и покрыты сквозным тестом `apps/server/test/scenario.int.test.ts`.
+Статус на 28.09: все эндпоинты реализованы; сквозной тест `apps/server/test/scenario.int.test.ts` проходит каждый,
+кроме `/api/health` — он в `src/app.test.ts`.
 Колонка «Готово» — что уже реализовано в `apps/server`.
 
 ## Общее
@@ -21,13 +21,16 @@
 
   | `code` | HTTP | Когда |
   |---|---|---|
-  | `VALIDATION_ERROR` | 400 | неверное тело или параметры; `fields` — ошибки по полям (путь через точку) |
+  | `VALIDATION_ERROR` | 400 | неверное тело или параметры, тело — не JSON; `fields` — ошибки по полям (путь через точку); ошибка параметра адреса (`:id`) — под ключом `_` |
+  | `VALIDATION_ERROR` | 413 | тело больше 100 КБ |
+  | `VALIDATION_ERROR` | 400, 415 | прочие ошибки разбора запроса: неизвестная кодировка тела, битое кодирование в адресе |
   | `UNAUTHORIZED` | 401 | нет `X-Max-Init-Data`, подпись не сошлась, данные устарели |
   | `FORBIDDEN` | 403 | нет прав (чужая стажировка, нет профиля нужной роли, нет согласия) |
   | `NOT_FOUND` | 404 | нет такого объекта или адреса |
-  | `CONFLICT` | 409 | недопустимый переход статуса отклика |
+  | `CONFLICT` | 409 | недопустимый переход статуса отклика; у работодателя уже 20 открытых мест |
   | `RATE_LIMITED` | 429 | больше `RATE_LIMIT_PER_MIN` запросов в минуту с одного IP |
   | `INTERNAL` | 500 | ошибка сервера; текст безопасно показывать пользователю |
+  | `INTERNAL` | 503 | БД временно недоступна — повторить позже |
 
   `message` написан для пользователя, его можно выводить в интерфейсе как есть.
 - Даты — ISO 8601 (`2026-09-27T10:00:00.000Z`), даты без времени — `YYYY-MM-DD`.
@@ -104,7 +107,8 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 { "phone": "+79990000000", "authDate": "1790500000", "hash": "…64 hex…" }
 ```
 
-Сервер проверяет `hash` по документации MAX (`authDate`, `phone` без `+` и `userId` из `initData`, подпись токеном
+`authDate` — цифры; подпись номера действует столько же, сколько данные запуска (`INIT_DATA_MAX_AGE_SEC`, сутки),
+старше — 400 «Подтверждение номера устарело». Сервер проверяет `hash` по документации MAX (`authDate`, `phone` без `+` и `userId` из `initData`, подпись токеном
 бота) и сохраняет номер, только если подпись сошлась, иначе 400. Ответ — как `GET /api/me`.
 Если пользователь отказался (`client.request_phone.user_refused_provide_phone_number`), клиент просто не вызывает метод.
 
@@ -113,7 +117,7 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 ### `GET /api/skills`
 
 ```json
-{ "groups": [ { "name": "Аналитика", "skills": [ { "code": "excel", "name": "Excel" }, { "code": "sql", "name": "SQL" } ] } ] }
+{ "groups": [ { "name": "Аналитика и данные", "skills": [ { "code": "excel", "name": "Excel" }, { "code": "sql", "name": "SQL" } ] } ] }
 ```
 
 Группы и навыки внутри групп — в порядке, заданном в справочнике (поле `sort`), а не по алфавиту.
@@ -125,12 +129,12 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 навыки тегов — коды из `/api/skills`.
 
 ```json
-{ "items": [ { "code": "marketplaces", "name": "Маркетплейсы", "skills": ["wildberries", "ozon", "marketplace_cards"] } ] }
+{ "items": [ { "code": "marketplaces", "name": "Маркетплейсы", "skills": ["marketplace_cards", "wildberries", "ozon", "product_photo", "unit_economics"] } ] }
 ```
 
 ### Анкета студента `GET · PUT /api/student/profile`
 
-Требует согласия на обработку ПД (иначе 403). `GET` без анкеты — 404.
+`PUT` требует согласия на обработку ПД (иначе 403). `GET` без анкеты — 404.
 
 ```json
 {
@@ -151,12 +155,23 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 `practiceMonth` — необязательное, `ГГГГ-ММ` (месяц практики; на карточке показываем, но ленту по нему не фильтруем);
 пустая строка или `null` — не указан.
 
+### Профиль компании `GET · PUT /api/employer/profile`
+
+`PUT` требует согласия на обработку ПД (иначе 403). `GET` без профиля — 404.
+
+```json
+{ "companyName": "ООО «Вектор»", "city": "Москва", "contactName": "Ольга", "isDemo": false }
+```
+
+Все три поля обязательные и непустые: `companyName` и `contactName` — до 200 символов, `city` — до 100.
+`contactName` студент видит в `employerContact.name` после приглашения.
+
 ### Совпадение `match`
 
 Считает модуль `matching` (Тимур). Везде, где стажировка показывается студенту или кандидат работодателю:
 
 ```json
-{ "score": 78, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": ["power_bi"], "niceMissing": [] }
+{ "score": 65, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": ["power_bi"], "niceMissing": [] }
 ```
 
 Коды навыков; названия клиент берёт из `/api/skills`.
@@ -187,7 +202,7 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
   "sourceUrl": null,
   "isDemo": false,
   "createdAt": "2026-09-27T10:00:00.000Z",
-  "match": { "score": 78, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": ["power_bi"], "niceMissing": [] },
+  "match": { "score": 65, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": ["power_bi"], "niceMissing": [] },
   "myInterest": null
 }
 ```
@@ -215,7 +230,7 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 | `GET /api/student/feed` | `match`, `myInterest: null` |
 | `GET /api/student/interests` | место без дополнительных ключей — внутри `internship` |
 
-`POST /api/internships` — публикация. Требует профиль компании (иначе 403). **Обязательные поля** (decisions.md,
+`POST /api/internships` — публикация, ответ `201` с местом. Требует профиль компании (иначе 403). **Обязательные поля** (decisions.md,
 27.09): `type`, `title`, `requiredSkills` (хотя бы один), `format`, `city` (кроме `remote`), `startsOn`, `endsOn`,
 `paid`, `slots` (1…100). По желанию — `description`, `niceSkills`, `tags`, `salary`: их можно не передавать или
 передать `null`.
@@ -227,6 +242,8 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 обязательность, лимиты), затем правила между полями (город для `office`/`hybrid`; `endsOn` не раньше `startsOn`;
 навык не может быть одновременно обязательным и желательным; `salary` только при `paid: true`), затем справочники
 (навыки и теги). Поэтому правила между полями лучше проверять и в форме.
+
+**Не больше 20 открытых мест у работодателя:** 21-е (и переоткрытие закрытого сверх лимита) — `409`.
 
 `PATCH /api/internships/:id` — те же поля частично плюс `status: "open" | "closed"`. При `paid: false` сумма
 сбрасывается в `null`, даже если форма прислала её вместе с `paid`. Ошибка по датам приходит в том поле, которое
@@ -278,9 +295,10 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
     {
       "studentId": 12,
       "firstName": "Анна",
+      "lastName": null,
       "university": "РАНХиГС", "course": 3, "direction": "Бизнес-информатика", "city": "Москва",
       "status": "interested",
-      "match": { "score": 78, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": [], "niceMissing": [] },
+      "match": { "score": 50, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": [], "niceMissing": [] },
       "phone": null,
       "isDemo": true
     }
@@ -288,22 +306,25 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 }
 ```
 
-**`phone` заполнен только в статусе `invited`**, в остальных — `null`. Фамилия не отдаётся до приглашения.
+**`lastName` и `phone` заполнены только в статусе `invited`**, в остальных — `null`.
 
 ### Приглашение и отказ
 
 `POST …/candidates/:studentId/invite` и `…/decline`, без тела. Ответ — кандидат в формате списка.
 Допустимо только из `interested`; повтор того же действия — 200 без повторного события; `invited ↔ declined` — 409.
-После `invite` публикуется `interest.invited`: бот пишет обоим контакты и чек-лист.
+Студент не откликался или нажал «Пропустить» — 404.
+После `invite` публикуется `interest.invited`: бот пишет студенту контакт работодателя и чек-лист следующих шагов,
+работодателю — имя и телефон студента.
 
-## Внутренние события (для модуля `bot`)
+## Внутренние события
 
-Публикуются после успешной записи в БД, в событии только идентификаторы. Типы — `apps/server/src/events.ts`.
+Публикуются после успешной записи в БД, в событии только идентификаторы (числа). Типы — `apps/server/src/events.ts`.
 
-| Событие | Когда | Данные |
-|---|---|---|
-| `internship.created` | работодатель опубликовал стажировку | `{ internshipId }` |
-| `interest.created` | студент нажал «Интересно» или «Пропустить» (первый раз или смена статуса) | `{ interestId, internshipId, studentUserId, status }` |
-| `interest.invited` | работодатель пригласил студента | `{ interestId, internshipId, studentUserId }` |
+| Событие | Когда | Данные | Кто слушает |
+|---|---|---|---|
+| `internship.created` | работодатель опубликовал место | `{ internshipId }` | `bot` — уведомления студентам; при `SEED_DEMO=true` ещё `seed/demo/responder` — демо-отклики |
+| `interest.created` | студент нажал «Интересно» или «Пропустить» (первый раз или смена статуса) | `{ interestId, internshipId, studentUserId, status }` | `bot` — уведомление работодателю |
+| `interest.invited` | работодатель пригласил студента | `{ interestId, internshipId, studentUserId }` | `bot` — контакты обоим |
 
-Ошибка в обработчике события логируется и не влияет на ответ пользователю.
+Ошибка в обработчике события логируется и не влияет на ответ пользователю. Демо-отклики событий не публикуют:
+работодатель-проверяющий не получает о них уведомлений, кандидаты просто появляются в списке.
