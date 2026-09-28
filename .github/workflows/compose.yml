@@ -86,6 +86,14 @@ jobs:
           curl -sk -o /dev/null https://localhost/api/me -H 'X-Max-Init-Data: secret-marker-123'
           sleep 1
           if docker compose -f compose.yaml -f compose.prod.yaml logs caddy | grep -q secret-marker-123; then echo "заголовки в журнале Caddy"; exit 1; fi
+          # Журнал ошибок Caddy (сервер недоступен, как при выкатке) — тоже без заголовков
+          docker compose -f compose.yaml -f compose.prod.yaml stop server
+          curl -sk -o /dev/null https://localhost/api/me -H 'X-Max-Init-Data: secret-marker-down'
+          curl -sk -o /dev/null -X POST https://localhost/bot/webhook -H 'X-Max-Bot-Api-Secret: secret-marker-down'
+          sleep 1
+          docker compose -f compose.yaml -f compose.prod.yaml logs caddy | grep -q 'http.log.error' || { echo "ошибки прокси не залогированы — проверка не сработала"; exit 1; }
+          if docker compose -f compose.yaml -f compose.prod.yaml logs caddy | grep -q secret-marker-down; then echo "заголовки в журнале ошибок Caddy"; exit 1; fi
+          docker compose -f compose.yaml -f compose.prod.yaml start server
 
       - name: Логи при ошибке
         if: failure()
