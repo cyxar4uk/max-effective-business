@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { skillRows } from '../seed/skills.js';
 import { importTrudvsem } from './index.js';
 import { mapSkills, SKILL_MAP_CODES } from './skillMap.js';
-import { cityOf, fetchVacancies, mapVacancy, pickFields, type TrudvsemVacancy } from './trudvsem.js';
+import { cityOf, fetchAll, fetchPilotVacancies, formatOf, mapVacancy, pickFields, safeSourceUrl, stripContacts, type TrudvsemVacancy } from './trudvsem.js';
 import { TRUDVSEM_SNAPSHOT } from './trudvsemSnapshot.js';
 
 const vacancy = (over: Partial<TrudvsemVacancy> = {}): TrudvsemVacancy => ({
@@ -35,9 +35,9 @@ describe('mapSkills', () => {
     expect(mapSkills(['Работа в команде, ответственность, пунктуальность'])).toEqual([]);
   });
 
-  it('узнаёт Яндекс Директ, Метрику, 1С, SQL', () => {
-    expect(mapSkills(['Яндекс Директ, Яндекс.Метрика, 1С: Бухгалтерия, SQL'])).toEqual(
-      expect.arrayContaining(['context_ads', 'web_analytics', '1c_accounting', 'sql']),
+  it('узнаёт Яндекс Директ, Метрику, 1С: Торговлю, маркетплейсы, SQL', () => {
+    expect(mapSkills(['Яндекс Директ, Яндекс.Метрика, 1С: Управление торговлей, Wildberries, SQL'])).toEqual(
+      expect.arrayContaining(['context_ads', 'web_analytics', '1c_trade', 'wildberries', 'sql']),
     );
   });
 
@@ -46,20 +46,14 @@ describe('mapSkills', () => {
     expect(mapSkills(['Английский язык'])).toEqual(['english_b1']);
   });
 
-  it('возвращает только коды, которые есть в справочнике', () => {
+  it('все коды словаря есть в справочнике', () => {
     const codes = new Set(skillRows().map((r) => r.code));
-    const all = mapSkills(['Excel, SQL, Wildberries, Ozon, маркетплейсы, 1С: Зарплата, Canva, WordPress, рассылки, бухгалтер']);
-    expect(all.length).toBeGreaterThan(0);
-    for (const c of all) expect(codes.has(c), c).toBe(true);
-  });
-
-  it('коды словаря записаны в формате справочника', () => {
-    for (const c of SKILL_MAP_CODES) expect(c).toMatch(/^[a-z0-9_]+$/);
+    for (const c of SKILL_MAP_CODES) expect(codes.has(c), c).toBe(true);
   });
 });
 
 describe('mapVacancy', () => {
-  it('вакансия → место: источник, ссылка, навыки, город, без контактов', () => {
+  it('вакансия → место: источник, ссылка, навыки, город', () => {
     const p = mapVacancy(vacancy())!;
     expect(p).toMatchObject({
       sourceId: 'v1',
@@ -75,20 +69,43 @@ describe('mapVacancy', () => {
     expect(p.description).toContain('Источник — «Работа России»');
   });
 
-  it('не берём: нужен опыт, не студенческое место, ни одного навыка из справочника', () => {
+  it('не берём: нужен опыт, не студенческое место, риелтор, ни одного навыка из справочника', () => {
     expect(mapVacancy(vacancy({ requirement: { experience: 3 } }))).toBeNull();
-    expect(mapVacancy(vacancy({ 'job-name': 'Риелтор по недвижимости' }))).toBeNull();
+    expect(mapVacancy(vacancy({ 'job-name': 'Менеджер по продажам' }))).toBeNull();
+    expect(mapVacancy(vacancy({ 'job-name': 'Риэлтор по недвижимости / стажер с обучением', duty: 'Продажи, переговоры' }))).toBeNull();
     expect(mapVacancy(vacancy({ 'job-name': 'Стажер', duty: 'Разные поручения', skills: [], requirements: '' }))).toBeNull();
   });
 
-  it('удалённая работа — формат remote и без города', () => {
-    expect(mapVacancy(vacancy({ schedule: 'Удаленная работа' }))).toMatchObject({ format: 'remote', city: null });
+  it('удалёнка — из employment или schedule: формат remote, без города', () => {
+    expect(formatOf(vacancy({ employment: 'Дистанционная (удаленная) работа' }))).toBe('remote');
+    expect(formatOf(vacancy({ schedule: 'Удалённая работа' }))).toBe('remote');
+    expect(formatOf(vacancy({ employment: 'Стажировка' }))).toBe('office');
+    expect(mapVacancy(vacancy({ employment: 'Дистанционная (удаленная) работа' }))).toMatchObject({ format: 'remote', city: null });
   });
 
-  it('город: из адреса, иначе по региону пилота', () => {
+  it('город: из адреса; по региону — только для городов федерального значения', () => {
     expect(cityOf(vacancy({ addresses: { address: [{ location: 'Республика Татарстан, г Казань, ул. Баумана' }] } }))).toBe('Казань');
-    expect(cityOf(vacancy({ addresses: { address: [] }, region: { region_code: '1600000000000', name: 'Республика Татарстан' } }))).toBe('Казань');
-    expect(cityOf(vacancy({ addresses: { address: [] }, region: { region_code: '7700000000000', name: 'Город Москва' } }))).toBe('Москва');
+    expect(cityOf(vacancy({ addresses: { address: [{ location: 'г. Казань, ул. Пушкина' }] } }))).toBe('Казань');
+    expect(cityOf(vacancy({ addresses: { address: [] }, region: { region_code: '7700000000000' } }))).toBe('Москва');
+    // Алабуга, Елабужский район: в адресе нет города — это не Казань
+    const alabuga = vacancy({ addresses: { address: [{ location: 'Республика Татарстан, Елабужский р-н, тер ОЭЗ Алабуга' }] }, region: { region_code: '1600000000000' } });
+    expect(cityOf(alabuga)).toBeNull();
+    expect(mapVacancy(alabuga)).toBeNull();
+  });
+
+  it('телефоны и почта из обязанностей и требований не попадают в описание', () => {
+    expect(stripContacts('Звоните +7 (495) 937-47-47 или 8 912 345 67 89, пишите hr@example.ru')).toBe(
+      'Звоните [контакт скрыт] или [контакт скрыт], пишите [контакт скрыт]',
+    );
+    const p = mapVacancy(vacancy({ duty: 'Первичная документация. Вопросы: +7 (495) 000-00-00, hr@firm.ru' }))!;
+    expect(p.description).not.toMatch(/000-00-00|hr@firm\.ru/);
+  });
+
+  it('ссылка на оригинал — только trudvsem.ru, по https', () => {
+    expect(safeSourceUrl('http://trudvsem.ru/vacancy/card/1/2')).toBe('https://trudvsem.ru/vacancy/card/1/2');
+    expect(safeSourceUrl('https://evil.example/trudvsem.ru')).toBeNull();
+    expect(safeSourceUrl('javascript:alert(1)')).toBeNull();
+    expect(safeSourceUrl(undefined)).toBeNull();
   });
 
   it('pickFields убирает контакты отдела кадров', () => {
@@ -108,49 +125,66 @@ describe('снимок', () => {
   });
 });
 
-// Фальшивый API: отвечает вакансией по коду региона и запросу или падает
-function fakeFetch(fail: (url: string) => boolean) {
+// Фальшивый API: по региону и запросу отдаёт `perQuery` вакансий страницами; fail(url) — сбой запроса
+function fakeFetch(fail: (url: string) => boolean, perQuery = 1, limit = 50) {
   const calls: string[] = [];
   const fn = (async (url: string) => {
     calls.push(url);
     if (fail(url)) throw new Error('timeout');
-    const id = `${/region\/(\d+)/.exec(url)![1]}-${decodeURIComponent(/text=([^&]+)/.exec(url)![1]!)}`;
-    return new Response(JSON.stringify({ status: '200', results: { vacancies: [{ vacancy: vacancy({ id }) }] } }), { status: 200 });
+    const region = /region\/(\d+)/.exec(url)![1];
+    const q = decodeURIComponent(/text=([^&]+)/.exec(url)![1]!);
+    const page = Number(/offset=(\d+)/.exec(url)![1]);
+    const ids = Array.from({ length: perQuery }, (_, i) => `${region}-${q}-${i}`).slice(page * limit, (page + 1) * limit);
+    return new Response(JSON.stringify({ status: '200', meta: { total: perQuery, limit }, results: { vacancies: ids.map((id) => ({ vacancy: vacancy({ id }) })) } }), { status: 200 });
   }) as unknown as typeof fetch;
   return { fn, calls };
 }
 
-function fakeDb() {
+describe('получение страниц', () => {
+  it('https, регион, запрос, offset — номер страницы; листает до meta.total', async () => {
+    const f = fakeFetch(() => false, 59);
+    const r = await fetchAll('7700000000000', 'стажер', { fetch: f.fn });
+    expect(r).toMatchObject({ complete: true });
+    expect(r.vacancies).toHaveLength(59);
+    expect(f.calls).toEqual([
+      `https://opendata.trudvsem.ru/api/v1/vacancies/region/7700000000000?text=${encodeURIComponent('стажер')}&offset=0&limit=50`,
+      `https://opendata.trudvsem.ru/api/v1/vacancies/region/7700000000000?text=${encodeURIComponent('стажер')}&offset=1&limit=50`,
+    ]);
+  });
+
+  it('вторая страница не ответила — запрос неудачный, причина видна', async () => {
+    const r = await fetchPilotVacancies({ fetch: fakeFetch((u) => u.includes('7700000000000') && u.includes('offset=1'), 59).fn });
+    expect(r.failed).toBe(2);
+    expect(r.errors[0]).toMatch(/7700000000000.*timeout/);
+    expect(r.vacancies.length).toBeGreaterThan(0);
+  });
+});
+
+// Фальшивая БД: помнит SQL; trudvsemRows — сколько мест из «Работа России» уже есть
+function fakeDb(trudvsemRows = 0) {
   const sql: { text: string; params?: unknown[] }[] = [];
   return {
     sql,
     db: {
       query: async (text: string, params?: unknown[]) => {
         sql.push({ text, params });
+        if (text.includes('count(*)')) return [{ n: trudvsemRows }];
         return text.includes('RETURNING id') ? [[{ id: 1 }], 1] : [];
       },
     },
   };
 }
 
-describe('fetchVacancies', () => {
-  it('регион, запрос и 50 на страницу', async () => {
-    const f = fakeFetch(() => false);
-    await fetchVacancies('7700000000000', 'стажер', { fetch: f.fn });
-    expect(f.calls[0]).toBe(`http://opendata.trudvsem.ru/api/v1/vacancies/region/7700000000000?text=${encodeURIComponent('стажер')}&offset=0&limit=50`);
-  });
-});
+const inserts = (sql: { text: string }[]) => sql.filter((q) => q.text.includes('INSERT INTO internships'));
 
 describe('importTrudvsem', () => {
   it('API ответил полностью — записываем места и закрываем пропавшие', async () => {
     const { db, sql } = fakeDb();
     const r = await importTrudvsem(db, { fetch: fakeFetch(() => false).fn });
     expect(r).toMatchObject({ from: 'api', vacancies: 4, imported: 4, closed: 1 });
-    expect(sql.filter((q) => q.text.includes('INSERT INTO internships'))).toHaveLength(4);
+    expect(inserts(sql)).toHaveLength(4);
+    expect(inserts(sql)[0]!.text).toContain('DO UPDATE');
     expect(sql.some((q) => q.text.includes("SET status = 'closed'"))).toBe(true);
-    const insert = sql.find((q) => q.text.includes('INSERT INTO internships'))!;
-    expect(insert.text).toContain("'trudvsem'");
-    expect(insert.text).toContain('ON CONFLICT (source, source_id)');
   });
 
   it('часть запросов не ответила — берём пришедшее, но ничего не закрываем', async () => {
@@ -160,10 +194,19 @@ describe('importTrudvsem', () => {
     expect(sql.some((q) => q.text.includes("SET status = 'closed'"))).toBe(false);
   });
 
-  it('API недоступен — берём снимок, сценарий не ломается', async () => {
-    const { db, sql } = fakeDb();
-    const r = await importTrudvsem(db, { fetch: fakeFetch(() => true).fn, snapshot: [vacancy({ id: 's1' }), vacancy({ id: 's2', 'job-name': 'Риелтор' })] });
+  it('API недоступен и база пуста — заполняем из снимка, существующее не трогаем', async () => {
+    const { db, sql } = fakeDb(0);
+    const r = await importTrudvsem(db, { fetch: fakeFetch(() => true).fn, snapshot: [vacancy({ id: 's1' }), vacancy({ id: 's2', 'job-name': 'Менеджер' })] });
     expect(r).toMatchObject({ from: 'snapshot', vacancies: 2, imported: 1, skipped: 1, closed: 0 });
-    expect(sql.filter((q) => q.text.includes('INSERT INTO internships'))).toHaveLength(1);
+    expect(inserts(sql)).toHaveLength(1);
+    expect(inserts(sql)[0]!.text).toContain('DO NOTHING');
+  });
+
+  it('API недоступен, а места уже есть — снимок не открывает закрытое и ничего не пишет', async () => {
+    const { db, sql } = fakeDb(15);
+    const r = await importTrudvsem(db, { fetch: fakeFetch(() => true).fn, snapshot: [vacancy({ id: 's1' })] });
+    expect(r).toMatchObject({ from: 'none', imported: 0, closed: 0 });
+    expect(inserts(sql)).toHaveLength(0);
+    expect(sql.some((q) => q.text.includes('UPDATE internships'))).toBe(false);
   });
 });

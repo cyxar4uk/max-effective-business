@@ -1,17 +1,22 @@
-// Открытый API вакансий «Работа России» (opendata.trudvsem.ru). Сверено по живому ответу 28.09.2026:
-//   GET http://opendata.trudvsem.ru/api/v1/vacancies/region/<код региона>?text=…&offset=…&limit=… (limit ≤ 100)
+// Открытый API вакансий «Работа России» (opendata.trudvsem.ru). Сверено по живым ответам 28.09.2026:
+//   GET https://opendata.trudvsem.ru/api/v1/vacancies/region/<код региона>?text=…&offset=<номер страницы>&limit=…
 //   → { status, meta: { total, limit }, results: { vacancies: [{ vacancy: {…} }] } }
-// API отвечает медленно (≈ 15 с на страницу), поэтому импорт идёт фоном, с таймаутом и сохранённым снимком.
-// Страницу из 100 вакансий Node не дожидался и за 90 с (curl получал за 12 с), страница из 50 — 14 с: берём 50.
+// offset — номер страницы, а не число пропущенных записей: offset=1&limit=50 отдаёт вакансии 51–100.
+// API медленный и нестабильный: страница — 12–15 с, иногда ответ обрывается на середине. Поэтому импорт идёт
+// фоном, с таймаутом на запрос и сохранённым снимком. Страницу из 100 Node не дожидался и за 90 с — берём по 50.
 import { mapSkills } from './skillMap.js';
 
-export const TRUDVSEM_API = 'http://opendata.trudvsem.ru/api/v1';
+export const TRUDVSEM_API = 'https://opendata.trudvsem.ru/api/v1';
 
 /** Регионы пилота: Москва (РАНХиГС) и Татарстан (финал в Казани). Коды — из ответа API (region.region_code). */
-export const PILOT_REGIONS = [
-  { code: '7700000000000', city: 'Москва' },
-  { code: '1600000000000', city: 'Казань' },
-] as const;
+export const PILOT_REGIONS = ['7700000000000', '1600000000000'] as const;
+
+/** Города федерального значения: для них регион и есть город, если в адресе города нет. */
+const FEDERAL_CITIES: Record<string, string> = {
+  '7700000000000': 'Москва',
+  '7800000000000': 'Санкт-Петербург',
+  '9200000000000': 'Севастополь',
+};
 
 /** Что ищем: места для студентов без опыта. */
 export const QUERIES = ['стажер', 'практикант'];
@@ -24,6 +29,7 @@ export interface TrudvsemVacancy {
   region?: { region_code?: string; name?: string };
   addresses?: { address?: { location?: string }[] };
   schedule?: string;
+  employment?: string;
   duty?: string;
   requirements?: string;
   skills?: string[];
@@ -57,8 +63,9 @@ export function pickFields(v: TrudvsemVacancy): TrudvsemVacancy {
     region: { region_code: v.region?.region_code, name: v.region?.name },
     addresses: { address: (v.addresses?.address ?? []).slice(0, 1).map((a) => ({ location: a.location })) },
     schedule: v.schedule,
-    duty: v.duty,
-    requirements: v.requirements,
+    employment: v.employment,
+    duty: stripContacts(v.duty),
+    requirements: stripContacts(v.requirements),
     skills: v.skills,
     salary_min: v.salary_min,
     salary_max: v.salary_max,
@@ -69,60 +76,91 @@ export function pickFields(v: TrudvsemVacancy): TrudvsemVacancy {
   };
 }
 
-/** Город: из адреса («г Казань, …»), иначе по региону пилота, иначе название региона без «Город». */
+const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
+// +7 (495) 123-45-67, 8 912 345 67 89, 89123456789 — от 10 цифр с разделителями
+const PHONE = /(\+7|\b8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}\b/g;
+
+/** Телефоны и почта из свободного текста обязанностей и требований — не храним. */
+export function stripContacts(text: string | undefined): string | undefined {
+  return text?.replace(EMAIL, '[контакт скрыт]').replace(PHONE, '[контакт скрыт]');
+}
+
+/**
+ * Город: из адреса («г Казань, …» или «г. Казань»); если в адресе города нет — только для городов федерального
+ * значения. Иначе null: место в районе («Елабужский р-н») нельзя выдавать за место в столице региона.
+ */
 export function cityOf(v: TrudvsemVacancy): string | null {
   const location = v.addresses?.address?.[0]?.location ?? '';
   const m = /(?:^|,\s*)г\.?\s+([А-ЯЁ][А-ЯЁа-яё-]*(?:\s[А-ЯЁ][а-яё-]+)?)/.exec(location);
   if (m) return m[1]!;
-  const pilot = PILOT_REGIONS.find((r) => r.code === v.region?.region_code);
-  if (pilot) return pilot.city;
-  return v.region?.name?.replace(/^Город\s+/, '') ?? null;
+  return FEDERAL_CITIES[v.region?.region_code ?? ''] ?? null;
 }
 
-export const formatOf = (v: TrudvsemVacancy): 'office' | 'remote' => (/удал[её]н/i.test(v.schedule ?? '') ? 'remote' : 'office');
+/** Удалёнка в API — в employment («Дистанционная (удаленная) работа»), иногда и в schedule. */
+export const formatOf = (v: TrudvsemVacancy): 'office' | 'remote' =>
+  /удал[её]нн|дистанцион/i.test(`${v.employment ?? ''} ${v.schedule ?? ''}`) ? 'remote' : 'office';
+
+/** Ссылка на оригинал — только на trudvsem.ru по https. */
+export function safeSourceUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return (u.protocol === 'https:' || u.protocol === 'http:') && /(^|\.)trudvsem\.ru$/.test(u.hostname) ? `https://${u.host}${u.pathname}` : null;
+  } catch {
+    return null;
+  }
+}
 
 const MAX_REQUIRED = 5;
 /** Описание короткое: карточке хватает задач и требований, полный текст — по ссылке на оригинал. */
 const MAX_DESCRIPTION = 1500;
 
-/**
- * Вакансия → место. null — не берём: нужен опыт, в названии нет признака студенческого места, или ни один навык
- * не сопоставился со справочником
- * (без навыков расчёт совпадения дал бы 100 % всем студентам).
- */
-/** Место для студента, а не просто вакансия, где «стажёр» мелькнул в тексте (например, «риелтор с обучением»). */
+/** Место для студента, а не просто вакансия, где «стажёр» мелькнул в тексте. */
 export const STUDENT_TITLE = /стаж[её]р|стажир|практикант|практик[аи]|младш|помощник|ассистент|начинающ|студент|без опыта/i;
+/** Продажа недвижимости «со стажировкой и обучением» — не место для студента по специальности. */
+export const NOT_FOR_STUDENTS = /ри[еэ]лт|недвижимост/i;
 
+/**
+ * Вакансия → место. null — не берём: нужен опыт; в названии нет признака студенческого места или это продажа
+ * недвижимости; ни один навык не сопоставился со справочником (без навыков совпадение было бы 100 % у всех);
+ * очное место без понятного города.
+ */
 export function mapVacancy(v: TrudvsemVacancy): ImportedPlace | null {
+  const title = v['job-name'] ?? '';
+  if (!v.id || !title) return null;
   if ((v.requirement?.experience ?? 0) > 1) return null;
-  if (!STUDENT_TITLE.test(v['job-name'] ?? '')) return null;
+  if (!STUDENT_TITLE.test(title) || NOT_FOR_STUDENTS.test(title)) return null;
   // Поле skills у большинства вакансий пустое — навыки ищем ещё в названии, требованиях и обязанностях
-  const skills = mapSkills([v['job-name'] ?? '', ...(v.skills ?? []), v.requirements ?? '', v.duty ?? '']).slice(0, MAX_REQUIRED);
-  if (!skills.length || !v.id || !v['job-name']) return null;
+  const skills = mapSkills([title, ...(v.skills ?? []), v.requirements ?? '', v.duty ?? '']).slice(0, MAX_REQUIRED);
+  if (!skills.length) return null;
 
   const format = formatOf(v);
+  const city = format === 'remote' ? null : cityOf(v);
+  if (format === 'office' && !city) return null;
+
   const salary = v.salary_min ? `Зарплата: от ${v.salary_min} ₽.` : '';
-  const description = [v.duty, v.requirements ? `Требования: ${v.requirements}` : '', salary, 'Источник — «Работа России».']
+  const description = [stripContacts(v.duty), v.requirements ? `Требования: ${stripContacts(v.requirements)}` : '', salary, 'Источник — «Работа России».']
     .map((s) => (s ?? '').trim())
     .filter(Boolean)
     .join('\n\n');
 
   return {
     sourceId: v.id,
-    sourceUrl: v.vac_url ?? null,
-    title: v['job-name'].trim().slice(0, 200),
+    sourceUrl: safeSourceUrl(v.vac_url),
+    title: title.trim().slice(0, 200),
     companyName: (v.company?.name ?? 'Работодатель с «Работа России»').trim().slice(0, 200),
     description: description.length > MAX_DESCRIPTION ? `${description.slice(0, MAX_DESCRIPTION - 1)}…` : description,
     requiredSkills: skills,
     format,
-    // Для удалённых город не нужен; для очных — обязателен (ограничение таблицы internships)
-    city: format === 'remote' ? null : cityOf(v),
+    city,
     slots: Math.min(Math.max(v.work_places ?? 1, 1), 100),
   };
 }
 
-/** Вакансий на запрос. На пилот хватает: по Москве на «стажер» около 60, после отбора по навыкам — меньше. */
+/** Вакансий на страницу. */
 export const PAGE_LIMIT = 50;
+/** Больше страниц не листаем: по запросам пилота вакансий меньше сотни. */
+export const MAX_PAGES = 4;
 
 export interface FetchOptions {
   fetch?: typeof fetch;
@@ -130,32 +168,63 @@ export interface FetchOptions {
   limit?: number;
 }
 
-/** Одна страница вакансий по региону и запросу. Бросает ошибку при таймауте, сети или не-200. */
-export async function fetchVacancies(regionCode: string, text: string, opts: FetchOptions = {}): Promise<TrudvsemVacancy[]> {
-  const url = `${TRUDVSEM_API}/vacancies/region/${regionCode}?text=${encodeURIComponent(text)}&offset=0&limit=${opts.limit ?? PAGE_LIMIT}`;
-  const res = await (opts.fetch ?? fetch)(url, { signal: AbortSignal.timeout(opts.timeoutMs ?? 30_000) });
-  if (!res.ok) throw new Error(`«Работа России»: HTTP ${res.status}`);
-  const body = (await res.json()) as { results?: { vacancies?: { vacancy: TrudvsemVacancy }[] } };
-  return (body.results?.vacancies ?? []).map((x) => x.vacancy);
+/** Одна страница. Бросает ошибку при таймауте, сети или не-200. */
+export async function fetchPage(
+  regionCode: string,
+  text: string,
+  page: number,
+  opts: FetchOptions = {},
+): Promise<{ vacancies: TrudvsemVacancy[]; total: number }> {
+  const url = `${TRUDVSEM_API}/vacancies/region/${regionCode}?text=${encodeURIComponent(text)}&offset=${page}&limit=${opts.limit ?? PAGE_LIMIT}`;
+  const res = await (opts.fetch ?? fetch)(url, { signal: AbortSignal.timeout(opts.timeoutMs ?? 60_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const body = (await res.json()) as { meta?: { total?: number }; results?: { vacancies?: { vacancy: TrudvsemVacancy }[] } };
+  const vacancies = (body.results?.vacancies ?? []).map((x) => x.vacancy);
+  return { vacancies, total: body.meta?.total ?? vacancies.length };
+}
+
+/** Все страницы по региону и запросу — до meta.total, но не больше MAX_PAGES. complete — получили всё. */
+export async function fetchAll(regionCode: string, text: string, opts: FetchOptions = {}): Promise<{ vacancies: TrudvsemVacancy[]; complete: boolean }> {
+  const limit = opts.limit ?? PAGE_LIMIT;
+  const all: TrudvsemVacancy[] = [];
+  let total = Infinity;
+  for (let page = 0; page < MAX_PAGES && page * limit < total; page++) {
+    const r = await fetchPage(regionCode, text, page, opts);
+    total = r.total;
+    all.push(...r.vacancies);
+    if (r.vacancies.length < limit) break;
+  }
+  return { vacancies: all, complete: all.length >= total };
+}
+
+export interface PilotFetch {
+  vacancies: TrudvsemVacancy[];
+  /** Сколько пар «регион × запрос» не удалось получить целиком. */
+  failed: number;
+  total: number;
+  /** Причины сбоев — в лог, чтобы при смене формата API было видно, почему импорт берёт снимок. */
+  errors: string[];
 }
 
 /**
- * Все регионы и запросы пилота; дубли по id убираем. API нестабилен: отдельный запрос может не ответить,
- * поэтому сбой одного запроса не отменяет остальные — считаем, сколько не удалось.
+ * Все регионы и запросы пилота; дубли по id убираем. Сбой одного запроса не отменяет остальные.
+ * Запрос, у которого получены не все страницы, считается неудачным: по нему нельзя закрывать пропавшие вакансии.
  */
-export async function fetchPilotVacancies(opts: FetchOptions = {}): Promise<{ vacancies: TrudvsemVacancy[]; failed: number; total: number }> {
+export async function fetchPilotVacancies(opts: FetchOptions = {}): Promise<PilotFetch> {
   const byId = new Map<string, TrudvsemVacancy>();
-  let failed = 0;
+  const errors: string[] = [];
   let total = 0;
   for (const region of PILOT_REGIONS) {
     for (const q of QUERIES) {
       total++;
       try {
-        for (const v of await fetchVacancies(region.code, q, opts)) byId.set(v.id, pickFields(v));
-      } catch {
-        failed++;
+        const r = await fetchAll(region, q, opts);
+        for (const v of r.vacancies) byId.set(v.id, pickFields(v));
+        if (!r.complete) errors.push(`${region} «${q}»: получены не все страницы`);
+      } catch (err) {
+        errors.push(`${region} «${q}»: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`);
       }
     }
   }
-  return { vacancies: [...byId.values()], failed, total };
+  return { vacancies: [...byId.values()], failed: errors.length, total, errors };
 }
