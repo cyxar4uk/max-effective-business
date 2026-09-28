@@ -2,6 +2,13 @@
 # MAX принимает вебхук только на 443 и только с сертификатом доверенного УЦ.
 {
 	email {$ACME_EMAIL}
+	# Журнал ошибок (например, сервер недоступен при выкатке) тоже без заголовков: в них initData и секрет вебхука
+	log default {
+		format filter {
+			wrap json
+			request>headers delete
+		}
+	}
 }
 
 {$DOMAIN} {
