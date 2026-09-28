@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  digestMessage,
   employerInvitedMessage,
   fallbackMessage,
   internshipMatchMessage,
   NEXT_STEPS,
+  nextStepsFor,
   START_PARAM,
   studentInvitedMessage,
   toMessageBody,
@@ -15,8 +17,8 @@ const params = (m: { buttons: { startapp: string }[][] }) => m.buttons.flat().ma
 describe('тексты бота', () => {
   it('приветствие: две роли, пометка демо только в демо-режиме', () => {
     const demo = welcomeMessage({ firstName: 'Анна', demo: true });
-    expect(demo.text).toContain('Здравствуйте, Анна!');
-    expect(demo.text).toContain('демо-режиме');
+    expect(demo.text).toContain('Здравствуйте, Анна! Это «Тандем».');
+    expect(demo.text).toContain('демо-режим');
     expect(params(demo)).toEqual(['student', 'employer']);
     expect(welcomeMessage({ demo: false }).text).not.toContain('демо');
   });
@@ -41,13 +43,13 @@ describe('тексты бота', () => {
   it('приглашение студенту: контакт и пронумерованный чек-лист', () => {
     const m = studentInvitedMessage({ internshipId: 3, title: 'Юрист', company: 'Бюро', contactName: 'Павел Родионов', phone: '+70000001004' });
     expect(m.text).toContain('Контакт: Павел Родионов, +70000001004.');
-    NEXT_STEPS.forEach((s, i) => expect(m.text).toContain(`${i + 1}. ${s}`));
+    NEXT_STEPS.job.forEach((s, i) => expect(m.text).toContain(`${i + 1}. ${s}`));
   });
 
   it('приглашение работодателю без телефона студента — подсказка написать в MAX', () => {
     const m = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария Иванова', phone: null, score: 70 });
     expect(m.text).toContain('Мария Иванова. Совпадение 70 %.');
-    expect(m.text).toContain('напишите ему в MAX');
+    expect(m.text).toContain('напишите студенту в MAX');
   });
 
   it('все параметры кнопок укладываются в ограничения payload MAX', () => {
@@ -70,5 +72,45 @@ describe('toMessageBody', () => {
     const body = toMessageBody({ text: 'x'.repeat(5000), buttons: [[{ text: 'Плохая', startapp: 'a b' }]] }, 'bot');
     expect(body.text).toHaveLength(4000);
     expect(body.attachments).toBeUndefined();
+  });
+});
+
+describe('решения Артёма от 27.09', () => {
+  it('«Тандем», «место» вместо «стажировки», на «вы»', () => {
+    const texts = [
+      welcomeMessage({ firstName: 'Анна', demo: true }).text,
+      fallbackMessage().text,
+      internshipMatchMessage({ internshipId: 1, title: 'Аналитик', company: 'Луч', score: 80, matchedSkills: ['Excel'] }).text,
+      digestMessage().text,
+      studentInvitedMessage({ internshipId: 1, title: 'Аналитик', company: 'Луч', contactName: null, phone: null }).text,
+    ].join('\n');
+    expect(texts).toContain('Тандем');
+    // «место» вместо «стажировки» в уведомлениях; в приветствии «стажировки» — это перечисление типов мест
+    const notifications = texts
+      .split('\n')
+      .filter((l) => !l.includes('практику, стажировки, подработку'))
+      .join('\n');
+    expect(notifications).not.toMatch(/стажировк[ауие]/i);
+    expect(texts).not.toMatch(/(^|[^а-яё])(ты|тебя|тебе|твой|твоя)([^а-яё]|$)/i);
+  });
+
+  it('практика — чек-лист с направлением, договором по приказу № 885/390, заданием и отзывом', () => {
+    const m = studentInvitedMessage({ internshipId: 1, title: 'Помощник юриста', company: 'Бюро', contactName: 'Павел', phone: null, type: 'practice' });
+    for (const s of NEXT_STEPS.practice) expect(m.text).toContain(s);
+    expect(m.text).toContain('885/390');
+    expect(m.text).toMatch(/направление/);
+    expect(m.text).toMatch(/задание/);
+    expect(m.text).toMatch(/отзыв/);
+  });
+
+  it('стажировка, подработка и тип не указан — чек-лист без документов практики', () => {
+    expect(nextStepsFor('internship')).toEqual(NEXT_STEPS.job);
+    expect(nextStepsFor('part_time')).toEqual(NEXT_STEPS.job);
+    expect(nextStepsFor(undefined)).toEqual(NEXT_STEPS.job);
+    expect(NEXT_STEPS.job.join(' ')).not.toContain('885/390');
+  });
+
+  it('подборка ведёт в ленту студента', () => {
+    expect(digestMessage().buttons.flat().map((b) => b.startapp)).toEqual(['student']);
   });
 });
