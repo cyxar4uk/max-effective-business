@@ -1,6 +1,6 @@
 # Деплой
 
-Владелец — Андрей. Прод — один VPS с Docker: Caddy (HTTPS) → `server` (API + вебхук бота) и `miniapp` (статика) →
+Владелец — Андрей. Прод — один VPS с Docker: Caddy (HTTPS) → `meb-server` (API + вебхук бота) и `miniapp` (статика) →
 PostgreSQL. Сертификат Let's Encrypt Caddy выпускает и продлевает сам.
 
 ```
