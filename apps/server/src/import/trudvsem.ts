@@ -81,9 +81,10 @@ export function pickFields(v: TrudvsemVacancy): TrudvsemVacancy {
   };
 }
 
-const EMAIL = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
-// +7 (495) 123-45-67, 8 912 345 67 89, 89123456789 — от 10 цифр с разделителями
-const PHONE = /(\+7|\b8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}\b/g;
+// Почта, в том числе на кириллических доменах (hr@компания.рф)
+const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+/gu;
+// +7 или 8 и ровно 10 цифр с любыми разделителями: +7 (495) 123-45-67, +7 (8552) 12-34-56, 8 912 345 67 89
+const PHONE = /(\+7|(?<!\d)8)([\s()-]*\d){10}(?!\d)/g;
 
 /** Телефоны и почта из свободного текста обязанностей и требований — не храним. */
 export function stripContacts(text: string | undefined): string | undefined {
@@ -171,8 +172,14 @@ export function placeTypeOf(v: TrudvsemVacancy): ImportedPlace['type'] {
   return 'internship';
 }
 
-/** Зарплата в месяц, ₽: минимальная из вакансии, если она есть и положительная. */
-export const salaryOf = (v: TrudvsemVacancy): number | null => (v.salary_min && v.salary_min > 0 ? Math.round(v.salary_min) : null);
+/** Разумная зарплата в месяц, ₽. Кривое значение (0,4 или 3 млрд) не должно ронять весь импорт на CHECK/integer. */
+const SALARY_RANGE = { min: 1, max: 10_000_000 } as const;
+
+/** Зарплата в месяц, ₽: минимальная из вакансии, если она в разумном диапазоне; иначе null. */
+export function salaryOf(v: TrudvsemVacancy): number | null {
+  const s = Math.round(Number(v.salary_min));
+  return Number.isFinite(s) && s >= SALARY_RANGE.min && s <= SALARY_RANGE.max ? s : null;
+}
 
 /** Вакансий на страницу. */
 export const PAGE_LIMIT = 50;

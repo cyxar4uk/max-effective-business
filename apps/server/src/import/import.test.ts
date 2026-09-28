@@ -109,6 +109,20 @@ describe('mapVacancy', () => {
     expect(mapVacancy(vacancy({ salary_min: 0 }))).toMatchObject({ paid: null, salary: null });
   });
 
+  it('кривая зарплата не роняет импорт: вне 1…10 000 000 ₽ — не указана', () => {
+    for (const bad of [0.4, 3e9, -5, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(mapVacancy(vacancy({ salary_min: bad })), String(bad)).toMatchObject({ paid: null, salary: null });
+    }
+    expect(mapVacancy(vacancy({ salary_min: 45000.6 }))).toMatchObject({ paid: true, salary: 45001 });
+  });
+
+  it('телефоны с 4–5-значным кодом города и почта на кириллице тоже скрываются', () => {
+    expect(stripContacts('Тел. +7 (8552) 12-34-56, доп. 8 (84342) 1-23-45')).toBe('Тел. [контакт скрыт], доп. [контакт скрыт]');
+    expect(stripContacts('Резюме: кадры@компания.рф')).toBe('Резюме: [контакт скрыт]');
+    // даты, суммы и номера приказов не трогаем
+    expect(stripContacts('С 01.10.2026, оклад 45 000 ₽, приказ № 885/390')).toBe('С 01.10.2026, оклад 45 000 ₽, приказ № 885/390');
+  });
+
   it('ссылка на оригинал — только trudvsem.ru, по https', () => {
     expect(safeSourceUrl('http://trudvsem.ru/vacancy/card/1/2')).toBe('https://trudvsem.ru/vacancy/card/1/2');
     expect(safeSourceUrl('https://evil.example/trudvsem.ru')).toBeNull();
