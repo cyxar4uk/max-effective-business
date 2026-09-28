@@ -44,6 +44,15 @@
 [OpenAPI-схеме](https://github.com/max-messenger/api-schema/blob/main/schema.yaml) (версия 0.0.33) и коду
 SDK `@maxhub/max-bot-api` 0.3.1 ([client.ts](https://github.com/max-messenger/max-bot-api-client-ts/blob/main/src/core/network/api/client.ts)).
 
+- **Бот хакатона** (выдан организаторами 28.09, проверено `GET /me`): ник **`t373_hakaton_max_bot`**, `user_id` 411890855.
+  Этот ник идёт в `web_app` кнопок `open_app` (бот берёт его сам из `GET /me`) и в диплинки
+  `https://max.ru/t373_hakaton_max_bot?startapp=…`. Токен — только в `.env`.
+- **Сертификат MAX — от удостоверяющего центра Минцифры** (Russian Trusted Root CA → Russian Trusted Sub CA →
+  `*.max.ru`). Его нет ни в стандартном наборе Node.js и образе `node:alpine`, ни в системном наборе Windows/Ubuntu:
+  без него любой запрос к Bot API падает (`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, в curl — «untrusted root»). Сервер
+  добавляет этот корень к доверенным при старте (`apps/server/src/tls/russianRootCa.ts`, Node 24.5+), для curl —
+  `--cacert deploy/russian_trusted_root_ca.pem`. Проверку сертификатов **не отключаем**. Корень — с Госуслуг
+  (`gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt`), SHA-256 `D2:6D:2D:02:…:CA:8E:CF:31`.
 - **Базовый адрес: `https://platform-api2.max.ru`.** Старый `platform-api.max.ru` в SDK помечен как устаревший
   (`@deprecated: use botapi v2`), документация требует `platform-api2`.
 - **Заголовок: `Authorization: <токен>`** — сам токен, **без** `Bearer` и других префиксов. В query токен больше
