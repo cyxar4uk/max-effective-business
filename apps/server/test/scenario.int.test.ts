@@ -39,6 +39,8 @@ describe.skipIf(!url)('основной сценарий', () => {
   const OTHER_EMPLOYER = 200003;
   let internshipId = 0;
   let studentUserId = 0;
+  // Обязательные поля места, которые не важны для конкретной проверки
+  const PLACE = { type: 'internship', startsOn: '2026-10-15', endsOn: '2026-12-15', paid: false, slots: 1 };
 
   beforeAll(async () => {
     ds = createDataSource(url!);
@@ -47,6 +49,8 @@ describe.skipIf(!url)('основной сценарий', () => {
     await ds.runMigrations();
     await ds.query(`INSERT INTO skills (code, name, group_name) VALUES
       ('excel','Excel','Аналитика'), ('sql','SQL','Аналитика'), ('power_bi','Power BI','Аналитика'), ('figma','Figma','Дизайн')`);
+    await ds.query(`INSERT INTO task_tags (code, name, sort, skills) VALUES
+      ('spreadsheets','Таблицы и аналитика',20,'{excel,power_bi}'), ('website','Сайт',10,'{figma}')`);
 
     const log = pino({ level: 'silent' });
     const events = new EventBus(log);
@@ -72,18 +76,27 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect((await as(EMPLOYER).get('/api/me')).body.roles).toEqual({ student: false, employer: true });
 
     const res = await as(EMPLOYER).post('/api/internships', {
+      type: 'practice',
       title: 'Стажёр-аналитик',
       requiredSkills: ['excel', 'sql'],
       niceSkills: ['power_bi'],
+      tags: ['spreadsheets'],
       format: 'office',
       city: 'Москва',
       startsOn: '2026-10-15',
       endsOn: '2026-12-15',
+      paid: true,
+      salary: 30000,
       slots: 2,
     });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ title: 'Стажёр-аналитик', company: { name: 'ООО «Вектор»' }, status: 'open', isOwner: true });
+    expect(res.body).toMatchObject({
+      type: 'practice', title: 'Стажёр-аналитик', tags: ['spreadsheets'], paid: true, salary: 30000,
+      company: { name: 'ООО «Вектор»' }, status: 'open', isOwner: true,
+    });
     internshipId = res.body.id;
+    // id — число и в ответе, и в событии для бота (как во всех остальных эндпоинтах)
+    expect(typeof internshipId).toBe('number');
     await tick();
     expect(emitted.at(-1)).toEqual({ name: 'internship.created', payload: { internshipId } });
   });
@@ -101,12 +114,31 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect(Object.keys(bad.body.error.fields)).toContain('title');
 
     const rules = await as(EMPLOYER).post('/api/internships', {
-      title: 'Без города', requiredSkills: ['excel'], niceSkills: ['excel'], format: 'office', startsOn: '2026-10-15', endsOn: '2026-10-01',
+      ...PLACE, title: 'Без города', requiredSkills: ['excel'], niceSkills: ['excel'], format: 'office', startsOn: '2026-10-15', endsOn: '2026-10-01',
     });
     expect(rules.body.error.fields).toMatchObject({ city: expect.any(String), endsOn: expect.any(String), niceSkills: expect.any(String) });
 
-    const unknown = await as(EMPLOYER).post('/api/internships', { title: 'X', requiredSkills: ['cobol'], format: 'remote' });
+    const unknown = await as(EMPLOYER).post('/api/internships', { ...PLACE, title: 'X', requiredSkills: ['cobol'], format: 'remote' });
     expect(unknown.body.error.fields.requiredSkills).toContain('cobol');
+
+    // Обязательные поля публикации по решению Артёма
+    const missing = await as(EMPLOYER).post('/api/internships', { title: 'X', requiredSkills: ['excel'], format: 'remote' });
+    expect(missing.status).toBe(400);
+    expect(Object.keys(missing.body.error.fields).sort()).toEqual(['endsOn', 'paid', 'slots', 'startsOn', 'type']);
+
+    const salaryUnpaid = await as(EMPLOYER).post('/api/internships', { ...PLACE, title: 'X', requiredSkills: ['excel'], format: 'remote', salary: 1000 });
+    expect(salaryUnpaid.body.error.fields).toEqual({ salary: expect.any(String) });
+
+    const badTags = await as(EMPLOYER).post('/api/internships', {
+      ...PLACE, title: 'X', requiredSkills: ['excel'], format: 'remote', tags: ['website', 'nope'],
+    });
+    expect(badTags.body.error.fields.tags).toContain('nope');
+    const tooMany = await as(EMPLOYER).post('/api/internships', {
+      ...PLACE, title: 'X', requiredSkills: ['excel'], format: 'remote', tags: ['a', 'b', 'c', 'd'],
+    });
+    expect(tooMany.body.error.fields.tags).toBeDefined();
+    const badType = await as(EMPLOYER).post('/api/internships', { ...PLACE, type: 'job', title: 'X', requiredSkills: ['excel'], format: 'remote' });
+    expect(badType.body.error.fields.type).toBeDefined();
   });
 
   it('студент: согласие, телефон, анкета', async () => {
@@ -120,11 +152,17 @@ describe.skipIf(!url)('основной сценарий', () => {
     const phone = await as(STUDENT).post('/api/me/phone', { ...contact, hash: signContact(contact, STUDENT, TOKEN) });
     expect(phone.body.hasPhone).toBe(true);
 
-    const res = await as(STUDENT).put('/api/student/profile', {
-      university: 'РАНХиГС', course: 3, direction: 'Бизнес-информатика', city: 'москва', formats: ['office', 'hybrid'], skills: ['excel', 'power_bi'],
-    });
+    const profile = { university: 'РАНХиГС', course: 3, direction: 'Бизнес-информатика', city: 'москва', formats: ['office', 'hybrid'] };
+    // Меньше 3 навыков — анкета не сохраняется
+    const few = await as(STUDENT).put('/api/student/profile', { ...profile, skills: ['excel', 'power_bi', 'excel'] });
+    expect(few.status).toBe(400);
+    expect(few.body.error.fields.skills).toBeDefined();
+    const badMonth = await as(STUDENT).put('/api/student/profile', { ...profile, skills: ['excel', 'power_bi', 'figma'], practiceMonth: '2026-13' });
+    expect(badMonth.body.error.fields.practiceMonth).toBeDefined();
+
+    const res = await as(STUDENT).put('/api/student/profile', { ...profile, skills: ['excel', 'power_bi', 'figma'], practiceMonth: '2026-11' });
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ faculty: null, skills: ['excel', 'power_bi'] });
+    expect(res.body).toMatchObject({ faculty: null, skills: ['excel', 'power_bi', 'figma'], practiceMonth: '2026-11' });
   });
 
   it('«Мои отклики» без откликов — пустой список', async () => {
@@ -185,19 +223,19 @@ describe.skipIf(!url)('основной сценарий', () => {
   });
 
   it('без профиля нужной роли — 403', async () => {
-    expect((await as(STUDENT).post('/api/internships', { title: 'X', requiredSkills: ['excel'], format: 'remote' })).status).toBe(403);
+    expect((await as(STUDENT).post('/api/internships', { ...PLACE, title: 'X', requiredSkills: ['excel'], format: 'remote' })).status).toBe(403);
     expect((await as(EMPLOYER).get('/api/student/feed')).status).toBe(403);
   });
 
   it('закрытая стажировка не принимает новые отклики', async () => {
-    const created = await as(EMPLOYER).post('/api/internships', { title: 'Удалённо', requiredSkills: ['excel'], format: 'remote' });
+    const created = await as(EMPLOYER).post('/api/internships', { ...PLACE, title: 'Удалённо', requiredSkills: ['excel'], format: 'remote' });
     await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { status: 'closed' }).expect(200);
     const res = await as(STUDENT).post(`/api/internships/${created.body.id}/interest`, { action: 'interested' });
     expect(res.status).toBe(409);
   });
 
   it('параллельные отклики не создают дублей и лишних событий', async () => {
-    const created = await as(EMPLOYER).post('/api/internships', { title: 'Параллельно', requiredSkills: ['excel'], format: 'remote' });
+    const created = await as(EMPLOYER).post('/api/internships', { ...PLACE, title: 'Параллельно', requiredSkills: ['excel'], format: 'remote' });
     const before = count('interest.created');
     const results = await Promise.all(
       Array.from({ length: 5 }, () => as(STUDENT).post(`/api/internships/${created.body.id}/interest`, { action: 'interested' })),
@@ -207,5 +245,52 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect(count('interest.created') - before).toBe(1);
     const [{ n }] = await ds.query('SELECT count(*) AS n FROM interests WHERE internship_id = $1', [created.body.id]);
     expect(n).toBe(1);
+  });
+
+  it('справочник тегов и группы навыков — в заданном порядке', async () => {
+    const tags = await as(STUDENT).get('/api/tags');
+    expect(tags.body.items).toEqual([
+      { code: 'website', name: 'Сайт', skills: ['figma'] },
+      { code: 'spreadsheets', name: 'Таблицы и аналитика', skills: ['excel', 'power_bi'] },
+    ]);
+    // Группы идут по sort, а не по алфавиту: «Дизайн» раньше «Аналитики», если у неё sort меньше
+    await ds.query(`UPDATE skills SET sort = CASE group_name WHEN 'Дизайн' THEN 100 ELSE 200 END`);
+    const skills = await as(STUDENT).get('/api/skills');
+    expect(skills.body.groups.map((g: { name: string }) => g.name)).toEqual(['Дизайн', 'Аналитика']);
+  });
+
+  it('лента фильтруется по тегам', async () => {
+    const tagged = await as(EMPLOYER).post('/api/internships', {
+      ...PLACE, title: 'С тегом «Сайт»', requiredSkills: ['figma'], format: 'office', city: 'Москва', tags: ['website'],
+    });
+    expect(tagged.status).toBe(201);
+    const all = await as(STUDENT).get('/api/student/feed');
+    const onlySite = await as(STUDENT).get('/api/student/feed?tags=website');
+    const unknownTag = await as(STUDENT).get('/api/student/feed?tags=nope');
+    expect(all.body.items.map((i: { id: number }) => i.id)).toContain(tagged.body.id);
+    expect(onlySite.body.items.map((i: { id: number }) => i.id)).toEqual([tagged.body.id]);
+    expect(unknownTag.body.items).toEqual([]);
+  });
+
+  it('оплата: сумма только у оплачиваемого места, при снятии оплаты сумма сбрасывается', async () => {
+    const created = await as(EMPLOYER).post('/api/internships', {
+      ...PLACE, type: 'part_time', title: 'Подработка', requiredSkills: ['excel'], format: 'remote', paid: true, salary: 25000,
+    });
+    expect(created.body).toMatchObject({ type: 'part_time', paid: true, salary: 25000 });
+    const unpaid = await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { paid: false });
+    expect(unpaid.status).toBe(200);
+    expect(unpaid.body).toMatchObject({ paid: false, salary: null });
+    const bad = await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { salary: 1000 });
+    expect(bad.body.error.fields).toEqual({ salary: expect.any(String) });
+    const retag = await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { type: 'practice', tags: ['spreadsheets'] });
+    expect(retag.body).toMatchObject({ type: 'practice', tags: ['spreadsheets'] });
+  });
+
+  it('места, созданные в обход API (демо, импорт), получают тип «стажировка» и оплату «не указано»', async () => {
+    const [row] = await ds.query(
+      `INSERT INTO internships (company_name, title, required_skills, format, source, source_id)
+       VALUES ('Импорт', 'Из импорта', '{excel}', 'remote', 'trudvsem', 'x-1') RETURNING type, paid, salary, tags`,
+    );
+    expect(row).toEqual({ type: 'internship', paid: null, salary: null, tags: [] });
   });
 });

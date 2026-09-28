@@ -57,8 +57,9 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 | ✅ | POST | `/api/me/consent` | сохранить согласие на обработку ПД |
 | ✅ | POST | `/api/me/phone` | сохранить телефон из `requestContact` |
 | ✅ | GET | `/api/skills` | справочник навыков по группам |
+| ✅ | GET | `/api/tags` | справочник тегов задач («Сайт», «Маркетплейсы», «1С»…) |
 | ✅ | GET · PUT | `/api/student/profile` | анкета студента |
-| ✅ | GET | `/api/student/feed` | подходящие стажировки, ещё без отклика, с `match` |
+| ✅ | GET | `/api/student/feed` | подходящие места, ещё без отклика, с `match`; `?tags=` — фильтр по тегам |
 | ✅ | GET | `/api/student/interests` | мои отклики со статусами |
 | ✅ | GET · PUT | `/api/employer/profile` | профиль компании |
 | ✅ | POST | `/api/internships` | создать стажировку → событие `internship.created` |
@@ -115,6 +116,17 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 { "groups": [ { "name": "Аналитика", "skills": [ { "code": "excel", "name": "Excel" }, { "code": "sql", "name": "SQL" } ] } ] }
 ```
 
+Группы и навыки внутри групп — в порядке, заданном в справочнике (поле `sort`), а не по алфавиту.
+
+### `GET /api/tags`
+
+Теги задач: чем студент займётся на месте. Тег подставляет навыки в форму работодателя (он их правит) и фильтрует
+ленту студента. В расчёте совпадения теги не участвуют.
+
+```json
+{ "items": [ { "code": "marketplaces", "name": "Маркетплейсы", "skills": ["wildberries", "ozon", "marketplace_cards"] } ] }
+```
+
 ### Анкета студента `GET · PUT /api/student/profile`
 
 Требует согласия на обработку ПД (иначе 403). `GET` без анкеты — 404.
@@ -128,12 +140,14 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
   "city": "Москва",
   "formats": ["office", "hybrid"],
   "skills": ["excel", "sql", "power_bi"],
+  "practiceMonth": "2026-11",
   "isDemo": false
 }
 ```
 
-Проверки: `university`, `direction`, `city` — непустые до 200 символов; `faculty` — необязательное; `course` — 1…6;
-`formats` — непустой набор; `skills` — коды из справочника, до 30 штук.
+Проверки (decisions.md, 27.09): `university`, `direction`, `city` — непустые до 200 символов; `faculty` — необязательное;
+`course` — 1…6; `formats` — непустой набор; `skills` — коды из справочника, **от 3** до 30 штук;
+`practiceMonth` — необязательное, `ГГГГ-ММ` (месяц практики; на карточке показываем, но ленту по нему не фильтруем).
 
 ### Совпадение `match`
 
@@ -145,20 +159,26 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 
 Коды навыков; названия клиент берёт из `/api/skills`.
 
-### Стажировка
+### Место (стажировка, практика, подработка)
+
+В интерфейсе — «место», в API исторически `internships`.
 
 ```json
 {
   "id": 7,
+  "type": "practice",
   "title": "Стажёр-аналитик",
   "description": "…",
   "company": { "name": "ООО «Вектор»", "city": "Москва" },
   "requiredSkills": ["excel", "sql"],
   "niceSkills": ["power_bi"],
+  "tags": ["spreadsheets"],
   "format": "hybrid",
   "city": "Москва",
   "startsOn": "2026-10-15",
   "endsOn": "2026-12-15",
+  "paid": true,
+  "salary": 30000,
   "slots": 2,
   "status": "open",
   "source": "employer",
@@ -174,14 +194,29 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 стажировка принадлежит текущему пользователю. В `GET /api/employer/internships` у каждой ещё
 `counts: { interested, invited, declined }`. `source`: `employer` | `demo` | `trudvsem` | `career_center`.
 
-`POST /api/internships` принимает поля `title`, `description`, `requiredSkills` (хотя бы один), `niceSkills`,
-`format`, `city` (обязателен, кроме `remote`), `startsOn`, `endsOn`, `slots`. Требует профиль компании (иначе 403).
-`PATCH` — те же поля частично плюс `status: "closed"`. Чужая стажировка — 404.
+- `type`: `practice` (практика) | `internship` (стажировка) | `part_time` (подработка).
+- `title` — задача: что сделать на месте, коротко («Настроить карточки на Wildberries»).
+- `paid`: `true` / `false`; `null` — не указано (только у мест из импорта и демо). `salary` — ₽ в месяц, по желанию,
+  только при `paid: true`, иначе `null`.
+- `tags` — 0–3 кода из `/api/tags`.
+- `startsOn`, `endsOn` — показываем на карточке; ленту по срокам в MVP не фильтруем.
+- `id` — число, как и везде.
+
+`POST /api/internships` — публикация. Требует профиль компании (иначе 403). **Обязательные поля** (decisions.md,
+27.09): `type`, `title`, `requiredSkills` (хотя бы один), `format`, `city` (кроме `remote`), `startsOn`, `endsOn`,
+`paid`, `slots` (1…100). По желанию: `description`, `niceSkills`, `tags`, `salary`. Проверки между полями:
+`endsOn` не раньше `startsOn`; навык не может быть одновременно обязательным и желательным; `salary` — только при
+`paid: true`. Навыки и теги — только из справочников.
+
+`PATCH /api/internships/:id` — те же поля частично плюс `status: "open" | "closed"`. При `paid: false` сумма
+сбрасывается в `null` сама. Чужое место — 404.
 
 ### Лента `GET /api/student/feed`
 
-Открытые стажировки, прошедшие жёсткие фильтры (формат; город для очных и гибридных), с совпадением больше 0 %,
-без отклика этого студента, по убыванию `match.score`, не больше 50. `{ "items": [Стажировка, …] }`. Без анкеты — 403.
+Открытые места, прошедшие жёсткие фильтры (формат; город для очных и гибридных), с совпадением больше 0 %,
+без отклика этого студента, по убыванию `match.score`, не больше 50. `{ "items": [Место, …] }`. Без анкеты — 403.
+
+`?tags=website,one_c` — только места, у которых есть хотя бы один из этих тегов. Неизвестный тег — пустая лента.
 
 ### Отклик `POST /api/internships/:id/interest`
 
