@@ -110,6 +110,16 @@ describe('POST /api/me/consent', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  it('413 на тело больше 100 КБ, а не 500', async () => {
+    const res = await request(app)
+      .post('/api/me/consent')
+      .set('X-Max-Init-Data', initData())
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ version: 'x'.repeat(150_000) }));
+    expect(res.status).toBe(413);
+    expect(res.body.error).toEqual({ code: 'VALIDATION_ERROR', message: 'Слишком большой запрос' });
+  });
 });
 
 describe('конфиг', () => {
