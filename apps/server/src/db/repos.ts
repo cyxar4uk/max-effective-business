@@ -21,7 +21,9 @@ export function createRepos(ds: DataSource): Repos {
     },
 
     async skillGroups() {
-      const skills = await ds.getRepository(Skill).find({ order: { groupName: 'ASC', sort: 'ASC', name: 'ASC' } });
+      // sort сквозной (группа × 100 + позиция): по нему идут и группы в заданном порядке, и навыки внутри группы.
+      // Группы собираются в порядке первого появления.
+      const skills = await ds.getRepository(Skill).find({ order: { sort: 'ASC', name: 'ASC' } });
       const groups = new Map<string, { code: string; name: string }[]>();
       for (const s of skills) {
         const list = groups.get(s.groupName) ?? [];

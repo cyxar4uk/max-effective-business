@@ -12,6 +12,7 @@ export function studentProfileView(p: StudentProfile) {
     city: p.city,
     formats: p.formats,
     skills: p.skills,
+    practiceMonth: p.practiceMonth,
     isDemo: p.isDemo,
   };
 }
@@ -27,15 +28,19 @@ export function internshipView(
 ) {
   return {
     id: i.id,
+    type: i.type,
     title: i.title,
     description: i.description,
     company: { name: employer?.companyName ?? i.companyName ?? '', city: employer?.city ?? i.city },
     requiredSkills: i.requiredSkills,
     niceSkills: i.niceSkills,
+    tags: i.tags,
     format: i.format,
     city: i.city,
     startsOn: i.startsOn,
     endsOn: i.endsOn,
+    paid: i.paid,
+    salary: i.salary,
     slots: i.slots,
     status: i.status,
     source: i.source,

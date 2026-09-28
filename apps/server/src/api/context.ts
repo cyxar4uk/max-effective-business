@@ -1,7 +1,7 @@
 import type { DataSource } from 'typeorm';
 import { In } from 'typeorm';
 import type { User } from '../db/entities.js';
-import { Employer, Internship, Skill, StudentProfile } from '../db/entities.js';
+import { Employer, Internship, Skill, StudentProfile, TaskTag } from '../db/entities.js';
 import type { EventBus } from '../events.js';
 import { ApiError } from './errors.js';
 import type { Matcher } from './matcher.js';
@@ -47,4 +47,12 @@ export async function assertSkills(ds: DataSource, lists: Record<string, string[
     if (unknown.length) fields[field] = `Нет в справочнике: ${unknown.join(', ')}`;
   }
   if (Object.keys(fields).length) throw new ApiError('VALIDATION_ERROR', 'Выберите навыки из справочника', fields);
+}
+
+// Теги задач — только из справочника task_tags
+export async function assertTags(ds: DataSource, tags: string[]): Promise<void> {
+  if (!tags.length) return;
+  const known = new Set((await ds.getRepository(TaskTag).findBy({ code: In(tags) })).map((t) => t.code));
+  const unknown = tags.filter((t) => !known.has(t));
+  if (unknown.length) throw new ApiError('VALIDATION_ERROR', 'Выберите теги из списка', { tags: `Нет в справочнике: ${unknown.join(', ')}` });
 }

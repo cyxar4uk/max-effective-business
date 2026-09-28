@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { In, type EntityManager } from 'typeorm';
 import { currentUser } from '../auth/middleware.js';
-import { Interest, Internship, StudentProfile, User } from '../db/entities.js';
+import { Interest, Internship, StudentProfile, TaskTag, User } from '../db/entities.js';
 import type { InterestStatus } from '../db/entities.js';
-import { assertSkills, ownInternship, requireEmployer, requireStudent, type DomainDeps } from './context.js';
+import { assertSkills, assertTags, ownInternship, requireEmployer, requireStudent, type DomainDeps } from './context.js';
 import { ApiError, parse } from './errors.js';
 import { employerAction, studentAction } from './interestFsm.js';
-import { idParam, interestBody, internshipBody, internshipPatch, internshipRules } from './schemas.js';
+import { feedQuery, idParam, interestBody, internshipBody, internshipPatch, internshipRules } from './schemas.js';
 import { employersById, interestSummary, internshipView } from './views.js';
 
 const FEED_LIMIT = 50;
@@ -24,10 +24,12 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     const rules = internshipRules(body);
     if (Object.keys(rules).length) throw new ApiError('VALIDATION_ERROR', 'Проверьте заполнение полей', rules);
     await assertSkills(ds, { requiredSkills: body.requiredSkills, niceSkills: body.niceSkills });
+    await assertTags(ds, body.tags);
 
-    const saved = await internships.save(
-      internships.create({ ...body, employerId: employer.id, source: 'employer' }),
-    );
+    const inserted = await internships.save(internships.create({ ...body, employerId: employer.id, source: 'employer' }));
+    // save() возвращает сгенерированный bigint строкой в обход парсера pg — перечитываем запись: id станет числом,
+    // а значения по умолчанию из БД (created_at и др.) — настоящими
+    const saved = await internships.findOneByOrFail({ id: Number(inserted.id) });
     events.emit('internship.created', { internshipId: saved.id });
     res.status(201).json(internshipView(saved, employer, { isOwner: true }));
   });
@@ -54,10 +56,13 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
   r.patch('/internships/:id', async (req, res) => {
     const { internship, employer } = await ownInternship(ds, currentUser(req).id, parse(idParam, req.params.id));
     const patch = parse(internshipPatch, req.body);
+    // Место стало неоплачиваемым — сумма больше не имеет смысла
+    if (patch.paid === false && patch.salary === undefined) patch.salary = null;
     const merged = { ...internship, ...patch };
     const rules = internshipRules(merged);
     if (Object.keys(rules).length) throw new ApiError('VALIDATION_ERROR', 'Проверьте заполнение полей', rules);
     await assertSkills(ds, { requiredSkills: patch.requiredSkills ?? [], niceSkills: patch.niceSkills ?? [] });
+    await assertTags(ds, patch.tags ?? []);
     const saved = await internships.save(internships.merge(internship, patch));
     res.json(internshipView(saved, employer, { isOwner: true }));
   });
@@ -107,11 +112,19 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     });
   }
 
+  // ---------- справочник тегов задач ----------
+
+  r.get('/tags', async (_req, res) => {
+    const tags = await ds.getRepository(TaskTag).find({ order: { sort: 'ASC', code: 'ASC' } });
+    res.json({ items: tags.map((t) => ({ code: t.code, name: t.name, skills: t.skills })) });
+  });
+
   // ---------- студент ----------
 
   r.get('/student/feed', async (req, res) => {
     const user = currentUser(req);
     const student = await requireStudent(ds, user.id);
+    const { tags } = parse(feedQuery, req.query);
     const open = await internships
       .createQueryBuilder('i')
       .where(`i.status = 'open'`)
@@ -120,6 +133,8 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
       .getMany();
 
     const suitable = open
+      // Теги только фильтруют ленту, в расчёте совпадения не участвуют
+      .filter((i) => !tags.length || i.tags.some((t) => tags.includes(t)))
       .map((i) => ({ i, ...matcher(student, i) }))
       .filter((x) => x.eligible && x.match.score > 0)
       .sort((a, b) => b.match.score - a.match.score)

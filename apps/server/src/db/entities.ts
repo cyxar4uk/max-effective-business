@@ -5,6 +5,8 @@ import { Column, CreateDateColumn, Entity, PrimaryColumn, PrimaryGeneratedColumn
 
 export type WorkFormat = 'office' | 'remote' | 'hybrid';
 export type InternshipStatus = 'open' | 'closed';
+// Тип места: практика / стажировка / подработка
+export type PlaceType = 'practice' | 'internship' | 'part_time';
 export type InternshipSource = 'employer' | 'demo' | 'trudvsem' | 'career_center';
 export type InterestStatus = 'skipped' | 'interested' | 'invited' | 'declined';
 export type NotificationStatus = 'pending' | 'sent' | 'failed';
@@ -51,6 +53,7 @@ export class StudentProfile {
   @Column({ type: 'text' }) city!: string;
   @Column({ type: 'text', array: true }) formats!: WorkFormat[];
   @Column({ type: 'text', array: true, default: () => "'{}'" }) skills!: string[];
+  @Column({ name: 'practice_month', type: 'text', nullable: true }) practiceMonth!: string | null;
   @Column({ name: 'is_demo', type: 'boolean', default: false }) isDemo!: boolean;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt!: Date;
@@ -74,6 +77,10 @@ export class Internship {
   @Column({ name: 'employer_id', type: 'bigint', nullable: true }) employerId!: number | null;
   @Column({ name: 'company_name', type: 'text', nullable: true }) companyName!: string | null;
   @Column({ type: 'text' }) title!: string;
+  @Column({ type: 'text', default: 'internship' }) type!: PlaceType;
+  @Column({ type: 'boolean', nullable: true }) paid!: boolean | null;
+  @Column({ type: 'integer', nullable: true }) salary!: number | null;
+  @Column({ type: 'text', array: true, default: () => "'{}'" }) tags!: string[];
   @Column({ type: 'text', default: '' }) description!: string;
   @Column({ name: 'required_skills', type: 'text', array: true, default: () => "'{}'" }) requiredSkills!: string[];
   @Column({ name: 'nice_skills', type: 'text', array: true, default: () => "'{}'" }) niceSkills!: string[];
@@ -119,4 +126,12 @@ export class Notification {
   @Column({ name: 'sent_at', type: 'timestamptz', nullable: true }) sentAt!: Date | null;
 }
 
-export const entities = [User, Skill, StudentProfile, Employer, Internship, Interest, Notification];
+@Entity('task_tags')
+export class TaskTag {
+  @PrimaryColumn({ type: 'text' }) code!: string;
+  @Column({ type: 'text' }) name!: string;
+  @Column({ type: 'integer', default: 0 }) sort!: number;
+  @Column({ type: 'text', array: true, default: () => "'{}'" }) skills!: string[];
+}
+
+export const entities = [User, Skill, TaskTag, StudentProfile, Employer, Internship, Interest, Notification];
