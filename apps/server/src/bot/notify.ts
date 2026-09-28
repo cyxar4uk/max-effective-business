@@ -4,6 +4,8 @@ import type { BotData, Recipient } from '../db/botData.js';
 import type { AppEvents } from '../events.js';
 import { matchStudentToInternship, shouldNotify } from '../matching/index.js';
 import {
+  digestMessage,
+  KIND,
   employerInvitedMessage,
   internshipMatchMessage,
   newCandidateMessage,
@@ -11,11 +13,36 @@ import {
   type QueuedMessage,
 } from './messages.js';
 
+/** Студенту — не больше стольких новых мест в день, остальное подборкой (решение Артёма от 27.09). */
+export const DAILY_MATCH_LIMIT = 3;
+
+/**
+ * День рассылки — с 22:00 до 22:00 по Москве, а не календарные сутки: место, опубликованное после 22:00, уйдёт
+ * утром (тихие часы) и должно попасть в лимит следующего дня. Возвращает YYYY-MM-DD этого дня: московское время + 2 ч.
+ */
+export const dispatchDay = (now: Date) => new Date(now.getTime() + (3 + 2) * 3600_000).toISOString().slice(0, 10);
+
 export interface NotifyDeps {
   data: Pick<BotData, 'internship' | 'studentsWithProfiles' | 'interestContext' | 'enqueue'>;
   /** Коды навыков → названия из справочника. */
   skillNames(): Promise<Map<string, string>>;
+  /** Сколько уведомлений вида kind у пользователя за текущий день рассылки (см. dispatchDay и botData.countInDispatchDay). */
+  countInDispatchDay(userId: number, kind: string): Promise<number>;
   threshold: number;
+  now?: () => Date;
+}
+
+/**
+ * Очередь задач в пределах процесса: следующая начинается, когда закончилась предыдущая (даже с ошибкой).
+ * Ошибка задачи возвращается её вызывающему и не останавливает очередь.
+ */
+export function serial(): <T>(task: () => Promise<T>) => Promise<T> {
+  let tail: Promise<unknown> = Promise.resolve();
+  return (task) => {
+    const run = tail.then(task);
+    tail = run.catch(() => undefined);
+    return run;
+  };
 }
 
 /** Демо-пользователи — не настоящие аккаунты MAX: им не пишем. */
@@ -38,11 +65,17 @@ export async function onInternshipCreated(deps: NotifyDeps, { internshipId }: Ap
     if (!reachable(user)) continue;
     const match = matchStudentToInternship(profile, internship);
     if (!shouldNotify(match, deps.threshold)) continue;
+    // Лимит в день рассылки: сверх него — одна подборка со ссылкой на ленту
+    if ((await deps.countInDispatchDay(user.userId, KIND.internshipMatch)) >= DAILY_MATCH_LIMIT) {
+      const day = dispatchDay(deps.now?.() ?? new Date());
+      if (await enqueue(deps, user, KIND.digest, `digest:${user.userId}:${day}`, digestMessage())) queued++;
+      continue;
+    }
     const matchedSkills = [...match.mustMatched, ...match.niceMatched].map((c) => names.get(c) ?? c);
     const ok = await enqueue(
       deps,
       user,
-      'internship_match',
+      KIND.internshipMatch,
       `internship:${internship.id}:student:${user.userId}`,
       internshipMatchMessage({ internshipId: internship.id, title: internship.title, company, score: match.score, matchedSkills }),
     );
@@ -59,7 +92,7 @@ export async function onInterestCreated(deps: NotifyDeps, e: AppEvents['interest
   const ok = await enqueue(
     deps,
     ctx.employerOwner,
-    'new_candidate',
+    KIND.newCandidate,
     `interest:${ctx.interest.id}:employer`,
     newCandidateMessage({ internshipId: ctx.internship.id, title: ctx.internship.title, score: ctx.interest.matchScore }),
   );
@@ -78,9 +111,16 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
     const ok = await enqueue(
       deps,
       student.user,
-      'invited_student',
+      KIND.invitedStudent,
       `invite:${interest.id}:student`,
-      studentInvitedMessage({ internshipId: internship.id, title: internship.title, company, contactName: employer?.contactName ?? null, phone: employerOwner?.phone ?? null }),
+      studentInvitedMessage({
+        internshipId: internship.id,
+        title: internship.title,
+        company,
+        contactName: employer?.contactName ?? null,
+        phone: employerOwner?.phone ?? null,
+        type: internship.type,
+      }),
     );
     if (ok) queued++;
   }
@@ -90,7 +130,7 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
     const ok = await enqueue(
       deps,
       employerOwner,
-      'invited_employer',
+      KIND.invitedEmployer,
       `invite:${interest.id}:employer`,
       employerInvitedMessage({ internshipId: internship.id, title: internship.title, studentName, phone: student.phone, score: interest.matchScore }),
     );

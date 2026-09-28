@@ -2,7 +2,7 @@
 // а ставится в очередь с ключом из id события — повторная доставка вебхука не создаст второе сообщение.
 import type { EnqueueInput } from '../db/botData.js';
 import type { MaxUser } from '../auth/initData.js';
-import { fallbackMessage, welcomeMessage, type QueuedMessage } from './messages.js';
+import { fallbackMessage, KIND, welcomeMessage, type QueuedMessage } from './messages.js';
 
 export interface UpdateDeps {
   upsertUser(maxUser: MaxUser): Promise<{ id: number }>;
@@ -43,7 +43,7 @@ export function replyFor(raw: unknown, demo: boolean): { user: MaxApiUser; kind:
   if (update.update_type === 'bot_started' && 'user' in update && update.user?.user_id) {
     return {
       user: update.user,
-      kind: 'welcome',
+      kind: KIND.welcome,
       dedupeKey: `start:${update.user.user_id}:${update.timestamp}`,
       message: welcomeMessage({ firstName: update.user.first_name, demo, startPayload: update.payload }),
     };
@@ -57,7 +57,7 @@ export function replyFor(raw: unknown, demo: boolean): { user: MaxApiUser; kind:
     const isStart = (body?.text ?? '').trim().startsWith('/start');
     return {
       user: sender,
-      kind: isStart ? 'welcome' : 'fallback',
+      kind: isStart ? KIND.welcome : KIND.fallback,
       dedupeKey: `msg:${sender.user_id}:${id}`,
       message: isStart ? welcomeMessage({ firstName: sender.first_name, demo }) : fallbackMessage(),
     };
