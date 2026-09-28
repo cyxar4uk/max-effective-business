@@ -10,11 +10,22 @@ import { feedQuery, idParam, interestBody, internshipBody, internshipPatch, inte
 import { employersById, interestSummary, internshipView } from './views.js';
 
 const FEED_LIMIT = 50;
+// Сколько мест лента разбирает за раз после фильтров SQL: защита от раздутой таблицы
+const FEED_SCAN_LIMIT = 500;
+// Открытых мест у одного работодателя: защита от спама и раздувания ленты
+export const MAX_OPEN_PER_EMPLOYER = 20;
 
 export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
   const r = Router();
   const internships = ds.getRepository(Internship);
   const interests = ds.getRepository(Interest);
+
+  async function assertOpenLimit(employerId: number): Promise<void> {
+    const open = await internships.countBy({ employerId, status: 'open' });
+    if (open >= MAX_OPEN_PER_EMPLOYER) {
+      throw new ApiError('CONFLICT', `Открыто уже ${MAX_OPEN_PER_EMPLOYER} мест — закройте ненужные, чтобы опубликовать новое`);
+    }
+  }
 
   // ---------- работодатель ----------
 
@@ -25,6 +36,7 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     if (Object.keys(rules).length) throw new ApiError('VALIDATION_ERROR', 'Проверьте заполнение полей', rules);
     await assertSkills(ds, { requiredSkills: body.requiredSkills, niceSkills: body.niceSkills });
     await assertTags(ds, body.tags);
+    await assertOpenLimit(employer.id);
 
     const inserted = await internships.save(internships.create({ ...body, employerId: employer.id, source: 'employer' }));
     // save() возвращает сгенерированный bigint строкой в обход парсера pg — перечитываем запись: id станет числом,
@@ -63,6 +75,7 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     if (Object.keys(rules).length) throw new ApiError('VALIDATION_ERROR', 'Проверьте заполнение полей', rules);
     await assertSkills(ds, { requiredSkills: patch.requiredSkills ?? [], niceSkills: patch.niceSkills ?? [] });
     await assertTags(ds, patch.tags ?? []);
+    if (patch.status === 'open' && internship.status !== 'open') await assertOpenLimit(employer.id);
     const saved = await internships.save(internships.merge(internship, patch));
     res.json(internshipView(saved, employer, { isOwner: true }));
   });
@@ -125,16 +138,22 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     const user = currentUser(req);
     const student = await requireStudent(ds, user.id);
     const { tags } = parse(feedQuery, req.query);
-    const open = await internships
+    // Грубые фильтры — в SQL, чтобы не тащить в память всю таблицу: формат студента; хотя бы один общий навык
+    // (иначе совпадение 0 %) или место без требований; теги. Город и точный процент — в matcher.
+    const q = internships
       .createQueryBuilder('i')
       .where(`i.status = 'open'`)
       .andWhere('NOT EXISTS (SELECT 1 FROM interests x WHERE x.internship_id = i.id AND x.student_user_id = :uid)', { uid: user.id })
-      .orderBy('i.created_at', 'DESC')
-      .getMany();
+      .andWhere('i.format = ANY(:formats::text[])', { formats: student.formats })
+      .andWhere(
+        '(i.required_skills && :skills::text[] OR i.nice_skills && :skills::text[] OR (cardinality(i.required_skills) = 0 AND cardinality(i.nice_skills) = 0))',
+        { skills: student.skills },
+      );
+    // Теги только фильтруют ленту, в расчёте совпадения не участвуют
+    if (tags.length) q.andWhere('i.tags && :tags::text[]', { tags });
+    const open = await q.orderBy('i.created_at', 'DESC').limit(FEED_SCAN_LIMIT).getMany();
 
     const suitable = open
-      // Теги только фильтруют ленту, в расчёте совпадения не участвуют
-      .filter((i) => !tags.length || i.tags.some((t) => tags.includes(t)))
       .map((i) => ({ i, ...matcher(student, i) }))
       .filter((x) => x.eligible && x.match.score > 0)
       .sort((a, b) => b.match.score - a.match.score)
