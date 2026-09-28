@@ -56,10 +56,10 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
   r.patch('/internships/:id', async (req, res) => {
     const { internship, employer } = await ownInternship(ds, currentUser(req).id, parse(idParam, req.params.id));
     const patch = parse(internshipPatch, req.body);
-    // Место стало неоплачиваемым — сумма больше не имеет смысла
-    if (patch.paid === false && patch.salary === undefined) patch.salary = null;
+    // Место неоплачиваемое — суммы нет, даже если форма прислала старую
+    if (patch.paid === false) patch.salary = null;
     const merged = { ...internship, ...patch };
-    const rules = internshipRules(merged);
+    const rules = internshipRules(merged, new Set(Object.keys(patch)));
     if (Object.keys(rules).length) throw new ApiError('VALIDATION_ERROR', 'Проверьте заполнение полей', rules);
     await assertSkills(ds, { requiredSkills: patch.requiredSkills ?? [], niceSkills: patch.niceSkills ?? [] });
     await assertTags(ds, patch.tags ?? []);
