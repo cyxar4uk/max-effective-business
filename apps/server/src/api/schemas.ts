@@ -8,8 +8,19 @@ const placeType = z.enum(['practice', 'internship', 'part_time'], { error: 'Вы
 const paid = z.boolean({ error: 'Укажите, оплачивается ли место' });
 // Сумма по желанию, ₽ в месяц
 const salary = z.number({ error: 'Сумма — целое число рублей' }).int('Сумма — целое число рублей').min(1, 'Сумма больше нуля').max(10_000_000, 'Слишком большая сумма');
-const tagList = z.array(z.string().min(1), { error: 'Нужен список тегов' }).max(3, 'Не больше 3 тегов').transform((v) => [...new Set(v)]);
-const practiceMonth = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Месяц в формате ГГГГ-ММ');
+// Сначала убираем дубли, потом проверяем лимит: ['a','a','a','a'] — это один тег
+const tagList = z
+  .array(z.string({ error: 'Код тега — строка' }).min(1), { error: 'Нужен список тегов' })
+  .transform((v) => [...new Set(v)])
+  .refine((v) => v.length <= 3, 'Не больше 3 тегов');
+// Пустая строка из формы — «не указан»
+const practiceMonth = z.preprocess(
+  (v) => (v === '' ? null : v),
+  z
+    .string({ error: 'Месяц в формате ГГГГ-ММ' })
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Месяц в формате ГГГГ-ММ')
+    .nullish(),
+);
 
 export const phoneBody = z.object({
   phone: z.string().regex(/^\+?\d{10,15}$/, 'Номер в формате +79990000000'),
@@ -28,7 +39,7 @@ export const studentProfileBody = z.object({
   skills: skillList(30)
     .transform((v) => [...new Set(v)])
     .refine((v) => v.length >= 3, 'Выберите хотя бы 3 навыка'),
-  practiceMonth: practiceMonth.nullish().transform((v) => v ?? null),
+  practiceMonth: practiceMonth.transform((v) => v ?? null),
 });
 
 export const employerProfileBody = z.object({
@@ -42,10 +53,11 @@ export const employerProfileBody = z.object({
 const internshipFields = {
   type: placeType,
   title: text(200),
-  description: z.string().trim().max(4000, 'Не длиннее 4000 символов').default(''),
+  // Необязательные поля: можно не передавать или передать null
+  description: z.string({ error: 'Описание — строка' }).trim().max(4000, 'Не длиннее 4000 символов').nullish().transform((v) => v ?? ''),
   requiredSkills: skillList(20).min(1, 'Укажите хотя бы один обязательный навык').transform((v) => [...new Set(v)]),
-  niceSkills: skillList(20).default([]).transform((v) => [...new Set(v)]),
-  tags: tagList.default([]),
+  niceSkills: skillList(20).nullish().transform((v) => [...new Set(v ?? [])]),
+  tags: tagList.nullish().transform((v) => v ?? []),
   format,
   city: text(100).nullish().transform((v) => v ?? null),
   startsOn: date,
@@ -56,7 +68,8 @@ const internshipFields = {
 };
 
 // Проверки, которые касаются нескольких полей: и для создания, и для итогового состояния после PATCH
-export function internshipRules(v: {
+export function internshipRules(
+  v: {
   format: string;
   city: string | null;
   startsOn: string | null;
@@ -65,10 +78,16 @@ export function internshipRules(v: {
   niceSkills: string[];
   paid: boolean | null;
   salary: number | null;
-}): Record<string, string> {
+  },
+  // Какие поля пришли в запросе (для PATCH): ошибку по датам кладём в то поле, которое меняли
+  sent?: Set<string>,
+): Record<string, string> {
   const fields: Record<string, string> = {};
   if (v.format !== 'remote' && !v.city) fields.city = 'Для очного и гибридного формата укажите город';
-  if (v.startsOn && v.endsOn && v.endsOn < v.startsOn) fields.endsOn = 'Дата окончания раньше даты начала';
+  if (v.startsOn && v.endsOn && v.endsOn < v.startsOn) {
+    if (sent && sent.has('startsOn') && !sent.has('endsOn')) fields.startsOn = 'Дата начала позже даты окончания';
+    else fields.endsOn = 'Дата окончания раньше даты начала';
+  }
   if (v.niceSkills.some((s) => v.requiredSkills.includes(s))) fields.niceSkills = 'Навык уже есть среди обязательных';
   if (v.salary !== null && v.paid !== true) fields.salary = 'Сумму можно указать только у оплачиваемого места';
   return fields;
@@ -80,10 +99,10 @@ export const internshipPatch = z
   .object({
     type: placeType,
     title: internshipFields.title,
-    description: z.string().trim().max(4000, 'Не длиннее 4000 символов'),
+    description: z.string({ error: 'Описание — строка' }).trim().max(4000, 'Не длиннее 4000 символов').nullable().transform((v) => v ?? ''),
     requiredSkills: skillList(20).min(1, 'Укажите хотя бы один обязательный навык').transform((v) => [...new Set(v)]),
-    niceSkills: skillList(20).transform((v) => [...new Set(v)]),
-    tags: tagList,
+    niceSkills: skillList(20).nullable().transform((v) => [...new Set(v ?? [])]),
+    tags: tagList.nullable().transform((v) => v ?? []),
     format,
     city: internshipFields.city,
     startsOn: date,
@@ -98,9 +117,12 @@ export const internshipPatch = z
 // Фильтр ленты по тегам: ?tags=website,one_c
 export const feedQuery = z.object({
   tags: z
-    .string()
+    .union([z.string(), z.array(z.string())], { error: 'Теги через запятую: ?tags=website,one_c' })
     .optional()
-    .transform((v) => (v ? [...new Set(v.split(',').map((t) => t.trim()).filter(Boolean))] : [])),
+    .transform((v) => {
+      const parts = (Array.isArray(v) ? v : v ? [v] : []).flatMap((t) => t.split(','));
+      return [...new Set(parts.map((t) => t.trim()).filter(Boolean))];
+    }),
 });
 
 export const interestBody = z.object({

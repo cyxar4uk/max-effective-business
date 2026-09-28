@@ -253,10 +253,14 @@ describe.skipIf(!url)('основной сценарий', () => {
       { code: 'website', name: 'Сайт', skills: ['figma'] },
       { code: 'spreadsheets', name: 'Таблицы и аналитика', skills: ['excel', 'power_bi'] },
     ]);
-    // Группы идут по sort, а не по алфавиту: «Дизайн» раньше «Аналитики», если у неё sort меньше
+    // Сквозной sort: группы идут в заданном порядке, а не по алфавиту
     await ds.query(`UPDATE skills SET sort = CASE group_name WHEN 'Дизайн' THEN 100 ELSE 200 END`);
     const skills = await as(STUDENT).get('/api/skills');
     expect(skills.body.groups.map((g: { name: string }) => g.name)).toEqual(['Дизайн', 'Аналитика']);
+    // sort внутри группы (одинаковые значения у разных групп) — группы по алфавиту, как раньше
+    await ds.query(`UPDATE skills SET sort = 10`);
+    const same = await as(STUDENT).get('/api/skills');
+    expect(same.body.groups.map((g: { name: string }) => g.name)).toEqual(['Аналитика', 'Дизайн']);
   });
 
   it('лента фильтруется по тегам', async () => {
@@ -267,9 +271,12 @@ describe.skipIf(!url)('основной сценарий', () => {
     const all = await as(STUDENT).get('/api/student/feed');
     const onlySite = await as(STUDENT).get('/api/student/feed?tags=website');
     const unknownTag = await as(STUDENT).get('/api/student/feed?tags=nope');
+    const asArray = await as(STUDENT).get('/api/student/feed?tags=nope&tags=website');
     expect(all.body.items.map((i: { id: number }) => i.id)).toContain(tagged.body.id);
     expect(onlySite.body.items.map((i: { id: number }) => i.id)).toEqual([tagged.body.id]);
     expect(unknownTag.body.items).toEqual([]);
+    expect(asArray.status).toBe(200);
+    expect(asArray.body.items.map((i: { id: number }) => i.id)).toEqual([tagged.body.id]);
   });
 
   it('оплата: сумма только у оплачиваемого места, при снятии оплаты сумма сбрасывается', async () => {
@@ -284,6 +291,31 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect(bad.body.error.fields).toEqual({ salary: expect.any(String) });
     const retag = await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { type: 'practice', tags: ['spreadsheets'] });
     expect(retag.body).toMatchObject({ type: 'practice', tags: ['spreadsheets'] });
+
+    // Форма переотправляет состояние целиком: paid:false со старой суммой — сумма сбрасывается, а не 400
+    await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { paid: true, salary: 25000 }).expect(200);
+    const resent = await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { paid: false, salary: 25000 });
+    expect(resent.status).toBe(200);
+    expect(resent.body).toMatchObject({ paid: false, salary: null });
+
+    // Ошибка по датам — в том поле, которое меняли
+    const late = await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { startsOn: '2027-01-01' });
+    expect(late.body.error.fields).toEqual({ startsOn: expect.any(String) });
+  });
+
+  it('необязательные поля: null и дубли тегов', async () => {
+    const res = await as(EMPLOYER).post('/api/internships', {
+      ...PLACE, title: 'С null', requiredSkills: ['excel'], format: 'remote',
+      description: null, niceSkills: null, salary: null, tags: ['website', 'website', 'website', 'website'],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ description: '', niceSkills: [], salary: null, tags: ['website'] });
+
+    const profile = { university: 'РАНХиГС', course: 3, direction: 'БИ', city: 'Москва', formats: ['remote'], skills: ['excel', 'sql', 'figma'] };
+    const empty = await as(STUDENT).put('/api/student/profile', { ...profile, practiceMonth: '' });
+    expect(empty.body.practiceMonth).toBeNull();
+    const wrongType = await as(STUDENT).put('/api/student/profile', { ...profile, practiceMonth: 202611 });
+    expect(wrongType.body.error.fields.practiceMonth).toBe('Месяц в формате ГГГГ-ММ');
   });
 
   it('места, созданные в обход API (демо, импорт), получают тип «стажировка» и оплату «не указано»', async () => {
