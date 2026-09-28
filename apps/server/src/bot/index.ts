@@ -7,7 +7,7 @@ import { createBotData } from '../db/botData.js';
 import { createUsersRepo } from '../db/users.js';
 import type { EventBus } from '../events.js';
 import { createMaxApi, type MaxApi } from './maxApi.js';
-import { onInterestCreated, onInterestInvited, onInternshipCreated, type NotifyDeps } from './notify.js';
+import { onInterestCreated, onInterestInvited, onInternshipCreated, serial, type NotifyDeps } from './notify.js';
 import { createSender } from './sender.js';
 import { createUpdateHandler } from './updates.js';
 
@@ -46,22 +46,16 @@ export function registerBot({ events, ds, config, log, api = createMaxApi({ toke
       const rows: { code: string; name: string }[] = await ds.query('SELECT code, name FROM skills');
       return new Map(rows.map((r) => [r.code, r.name]));
     },
-    // Уведомления за текущие московские сутки — для лимита «не больше 3 новых мест в день»
-    async countToday(userId, kind) {
-      const [row]: { n: number }[] = await ds.query(
-        `SELECT count(*)::int AS n FROM notifications
-         WHERE user_id = $1 AND kind = $2
-           AND created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Moscow') AT TIME ZONE 'Europe/Moscow')`,
-        [userId, kind],
-      );
-      return row?.n ?? 0;
-    },
+    countInDispatchDay: (userId, kind) => data.countInDispatchDay(userId, kind),
   };
 
   const logQueued = (event: string) => (queued: number) => {
     if (queued) log.info({ event, queued }, 'Уведомления поставлены в очередь');
   };
-  events.on('internship.created', (e) => onInternshipCreated(notify, e).then(logQueued('internship.created')));
+  // Новые места обрабатываем строго по одному: иначе несколько мест, опубликованных одновременно,
+  // прочитают один и тот же счётчик и проскочат мимо лимита «3 в день»
+  const oneAtATime = serial();
+  events.on('internship.created', (e) => oneAtATime(() => onInternshipCreated(notify, e)).then(logQueued('internship.created')));
   events.on('interest.created', (e) => onInterestCreated(notify, e).then(logQueued('interest.created')));
   events.on('interest.invited', (e) => onInterestInvited(notify, e).then(logQueued('interest.invited')));
 

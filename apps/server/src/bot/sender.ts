@@ -5,7 +5,7 @@
 import type { Logger } from 'pino';
 import type { BotData } from '../db/botData.js';
 import { MaxApiError, type MaxApi } from './maxApi.js';
-import { toMessageBody, type QueuedMessage } from './messages.js';
+import { REPLY_KINDS, toMessageBody, type QueuedMessage } from './messages.js';
 
 export const PER_CHAT_INTERVAL_MS = 500;
 export const GLOBAL_INTERVAL_MS = 40;
@@ -14,8 +14,6 @@ export const BATCH = 10;
 
 /** Тихие часы по Москве (решение Артёма от 27.09): с 22:00 до 9:00 уведомления не шлём, откладываем до утра. */
 export const QUIET_HOURS = { from: 22, to: 9 } as const;
-/** Ответы на сообщения самого пользователя (/start, текст) уходят в любое время: он только что написал боту. */
-export const REPLY_KINDS: ReadonlySet<string> = new Set(['welcome', 'fallback']);
 
 const MSK_OFFSET_MS = 3 * 3600_000;
 

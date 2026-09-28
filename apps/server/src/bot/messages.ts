@@ -19,6 +19,20 @@ export interface QueuedMessage {
 /** Тип места (#22): практика, стажировка, подработка. Пока поля нет в БД — undefined. */
 export type PlaceType = 'practice' | 'internship' | 'part_time';
 
+/** Виды уведомлений (notifications.kind) — одно место для updates.ts, notify.ts и sender.ts. */
+export const KIND = {
+  welcome: 'welcome',
+  fallback: 'fallback',
+  internshipMatch: 'internship_match',
+  digest: 'digest',
+  newCandidate: 'new_candidate',
+  invitedStudent: 'invited_student',
+  invitedEmployer: 'invited_employer',
+} as const;
+
+/** Ответы на сообщения самого пользователя (/start, текст): уходят в любое время — он только что написал боту. */
+export const REPLY_KINDS: ReadonlySet<string> = new Set([KIND.welcome, KIND.fallback]);
+
 /** Ограничения payload кнопки open_app и диплинка: до 512 символов, A–Z a–z 0–9 _ - */
 export const START_PARAM = /^[\w-]{1,512}$/;
 

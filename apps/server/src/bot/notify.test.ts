@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EnqueueInput, InterestContext, Recipient, StudentCandidate } from '../db/botData.js';
 import type { Employer, Interest, Internship, StudentProfile } from '../db/entities.js';
-import { DAILY_MATCH_LIMIT, mskDay, onInterestCreated, onInterestInvited, onInternshipCreated, type NotifyDeps } from './notify.js';
+import { DAILY_MATCH_LIMIT, dispatchDay, onInterestCreated, onInterestInvited, onInternshipCreated, serial, type NotifyDeps } from './notify.js';
 
 const recipient = (userId: number, over: Partial<Recipient> = {}): Recipient => ({ userId, maxUserId: 1000 + userId, firstName: `U${userId}`, isDemo: false, ...over });
 
@@ -22,7 +22,7 @@ function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | nul
   let excluded: number | undefined;
   const d: NotifyDeps = {
     threshold: 60,
-    countToday: async () => over.today ?? 0,
+    countInDispatchDay: async () => over.today ?? 0,
     now: () => new Date('2026-09-28T10:00:00Z'),
     skillNames: async () => new Map([['excel', 'Excel'], ['sql', 'SQL'], ['power_bi', 'Power BI']]),
     data: {
@@ -132,9 +132,24 @@ describe('лимит «не больше 3 новых мест в день»', (
     expect(queued[0]!.kind).toBe('internship_match');
   });
 
-  it('сутки — московские', () => {
-    expect(mskDay(new Date('2026-09-28T20:59:00Z'))).toBe('2026-09-28');
-    expect(mskDay(new Date('2026-09-28T21:00:00Z'))).toBe('2026-09-29');
+  it('день рассылки — с 22:00 до 22:00 по Москве: опубликованное после 22:00 идёт в лимит следующего дня', () => {
+    expect(dispatchDay(new Date('2026-09-28T09:00:00Z'))).toBe('2026-09-28'); // 12:00 МСК
+    expect(dispatchDay(new Date('2026-09-28T18:59:00Z'))).toBe('2026-09-28'); // 21:59 МСК
+    expect(dispatchDay(new Date('2026-09-28T19:00:00Z'))).toBe('2026-09-29'); // 22:00 МСК
+    expect(dispatchDay(new Date('2026-09-28T21:30:00Z'))).toBe('2026-09-29'); // 00:30 МСК
+    expect(dispatchDay(new Date('2026-09-29T05:00:00Z'))).toBe('2026-09-29'); // 08:00 МСК
+  });
+
+  it('подборка, поставленная в 22:30, и подборка утром — один ключ, вторая не создаётся', async () => {
+    const seen = new Set<string>();
+    const students = [student(1, ['excel', 'sql'])];
+    const late = deps({ students, seen, today: DAILY_MATCH_LIMIT });
+    late.d.now = () => new Date('2026-09-28T19:30:00Z'); // 22:30 МСК
+    await onInternshipCreated(late.d, { internshipId: 7 });
+    const morning = deps({ students, seen, today: DAILY_MATCH_LIMIT });
+    morning.d.now = () => new Date('2026-09-29T05:00:00Z'); // 08:00 МСК
+    expect(await onInternshipCreated(morning.d, { internshipId: 7 })).toBe(0);
+    expect(late.queued[0]!.dedupeKey).toBe('digest:1:2026-09-29');
   });
 });
 
@@ -144,5 +159,23 @@ describe('чек-лист по типу места', () => {
     const { d, queued } = deps({ ctx: ctx({ internship: practice }) });
     await onInterestInvited(d, { interestId: 30, internshipId: 7, studentUserId: 1 });
     expect(String(queued[0]!.payload.text)).toContain('885/390');
+  });
+});
+
+describe('serial', () => {
+  it('задачи идут строго по одной, ошибка не останавливает очередь', async () => {
+    const run = serial();
+    const log: string[] = [];
+    const task = (name: string, ms: number, fail = false) => () =>
+      new Promise<string>((resolve, reject) =>
+        setTimeout(() => {
+          log.push(name);
+          if (fail) reject(new Error(name));
+          else resolve(name);
+        }, ms),
+      );
+    const results = await Promise.allSettled([run(task('a', 30)), run(task('b', 1, true)), run(task('c', 1))]);
+    expect(log).toEqual(['a', 'b', 'c']);
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'rejected', 'fulfilled']);
   });
 });

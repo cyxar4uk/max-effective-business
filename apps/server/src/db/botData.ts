@@ -142,6 +142,19 @@ export function createBotData(ds: DataSource) {
     },
 
     // Окончательная ошибка (403 — пользователь остановил бота, исчерпаны попытки). Текст тоже очищаем.
+    // Сколько уведомлений вида kind у пользователя за день рассылки на момент at: с 22:00 до 22:00 по Москве
+    // (лимит бота «3 новых места в день»: опубликованное после 22:00 уходит утром и считается в следующий день)
+    async countInDispatchDay(userId: number, kind: string, at: Date = new Date()): Promise<number> {
+      const [row]: { n: number }[] = await ds.query(
+        `SELECT count(*)::int AS n FROM notifications
+         WHERE user_id = $1 AND kind = $2 AND created_at <= $3::timestamptz
+           AND created_at >= ((date_trunc('day', ($3::timestamptz AT TIME ZONE 'Europe/Moscow') + interval '2 hours')
+                               - interval '2 hours') AT TIME ZONE 'Europe/Moscow')`,
+        [userId, kind, at],
+      );
+      return row?.n ?? 0;
+    },
+
     async markFailed(id: number, error: string): Promise<void> {
       await ds.query(`UPDATE notifications SET status = 'failed', last_error = $2, payload = '{}' WHERE id = $1`, [id, error.slice(0, 1000)]);
     },
