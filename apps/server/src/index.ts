@@ -5,6 +5,7 @@ import { createDataSource } from './db/dataSource.js';
 import { createRepos } from './db/repos.js';
 import { loadTaskTags } from './db/taskTags.js';
 import { EventBus } from './events.js';
+import { registerTrudvsemImport } from './import/index.js';
 import { createLogger } from './logger.js';
 import { matcher } from './matching/index.js';
 import { registerDemoResponder, seedDemo, seedSkills, TASK_TAGS } from './seed/index.js';
@@ -27,6 +28,8 @@ const events = new EventBus(log);
 // Демо-режим: на стажировку проверяющего сразу откликаются подходящие демо-студенты (см. src/seed/demo/responder.ts)
 if (config.SEED_DEMO) registerDemoResponder({ events, ds, log, threshold: config.MATCH_NOTIFY_THRESHOLD });
 const bot = registerBot({ events, ds, config, log });
+// Места из «Работа России»: фоном при старте и раз в 6 часов; при недоступном API — сохранённый снимок
+const trudvsem = registerTrudvsemImport({ ds, log });
 
 const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher }, onBotUpdate: bot.onUpdate });
 const server = app.listen(config.PORT, () => log.info({ port: config.PORT }, 'Сервер запущен'));
@@ -39,6 +42,7 @@ async function shutdown(signal: string) {
   log.info({ signal }, 'Остановка');
   const force = setTimeout(() => process.exit(1), 10_000).unref();
   server.close(async () => {
+    trudvsem.stop();
     await bot.stop().catch(() => undefined);
     await ds.destroy().catch(() => undefined);
     clearTimeout(force);
