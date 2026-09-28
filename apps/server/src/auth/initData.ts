@@ -19,11 +19,14 @@ export interface InitData {
   authDate: Date;
   startParam?: string;
   queryId?: string;
+  // Клиент закодировал пробелы как «+» (form-encoding). Для диагностики на живом MAX
+  spacesAsPlus: boolean;
 }
 
 export type InitDataError = 'MISSING' | 'MALFORMED' | 'BAD_SIGNATURE' | 'EXPIRED' | 'NO_USER';
 
-export type ValidationResult = { ok: true; data: InitData } | { ok: false; error: InitDataError };
+// ageSec — возраст данных при EXPIRED: помогает подобрать INIT_DATA_MAX_AGE_SEC на живом MAX
+export type ValidationResult = { ok: true; data: InitData } | { ok: false; error: InitDataError; ageSec?: number };
 
 function parsePairs(raw: string, plusAsSpace = false): Map<string, string> | null {
   const pairs = new Map<string, string>();
@@ -70,6 +73,7 @@ export function validateInitData(
   if (!raw) return { ok: false, error: 'MISSING' };
 
   let pairs = parsePairs(raw);
+  let spacesAsPlus = false;
   const hash = pairs?.get('hash');
   if (!pairs || !hash || !/^[0-9a-f]{64}$/i.test(hash)) return { ok: false, error: 'MALFORMED' };
 
@@ -84,6 +88,7 @@ export function validateInitData(
     const alt = raw.includes('+') ? parsePairs(raw, true) : null;
     if (!alt || !signatureMatches(alt)) return { ok: false, error: 'BAD_SIGNATURE' };
     pairs = alt;
+    spacesAsPlus = true;
   }
 
   const authDate = parseAuthDate(pairs.get('auth_date'));
@@ -91,7 +96,7 @@ export function validateInitData(
   const now = opts.now ?? new Date();
   const ageSec = (now.getTime() - authDate.getTime()) / 1000;
   // Небольшой допуск на расхождение часов в обе стороны
-  if (ageSec > opts.maxAgeSec || ageSec < -300) return { ok: false, error: 'EXPIRED' };
+  if (ageSec > opts.maxAgeSec || ageSec < -300) return { ok: false, error: 'EXPIRED', ageSec: Math.round(ageSec) };
 
   let user: MaxUser;
   try {
@@ -108,6 +113,7 @@ export function validateInitData(
       authDate,
       startParam: pairs.get('start_param'),
       queryId: pairs.get('query_id'),
+      spacesAsPlus,
     },
   };
 }
