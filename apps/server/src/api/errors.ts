@@ -55,6 +55,9 @@ export const notFoundHandler: RequestHandler = () => {
   throw new ApiError('NOT_FOUND', 'Такого адреса нет');
 };
 
+// Ошибки пула и таймауты БД: сервис временно недоступен, а не ошибка кода
+const dbUnavailable = /timeout exceeded when trying to connect|Query read timeout|Connection terminated|ECONNREFUSED/;
+
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof ApiError) {
     res.status(err.status).json(errorBody(err.code, err.message, err.fields));
@@ -68,6 +71,19 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   // Тело больше лимита express.json (100 КБ) — ошибка клиента, а не сервера
   if (err?.type === 'entity.too.large') {
     res.status(413).json(errorBody('VALIDATION_ERROR', 'Слишком большой запрос'));
+    return;
+  }
+  // Прочие ошибки клиента из body-parser и роутера (неизвестная кодировка, битый адрес и т. п.) несут свой 4xx.
+  // Без стека в логе: иначе любой может забить журнал запросами без авторизации.
+  const status = typeof err?.status === 'number' ? err.status : typeof err?.statusCode === 'number' ? err.statusCode : 0;
+  if (status >= 400 && status < 500) {
+    req.log.info({ status, type: err?.type }, 'Некорректный запрос');
+    res.status(status).json(errorBody('VALIDATION_ERROR', 'Некорректный запрос'));
+    return;
+  }
+  if (err instanceof Error && dbUnavailable.test(err.message)) {
+    req.log.warn({ err }, 'БД недоступна');
+    res.status(503).json(errorBody('INTERNAL', 'Сервис временно недоступен. Попробуйте через минуту'));
     return;
   }
   req.log.error({ err }, 'Необработанная ошибка');

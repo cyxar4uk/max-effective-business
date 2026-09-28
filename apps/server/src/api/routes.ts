@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { verifyContact } from '../auth/contact.js';
+import { contactFresh, verifyContact } from '../auth/contact.js';
 import { currentUser } from '../auth/middleware.js';
 import type { Config } from '../config.js';
 import type { User } from '../db/entities.js';
@@ -23,7 +23,7 @@ function meView(user: User, roles: { student: boolean; employer: boolean }) {
   };
 }
 
-export function apiRouter(repos: Repos, config: Pick<Config, 'MAX_BOT_TOKEN'>): Router {
+export function apiRouter(repos: Repos, config: Pick<Config, 'MAX_BOT_TOKEN' | 'INIT_DATA_MAX_AGE_SEC'>): Router {
   const r = Router();
 
   r.get('/me', async (req, res) => {
@@ -33,7 +33,7 @@ export function apiRouter(repos: Repos, config: Pick<Config, 'MAX_BOT_TOKEN'>): 
 
   r.post('/me/consent', async (req, res) => {
     const body = parse(z.object({ version: z.literal(CONSENT_VERSION, { error: 'Устаревшая версия согласия' }) }), req.body);
-    const user = await repos.users.saveConsent(currentUser(req).id, body.version);
+    const user = await repos.users.saveConsent(currentUser(req).id, body.version, req.initData?.user.last_name ?? null);
     res.json(meView(user, await repos.roles(user.id)));
   });
 
@@ -42,6 +42,9 @@ export function apiRouter(repos: Repos, config: Pick<Config, 'MAX_BOT_TOKEN'>): 
     const user = currentUser(req);
     requireConsent(user);
     const body = parse(phoneBody, req.body);
+    if (!contactFresh(body, config.INIT_DATA_MAX_AGE_SEC)) {
+      throw new ApiError('VALIDATION_ERROR', 'Подтверждение номера устарело. Поделитесь им ещё раз', { phone: 'Подпись номера устарела' });
+    }
     const scheme = verifyContact(body, user.maxUserId, config.MAX_BOT_TOKEN);
     if (!scheme) throw new ApiError('VALIDATION_ERROR', 'Не удалось подтвердить номер. Поделитесь им ещё раз', { phone: 'Подпись номера не сошлась' });
     req.log.info({ contactScheme: scheme }, 'Номер подтверждён');
