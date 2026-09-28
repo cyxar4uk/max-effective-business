@@ -25,7 +25,6 @@ export class User {
   @Column({ name: 'max_user_id', type: 'bigint', unique: true }) maxUserId!: number;
   @Column({ name: 'first_name', type: 'text', nullable: true }) firstName!: string | null;
   @Column({ name: 'last_name', type: 'text', nullable: true }) lastName!: string | null;
-  @Column({ type: 'text', nullable: true }) username!: string | null;
   @Column({ type: 'text', nullable: true }) phone!: string | null;
   @Column({ name: 'phone_saved_at', type: 'timestamptz', nullable: true }) phoneSavedAt!: Date | null;
   @Column({ name: 'consent_at', type: 'timestamptz', nullable: true }) consentAt!: Date | null;

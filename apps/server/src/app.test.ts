@@ -67,6 +67,32 @@ describe('GET /api/health', () => {
     const down = createApp({ config, log, repos: fakeRepos({ dbDown: true }), events: new EventBus(log) });
     expect((await request(down).get('/api/health')).status).toBe(503);
   });
+
+  it('503 за 2 секунды, если БД зависла, а не бесконечное ожидание', async () => {
+    const repos = { ...fakeRepos(), ping: () => new Promise<void>(() => undefined) };
+    const hung = createApp({ config, log, repos, events: new EventBus(log) });
+    const started = Date.now();
+    expect((await request(hung).get('/api/health')).status).toBe(503);
+    expect(Date.now() - started).toBeLessThan(3000);
+  });
+});
+
+describe('ошибки клиента не превращаются в 500', () => {
+  it('неизвестная кодировка тела — 415, даже без авторизации', async () => {
+    const res = await request(app).post('/x').set('Content-Type', 'application/json; charset=koi8-r').send('{}');
+    expect(res.status).toBe(415);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('ошибка пула БД — 503, а не 500', async () => {
+    const repos = fakeRepos();
+    repos.roles = async () => {
+      throw new Error('timeout exceeded when trying to connect');
+    };
+    const flaky = createApp({ config, log, repos, events: new EventBus(log) });
+    const res = await request(flaky).get('/api/me').set('X-Max-Init-Data', initData());
+    expect(res.status).toBe(503);
+  });
 });
 
 describe('авторизация по initData', () => {
