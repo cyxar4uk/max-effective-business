@@ -208,6 +208,11 @@ export function errorOnStep(errors: Errors, step: number): string | undefined {
   return Object.entries(errors).find(([k]) => FIELD_STEP[k] === step)?.[1];
 }
 
+/** Ошибки без полей этого шага: шаг прошёл проверку — старые ответы сервера по нему больше не показываем. */
+export function withoutStep(errors: Errors, step: number): Errors {
+  return Object.fromEntries(Object.entries(errors).filter(([k]) => FIELD_STEP[k] !== step));
+}
+
 /** Ошибки сервера по полям: `requiredSkills.2` → `requiredSkills`; поля вне формы — отдельно. */
 export function splitServerFields(fields: Record<string, string>): { byField: Errors; other: string[] } {
   const byField: Errors = {};

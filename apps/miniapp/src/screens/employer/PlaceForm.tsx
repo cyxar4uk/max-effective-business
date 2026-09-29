@@ -30,6 +30,7 @@ import {
   TYPE_LABEL,
   validateAll,
   validateStep,
+  withoutStep,
   type Dict,
   type Draft,
   type Errors,
@@ -203,6 +204,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
       haptic.notify('error');
       return;
     }
+    setErrors((prev) => withoutStep(prev, step));
     haptic.impact('light');
     if (editing) navigate(-1);
     else navigate({ search: `?step=${step + 1}` });
