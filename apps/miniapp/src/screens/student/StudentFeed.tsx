@@ -15,7 +15,7 @@ import { loadSkills, loadTags } from './dict';
 import { loadOwnPlaces, withOwnFirst } from './ownPlaces';
 import { PlaceCardFace } from './PlaceCard';
 import { PlaceDetails } from './PlaceDetails';
-import { plural, skillNames, TAG_DOT, type SkillNames } from './place';
+import { plural, skillNames, tagColor, type SkillNames } from './place';
 import { Icon } from './ui';
 
 function FeedLayout({ head, aside, children }: { head: ReactNode; aside?: ReactNode; children: ReactNode }) {
@@ -350,7 +350,7 @@ export function StudentFeed() {
             const on = tags.includes(t.code);
             return (
               <button key={t.code} type="button" className={on ? 'chip on' : 'chip'} onClick={() => toggle(t.code)} aria-pressed={on}>
-                <i className="dot" style={{ background: TAG_DOT[t.code] ?? 'var(--lo)' }} />
+                <i className="dot" style={{ background: tagColor(t.code) }} />
                 {t.name}
               </button>
             );

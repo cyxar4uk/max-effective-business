@@ -43,15 +43,8 @@ export function coverOf(place: Pick<Internship, 'id' | 'tags' | 'type'>): { cls:
   return { cls: COVER_CLASSES[Math.abs(place.id) % COVER_CLASSES.length], label: TYPE_COVER_LABEL[place.type] ?? '' };
 }
 
-/** Цвет точки у чипа тега в фильтре ленты. */
-export const TAG_DOT: Record<string, string> = {
-  marketplaces: '#ff7a45',
-  spreadsheets: '#3d7bff',
-  website: '#b15cff',
-  one_c: '#ffb020',
-  social_ads: '#ff4d6d',
-  sales: '#14b8a6',
-};
+/** Цвет точки у чипа тега в фильтре ленты: токен --tag-<код> из tokens.css, для неизвестного тега — серый --lo. */
+export const tagColor = (code: string) => `var(--tag-${code.replace(/[^a-z0-9]+/gi, '-')}, var(--lo))`;
 
 /** Цвет выбранного пузыря навыка — по смыслу группы, как обложки тегов; прочие группы — по кругу. */
 const GROUP_COVERS: [RegExp, string][] = [
