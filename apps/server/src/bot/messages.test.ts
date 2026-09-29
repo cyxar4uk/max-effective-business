@@ -4,6 +4,7 @@ import {
   employerInvitedMessage,
   fallbackMessage,
   internshipMatchMessage,
+  placeTerms,
   NEXT_STEPS,
   nextStepsFor,
   START_PARAM,
@@ -123,5 +124,19 @@ describe('решения Артёма от 27.09', () => {
 
   it('подборка ведёт в ленту студента', () => {
     expect(digestMessage().buttons.flat().map((b) => b.startapp)).toEqual(['student']);
+  });
+});
+
+describe('тип и оплата в сообщении о новом месте (#74)', () => {
+  it('сумма, без оплаты, оплачивается без суммы, не указана', () => {
+    expect(placeTerms('internship', true, 30000)).toMatch(/^Стажировка · 30\s000 ₽ в месяц$/);
+    expect(placeTerms('practice', false, null)).toBe('Практика · без оплаты');
+    expect(placeTerms('part_time', true, null)).toBe('Подработка · оплачивается');
+    expect(placeTerms('internship', null, null)).toBe('Стажировка · оплата не указана');
+  });
+
+  it('строка идёт второй, после названия и компании', () => {
+    const m = internshipMatchMessage({ internshipId: 5, title: 'Аналитик', company: 'Луч', score: 85, matchedSkills: ['Excel'], terms: { type: 'practice', paid: false, salary: null } });
+    expect(m.text.split('\n')[1]).toBe('Практика · без оплаты.');
   });
 });
