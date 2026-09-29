@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import type { Candidate, Internship } from '../../api/types';
 import { matchCounts, matchText, type SkillNames } from '../../app/matchText';
+import { useMe } from '../../app/me';
 import { CopyButton } from '../../components/CopyButton';
 import { haptic } from '../../max/bridge';
 import { aboutLine, avatarClass, firstName, fullName, initial, paths, phoneText, studyLine, whenText } from './candidate';
@@ -62,6 +63,7 @@ export function CandidateCardBody({ c, names, pending }: CardProps) {
           <span className="col" style={{ gap: 6 }}>
             <Eq score={c.match.score} height={28} onSurf={false} />
             {matchCounts(c.match) && <span className="facts cd-counts">{matchCounts(c.match)}</span>}
+            <span className="lbl cd-basis">по навыкам, которые отметил студент</span>
           </span>
         </div>
         <p className="cd-phrase">{matchText(c.match, names)}</p>
@@ -86,9 +88,13 @@ interface ContactProps {
   docs?: boolean;
 }
 
-/** Контакт приглашённого: фамилия, телефон, «Скопировать номер». Телефона нет — студент им не делился. */
+/**
+ * Контакт приглашённого: фамилия, телефон, «Скопировать номер». Телефона нет — студент им не делился:
+ * говорим, как связаться, а если номера нет и у работодателя — что его добавить.
+ */
 export function ContactBlock({ c, place, compact = false, docs = true }: ContactProps) {
   const navigate = useNavigate();
+  const { me } = useMe();
   const phone = useRef<HTMLSpanElement>(null);
   return (
     <div className="surf cd-contact">
@@ -101,7 +107,11 @@ export function ContactBlock({ c, place, compact = false, docs = true }: Contact
               {phoneText(c.phone)}
             </span>
           ) : (
-            <span className="lbl">Студент не делился номером — бот передал ему ваш контакт</span>
+            <span className="lbl">
+              {me.hasPhone
+                ? 'Номер студент не указал — бот уже отправил ему в чат MAX ваш контакт, ждите сообщения'
+                : 'Номера нет ни у вас, ни у студента — добавьте свой номер в профиле, чтобы студент мог связаться'}
+            </span>
           )}
         </div>
         {c.phone && <CopyButton text={c.phone} target={phone} label="Скопировать номер" />}

@@ -169,6 +169,10 @@ export function TypeStep({ draft, update, errors, compact }: StepProps) {
         describedBy="pf-type-err"
       />
       <FieldError id="pf-type-err" msg={errors.type} />
+      <p className="lbl m0 pf-terms">
+        <span>Практика — по договору с вузом, оплата по желанию.</span>
+        <span>Стажировка и подработка — по трудовому договору, с оплатой не ниже МРОТ при полной занятости.</span>
+      </p>
     </div>
   );
 }
@@ -484,10 +488,13 @@ export function PayStep({ draft, update, errors, compact }: StepProps) {
             placeholder="Например, 25 000"
             value={draft.salary ? Number(draft.salary).toLocaleString('ru-RU') : ''}
             aria-invalid={Boolean(errors.salary)}
-            aria-describedby="pf-salary-err"
+            aria-describedby="pf-salary-err pf-salary-hint"
             onChange={(e) => update({ salary: e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 8) })}
           />
           <FieldError id="pf-salary-err" msg={errors.salary} />
+          <span id="pf-salary-hint" className="lbl">
+            До вычета НДФЛ
+          </span>
         </div>
       )}
       {draft.paid === false && !compact && (

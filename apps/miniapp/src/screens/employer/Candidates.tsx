@@ -541,52 +541,55 @@ function CandidateList({ list, tab, closed, selected, names, pendingFor, sending
     return <p className="lbl cd-tab-empty">{tab === 'waiting' && closed ? 'Никто не ждёт решения.' : EMPTY_TAB[tab]}</p>;
   }
   return (
-    <ul className="surf cd-list">
-      {list.map((c, i) => {
-        const on = selected?.studentId === c.studentId;
-        const p = pendingFor(c);
-        const name = c.status === 'invited' ? [firstName(c), c.lastName].filter(Boolean).join(' ') : firstName(c);
-        return (
-          <li key={c.studentId} className="cd-li cd-in" style={{ animationDelay: `${Math.min(i, 10) * 20}ms` }}>
-            <button
-              type="button"
-              className={on ? 'cd-row on' : 'cd-row'}
-              aria-current={on ? 'true' : undefined}
-              data-cd-row=""
-              ref={(el) => rowRef(c.studentId, el)}
-              onClick={() => onOpen(c)}
-            >
-              <Avatar c={c} size={44} />
-              <span className="col grow">
-                <span className="cd-row-name">
-                  <span className="cd-row-n">{name}</span>
-                  <DemoBadge isDemo={c.isDemo} kind="response" />
-                </span>
-                {studyLine(c) && <span className="lbl">{studyLine(c)}</span>}
-                {p ? (
-                  <span className="st wait cd-row-st">
-                    {sendingId === c.studentId
-                      ? 'Отправляем…'
-                      : p === 'invite'
-                        ? 'Приглашение ждёт отправки'
-                        : 'Отказ ждёт отправки'}
+    <>
+      <ul className="surf cd-list">
+        {list.map((c, i) => {
+          const on = selected?.studentId === c.studentId;
+          const p = pendingFor(c);
+          const name = c.status === 'invited' ? [firstName(c), c.lastName].filter(Boolean).join(' ') : firstName(c);
+          return (
+            <li key={c.studentId} className="cd-li cd-in" style={{ animationDelay: `${Math.min(i, 10) * 20}ms` }}>
+              <button
+                type="button"
+                className={on ? 'cd-row on' : 'cd-row'}
+                aria-current={on ? 'true' : undefined}
+                data-cd-row=""
+                ref={(el) => rowRef(c.studentId, el)}
+                onClick={() => onOpen(c)}
+              >
+                <Avatar c={c} size={44} />
+                <span className="col grow">
+                  <span className="cd-row-name">
+                    <span className="cd-row-n">{name}</span>
+                    <DemoBadge isDemo={c.isDemo} kind="response" />
                   </span>
-                ) : (
-                  <span className="cd-row-phrase">{matchText(c.match, names)}</span>
-                )}
-              </span>
-              <span className="cd-row-pct">
-                <span className="pct pct-sm num">
-                  {c.match.score}
-                  <small>%</small>
+                  {studyLine(c) && <span className="lbl">{studyLine(c)}</span>}
+                  {p ? (
+                    <span className="st wait cd-row-st">
+                      {sendingId === c.studentId
+                        ? 'Отправляем…'
+                        : p === 'invite'
+                          ? 'Приглашение ждёт отправки'
+                          : 'Отказ ждёт отправки'}
+                    </span>
+                  ) : (
+                    <span className="cd-row-phrase">{matchText(c.match, names)}</span>
+                  )}
                 </span>
-                <Eq score={c.match.score} height={16} />
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+                <span className="cd-row-pct">
+                  <span className="pct pct-sm num">
+                    {c.match.score}
+                    <small>%</small>
+                  </span>
+                  <Eq score={c.match.score} height={16} />
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="lbl m0 cd-basis">Процент — по навыкам, которые отметил студент</p>
+    </>
   );
 }
 
