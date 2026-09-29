@@ -1,10 +1,9 @@
-// Общие куски кандидата: аватар, эквалайзер совпадения, навыки, «Скопировать», тост отмены и короткие сообщения.
+// Общие куски кандидата: аватар, эквалайзер совпадения, навыки, тост отмены и короткие сообщения.
 import { useEffect, useState } from 'react';
 import type { Candidate, Match } from '../../api/types';
 import { matchBars, matchLevel, skillName, type SkillNames } from '../../app/matchText';
-import { haptic } from '../../max/bridge';
-import { avatarClass, copyText, initial } from './candidate';
-import { CheckIcon, CopyIcon, CrossIcon } from './icons';
+import { avatarClass, initial } from './candidate';
+import { CheckIcon, CrossIcon } from './icons';
 import { UNDO_MS, type Decision } from './useDecision';
 
 export function Avatar({ c, size = 42 }: { c: Pick<Candidate, 'studentId' | 'firstName'>; size?: number }) {
@@ -72,29 +71,6 @@ export function MatchSkills({ match, names, max }: { match: Match; names: SkillN
   );
 }
 
-/** «Скопировать»: подтверждение на кнопке на 2 секунды. */
-export function CopyButton({ text, label = 'Скопировать', className = 'btn sec sm' }: { text: string; label?: string; className?: string }) {
-  const [done, setDone] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (done === null) return;
-    const t = window.setTimeout(() => setDone(null), 2000);
-    return () => window.clearTimeout(t);
-  }, [done]);
-
-  const copy = async () => {
-    const ok = await copyText(text);
-    if (ok) haptic.notify('success');
-    setDone(ok);
-  };
-
-  return (
-    <button type="button" className={className} onClick={() => void copy()} aria-live="polite">
-      {done === true ? <CheckIcon /> : <CopyIcon />}
-      {done === true ? 'Скопировано' : done === false ? 'Не вышло — выделите номер' : label}
-    </button>
-  );
-}
 
 const UNDO_S = Math.round(UNDO_MS / 1000);
 const NBSP = String.fromCharCode(0xa0);

@@ -88,29 +88,6 @@ export function phoneText(phone: string): string {
   return phone;
 }
 
-/** Копирование в буфер: Clipboard API, в вебвью без него — через скрытое поле. true — получилось. */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    try {
-      const area = document.createElement('textarea');
-      area.value = text;
-      area.setAttribute('readonly', '');
-      area.style.position = 'fixed';
-      area.style.opacity = '0';
-      document.body.appendChild(area);
-      area.select();
-      const ok = document.execCommand('copy');
-      area.remove();
-      return ok;
-    } catch {
-      return false;
-    }
-  }
-}
-
 /** Место и его кандидаты — данные экранов кандидатов, «Это тандем!» и документов. */
 export interface PlaceData {
   place: Internship;

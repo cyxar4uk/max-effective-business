@@ -1,11 +1,13 @@
 // Карточка кандидата (макет c2 Candidates): инициал на цветной обложке, совпадение фразой и навыками,
 // под карточкой — решение кнопками или контакт приглашённого.
+import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import type { Candidate, Internship } from '../../api/types';
 import { matchCounts, matchText, type SkillNames } from '../../app/matchText';
 import { haptic } from '../../max/bridge';
 import { aboutLine, avatarClass, firstName, fullName, initial, paths, phoneText, studyLine, whenText } from './candidate';
-import { Avatar, CopyButton, Eq, MatchSkills } from './candidateUi';
+import { CopyButton } from '../../components/CopyButton';
+import { Avatar, Eq, MatchSkills } from './candidateUi';
 import { CheckIcon, CrossIcon, DocIcon, LockIcon } from './icons';
 import type { Decision, Pending } from './useDecision';
 
@@ -17,11 +19,21 @@ interface CardProps {
 }
 
 /** Тёмная карточка кандидата — как карточка места в ленте студента. */
-export function CandidateCard({ c, names, pending }: CardProps) {
+export function CandidateCard(props: CardProps) {
+  const c = props.c;
+  return (
+    <article className="card cd-card" aria-label={`Кандидат: ${c.status === 'invited' ? fullName(c) : firstName(c)}`}>
+      <CandidateCardBody {...props} />
+    </article>
+  );
+}
+
+/** Содержимое карточки: в колоде «Карточки» его оборачивает SwipeDeck, на десктопе — CandidateCard. */
+export function CandidateCardBody({ c, names, pending }: CardProps) {
   const name = c.status === 'invited' ? fullName(c) : firstName(c);
   const when = whenText(c.interestedAt);
   return (
-    <article className="card cd-card" aria-label={`Кандидат: ${name}`}>
+    <>
       <div className={`cover ${avatarClass(c.studentId)}`} aria-hidden="true">
         <span className="cv-ring" style={{ width: 300, height: 300, left: -80, top: -90 }} />
         <span className="cd-initial">{initial(c)}</span>
@@ -60,7 +72,7 @@ export function CandidateCard({ c, names, pending }: CardProps) {
           </p>
         )}
       </div>
-    </article>
+    </>
   );
 }
 
@@ -76,6 +88,7 @@ interface ContactProps {
 /** Контакт приглашённого: фамилия, телефон, «Скопировать номер». Телефона нет — студент им не делился. */
 export function ContactBlock({ c, place, compact = false, docs = true }: ContactProps) {
   const navigate = useNavigate();
+  const phone = useRef<HTMLSpanElement>(null);
   return (
     <div className="surf cd-contact">
       <div className="li cd-contact-main">
@@ -83,12 +96,14 @@ export function ContactBlock({ c, place, compact = false, docs = true }: Contact
         <div className="col grow">
           <span className="cd-contact-name">{fullName(c)}</span>
           {c.phone ? (
-            <span className="num cd-phone">{phoneText(c.phone)}</span>
+            <span ref={phone} className="num cd-phone">
+              {phoneText(c.phone)}
+            </span>
           ) : (
             <span className="lbl">Студент не делился номером — бот передал ему ваш контакт</span>
           )}
         </div>
-        {c.phone && <CopyButton text={c.phone} label="Скопировать номер" />}
+        {c.phone && <CopyButton text={c.phone} target={phone} label="Скопировать номер" />}
       </div>
       {!compact && (
         <div className="li">

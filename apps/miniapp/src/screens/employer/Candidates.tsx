@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent,
   type ReactNode,
 } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
@@ -31,7 +30,8 @@ import {
   type PlaceData,
   type Tab,
 } from './candidate';
-import { CandidateActions, CandidateCard } from './CandidateCard';
+import { SwipeDeck, type SwipeDeckHandle } from '../../components/SwipeDeck';
+import { CandidateActions, CandidateCard, CandidateCardBody } from './CandidateCard';
 import { Avatar, Eq, Notice, UndoToast, type NoticeValue } from './candidateUi';
 import { CloseSheet } from './CloseSheet';
 import { plural } from './draft';
@@ -119,6 +119,8 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
   const selId = Number(params.get('c'));
   const selected = list.find((c) => c.studentId === selId) ?? list[0] ?? null;
   const index = selected ? list.indexOf(selected) : -1;
+  // Колода «Карточки» пролистана до конца
+  const atEnd = !desktop && view === 'cards' && params.get('c') === 'end' && list.length > 0;
   const counts = Object.fromEntries(TABS.map((t) => [t, items.filter((c) => c.status === TAB_STATUS[t]).length])) as Record<
     Tab,
     number
@@ -151,7 +153,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
   // Решение в отсчёте или в пути — кнопки этого кандидата недоступны
   const busy = pending ?? sending;
 
-  const setQuery = (next: { tab?: Tab; view?: View; c?: number | null }, push = false) => {
+  const setQuery = (next: { tab?: Tab; view?: View; c?: number | 'end' | null }, push = false) => {
     const q = new URLSearchParams(params);
     if (next.tab !== undefined) {
       if (next.tab === 'waiting') q.delete('tab');
@@ -451,7 +453,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
       {closedBanner}
       {tabs}
       <div id="cd-panel" role="tabpanel" aria-labelledby={`cd-tab-${tab}`} key={`${tab}-${view}`} className="cd-panel cd-fade">
-        {view === 'list' || !selected ? (
+        {view === 'list' || (!selected && !atEnd) ? (
           <>
             {list.length > 0 && (
               <div className="cd-bar">
@@ -466,12 +468,12 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
         ) : (
           <CardDeck
             list={list}
-            index={index}
+            index={atEnd ? list.length : index}
             names={names}
             place={place}
             pending={busy}
-            onStep={step}
-            onDecide={(a) => decide(selected, a)}
+            onGo={(i) => setQuery({ c: i >= list.length ? 'end' : list[i].studentId })}
+            onDecide={decide}
             toggle={toggle}
           />
         )}
@@ -564,112 +566,94 @@ function CandidateList({ list, tab, closed, selected, names, pendingFor, sending
 
 interface DeckProps {
   list: Candidate[];
+  /** Верхняя карточка; list.length — все просмотрены. */
   index: number;
   names: SkillNames;
   place: Internship;
   pending: Pending | null;
-  onStep: (delta: number) => void;
-  onDecide: (action: Decision) => void;
+  onGo: (index: number) => void;
+  onDecide: (c: Candidate, action: Decision) => void;
   /** Переключатель «Список / Карточки» — справа от счётчика. */
   toggle: ReactNode;
 }
 
-/** Порог свайпа, px: дальше — листаем, ближе — карточка возвращается. */
-const SWIPE = 70;
+/**
+ * «Карточки»: общая колода SwipeDeck (как лента студента), но только для листания — свайп в любую сторону
+ * открывает следующего кандидата, «‹» возвращает предыдущего с той стороны, куда он ушёл.
+ * Решения отправляются только кнопками под карточкой.
+ */
+function CardDeck({ list, index, names, place, pending, onGo, onDecide, toggle }: DeckProps) {
+  const deck = useRef<SwipeDeckHandle>(null);
+  const c = list[index] ?? null;
 
-/** «Карточки»: по одной, свайп и стрелки только листают — решения отправляются кнопками. */
-function CardDeck({ list, index, names, place, pending, onStep, onDecide, toggle }: DeckProps) {
-  const c = list[index];
-  const [dx, setDx] = useState(0);
-  const [dir, setDir] = useState<'next' | 'prev' | null>(null);
-  const drag = useRef<{ x: number; y: number; axis: 'x' | 'y' | null } | null>(null);
-
-  const go = (delta: number) => {
-    if (index + delta < 0 || index + delta >= list.length) return;
-    setDir(delta > 0 ? 'next' : 'prev');
-    onStep(delta);
+  const next = () => {
+    deck.current?.swipe(-1);
   };
-
-  const down = (e: PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    drag.current = { x: e.clientX, y: e.clientY, axis: null };
-  };
-  const move = (e: PointerEvent<HTMLDivElement>) => {
-    const d = drag.current;
-    if (!d) return;
-    const mx = e.clientX - d.x;
-    const my = e.clientY - d.y;
-    if (d.axis === null) {
-      if (Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my)) {
-        d.axis = 'x';
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } else if (Math.abs(my) > 8) d.axis = 'y';
-    }
-    if (d.axis === 'x') {
-      // У краёв колоды карточка тянется туго
-      const edge = (mx > 0 && index === 0) || (mx < 0 && index === list.length - 1);
-      setDx(edge ? mx / 4 : mx);
-    }
-  };
-  const up = () => {
-    const d = drag.current;
-    drag.current = null;
-    if (d?.axis === 'x') {
-      if (dx <= -SWIPE) go(1);
-      else if (dx >= SWIPE) go(-1);
-    }
-    setDx(0);
+  const prev = () => {
+    if (index === 0) return;
+    haptic.selection();
+    onGo(index - 1);
   };
   const onKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'ArrowRight') go(1);
-    else if (e.key === 'ArrowLeft') go(-1);
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      next();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      prev();
+    }
   };
-
-  if (!c) return null;
-  const dragging = dx !== 0;
 
   return (
     <div className="cd-deck">
       <div className="cd-bar">
         <div className="cd-pager">
-          <button type="button" className="ibtn" aria-label="Предыдущий кандидат" disabled={index === 0} onClick={() => go(-1)}>
+          <button type="button" className="ibtn" aria-label="Предыдущий кандидат" disabled={index === 0} onClick={prev}>
             <ChevronIcon dir="left" />
           </button>
           <span className="lbl num" aria-live="polite">
-            {index + 1} из {list.length}
+            {c ? `${index + 1} из ${list.length}` : `Все ${list.length}`}
           </span>
-          <button
-            type="button"
-            className="ibtn"
-            aria-label="Следующий кандидат"
-            disabled={index === list.length - 1}
-            onClick={() => go(1)}
-          >
+          <button type="button" className="ibtn" aria-label="Следующий кандидат" disabled={!c} onClick={next}>
             <ChevronIcon dir="right" />
           </button>
         </div>
         {toggle}
       </div>
       <div
-        className="cd-stack"
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={up}
-        onKeyDown={onKey}
+        className="cd-deck-area"
+        role="group"
         tabIndex={0}
+        onKeyDown={onKey}
         aria-roledescription="колода кандидатов"
-        aria-label="Листайте влево и вправо — решения отправляются кнопками ниже"
+        aria-label="Листайте свайпом или стрелками ← →. Пригласить и отказать — кнопками под карточкой"
       >
-        <div
-          key={c.studentId}
-          className={`cd-slide${dir ? ` from-${dir}` : ''}${dragging ? ' dragging' : ''}`}
-          style={dragging ? { transform: `translateX(${dx}px) rotate(${dx / 40}deg)` } : undefined}
-        >
-          <CandidateCard c={c} names={names} pending={pending?.candidate.studentId === c.studentId ? pending.action : null} />
-        </div>
+        <SwipeDeck
+          ref={deck}
+          className="cd-swipe"
+          items={list.slice(index)}
+          getKey={(x) => x.studentId}
+          cardLabel={(x) => `Кандидат: ${firstName(x)}, совпадение ${x.match.score} %`}
+          renderCard={(x) => (
+            <CandidateCardBody
+              c={x}
+              names={names}
+              pending={pending?.candidate.studentId === x.studentId ? pending.action : null}
+            />
+          )}
+          onSwipe={(x) => onGo(list.indexOf(x) + 1)}
+          empty={
+            <div className="deck-empty cd-deck-end">
+              <h2 className="h2">Вы посмотрели всех</h2>
+              <p className="lbl m0">Вернитесь к первому или откройте список.</p>
+              <button type="button" className="btn sec sm" onClick={() => onGo(0)}>
+                К первому
+              </button>
+            </div>
+          }
+        />
       </div>
-      <CandidateActions c={c} place={place} pending={pending} onDecide={onDecide} />
+      {c && <CandidateActions c={c} place={place} pending={pending} onDecide={(a) => onDecide(c, a)} />}
     </div>
   );
 }

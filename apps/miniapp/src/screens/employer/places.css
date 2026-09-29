@@ -98,13 +98,12 @@
 .cd-pager .ibtn{width:36px;height:36px;cursor:pointer}
 .cd-pager .lbl{min-width:44px;text-align:center}
 .cd-pager .ibtn:disabled{opacity:.35;cursor:default}
-.cd-stack{position:relative;touch-action:pan-y;border-radius:28px;-webkit-user-select:none;user-select:none}
-.cd-slide{position:relative}
-.cd-slide:not(.dragging){transition:transform 200ms var(--pf-ease)}
-.cd-slide.from-next{animation:cd-from-r 220ms var(--pf-ease)}
-.cd-slide.from-prev{animation:cd-from-l 220ms var(--pf-ease)}
-@keyframes cd-from-r{from{opacity:0;transform:translateX(32px)}}
-@keyframes cd-from-l{from{opacity:0;transform:translateX(-32px)}}
+/* колода — общий SwipeDeck: карточки абсолютные, высоту задаёт область */
+.cd-deck{flex-grow:1}
+.cd-deck-area{position:relative;display:flex;flex-direction:column;flex:1 0 auto;min-height:470px;border-radius:28px}
+.stack.deck.cd-swipe{margin:0;flex:1 0 470px}
+.cd-swipe .shade{height:82%}
+.cd-deck-end{gap:10px;padding:24px;text-align:center}
 
 /* карточка кандидата — всегда тёмная, как карточка места */
 .card.cd-card{position:relative;inset:auto;min-height:420px;display:flex;flex-direction:column;justify-content:flex-end}
@@ -180,39 +179,30 @@
 }
 
 @media (prefers-reduced-motion: reduce){
-  .cd-slide.from-next,.cd-slide.from-prev,.cd-toast,.sheet.cd-sheet{animation:cd-fade 150ms ease-out}
-  .cd-slide:not(.dragging){transition:none}
+  .cd-toast,.sheet.cd-sheet{animation:cd-fade 150ms ease-out}
   .cd-toast-bar{display:none}
   .emp .toggle i{transition:none}
 }
 
-/* ---------- «Это тандем!» у компании ---------- */
-.tm{position:relative;overflow:hidden;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
-.tm-glow{position:absolute;left:-60px;right:-60px;top:-80px;height:420px;pointer-events:none;background:radial-gradient(50% 50% at 35% 50%,rgba(255,165,31,.34) 0,rgba(255,165,31,0) 70%),radial-gradient(50% 50% at 65% 50%,rgba(177,92,255,.3) 0,rgba(177,92,255,0) 70%)}
-.tm-body{position:relative;flex-grow:1;display:flex;flex-direction:column;gap:18px;width:100%;max-width:480px;margin:0 auto;padding:56px 0 16px}
-.tm-orbs{position:relative;display:flex;justify-content:center;height:128px}
-.tm-orb{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:4px solid var(--bg);font-family:var(--font-display);font-weight:800;font-size:48px;color:#fff}
-.tm-co{position:relative;z-index:1;margin-right:-26px;color:#2a1600;background:radial-gradient(circle at 35% 30%,#ffd9a0 0,#ffa51f 50%,#d4560a 100%)}
-.tm-ck{position:absolute;left:50%;bottom:-2px;z-index:2;width:44px;height:44px;margin-left:-22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;color:#0c0d11;box-shadow:0 6px 18px rgba(0,0,0,.3)}
-.tm-ck .ic{stroke-width:3}
-.tm-text{display:flex;flex-direction:column;gap:8px;text-align:center}
-.tm-h{margin:0;font-family:var(--font-display);font-weight:800;font-size:36px;line-height:1.05;letter-spacing:-.02em}
-.tm-note{margin:0;text-align:center}
-.tm-foot{position:relative;width:100%;max-width:480px;margin:0 auto}
-.tm .cd-contact{margin-top:0}
-
-/* шары съезжаются, галочка вспрыгивает, текст поднимается — только сразу после приглашения */
-@keyframes tm-from-l{from{opacity:0;transform:translateX(-56px) scale(.8)}}
-@keyframes tm-from-r{from{opacity:0;transform:translateX(56px) scale(.8)}}
-@keyframes tm-pop{0%{opacity:0;transform:scale(.3)}60%{opacity:1;transform:scale(1.15)}100%{transform:none}}
-.tm-fresh .tm-glow{animation:cd-fade 600ms ease-out backwards}
-.tm-fresh .tm-co{animation:tm-from-l 520ms var(--pf-spring) backwards}
-.tm-fresh .tm-st{animation:tm-from-r 520ms var(--pf-spring) backwards}
-.tm-fresh .tm-ck{animation:tm-pop 420ms var(--pf-ease) 380ms backwards}
-.tm-fresh .tm-rise{animation:pf-rise 320ms var(--pf-ease) 300ms backwards}
-.tm-fresh .tm-r2{animation-delay:380ms}
-.tm-fresh .tm-r3{animation-delay:440ms}
-.tm-fresh .tm-r4{animation-delay:500ms}
+/* ---------- «Это тандем!» у компании ----------
+   Классы etm-: tm- заняты экраном студента (student/tandem.css). Движение — motion (пружины из motion/springs). */
+.etm{position:relative}
+/* свечение обрезает своя обёртка: overflow на экране сделал бы его контейнером прокрутки и сломал sticky у кнопок */
+.etm-glow-clip{position:absolute;left:0;right:0;top:0;height:340px;overflow:hidden;pointer-events:none}
+.etm-glow{position:absolute;left:-60px;right:-60px;top:-80px;height:420px;background:radial-gradient(50% 50% at 35% 50%,color-mix(in srgb,var(--em) 30%,transparent) 0,transparent 70%),radial-gradient(50% 50% at 65% 50%,color-mix(in srgb,var(--st) 30%,transparent) 0,transparent 70%)}
+.etm-body{position:relative;flex-grow:1;display:flex;flex-direction:column;gap:18px;width:100%;max-width:480px;margin:0 auto;padding:calc(48px + env(safe-area-inset-top)) 0 16px}
+.etm-pair{position:relative;display:flex;justify-content:center;height:128px}
+.ava.etm-orb{width:120px;height:120px;font-size:48px;border:4px solid var(--bg)}
+.ava.etm-co{position:relative;z-index:1;margin-right:-26px;color:var(--on-em);background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--em) 45%,white) 0,var(--em) 50%,color-mix(in srgb,var(--em) 75%,black) 100%)}
+.etm-check{position:absolute;left:50%;bottom:-2px;z-index:2;width:44px;height:44px;margin-left:-22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--btn);color:var(--btn-ink);box-shadow:var(--shadow)}
+.etm-check .ic{stroke-width:3}
+.etm-head{display:flex;flex-direction:column;gap:8px;text-align:center}
+.etm-h{margin:0;font-family:var(--font-display);font-weight:800;font-size:36px;line-height:1.05;letter-spacing:-.02em}
+.etm-note{margin:0;text-align:center}
+.etm .cd-contact{margin-top:0}
+/* действия всегда на виду */
+.etm-acts{position:sticky;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;width:100%;max-width:480px;margin:0 auto;padding:20px 0 calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 78%,transparent)}
+.etm-acts .btn{width:100%}
 
 /* ---------- документы практики ---------- */
 .dc{gap:16px;width:100%;max-width:640px;margin:0 auto;padding-top:16px}
@@ -239,6 +229,5 @@
 .dc-foot{margin-top:auto;padding-top:8px}
 
 @media (prefers-reduced-motion: reduce){
-  .tm-fresh .tm-glow,.tm-fresh .tm-co,.tm-fresh .tm-st,.tm-fresh .tm-ck,.tm-fresh .tm-rise{animation:cd-fade 150ms ease-out backwards}
   .fill.dc-fill{transition:none}
 }

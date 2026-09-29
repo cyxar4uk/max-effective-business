@@ -34,12 +34,6 @@ export function placeCover(place: Pick<Internship, 'id' | 'tags' | 'type'>): Cov
   return { cls: COVER_CLASSES[Math.abs(place.id) % COVER_CLASSES.length], label: TYPE_COVER_LABEL[place.type] ?? '' };
 }
 
-/** Цвет точки тега — токен из tokens.css (--tag-…). */
-export const tagDot = (place: Pick<Internship, 'tags'>): string | null => {
-  const tag = place.tags.find((t) => COVERS[t]);
-  return tag ? `var(--tag-${tag})` : null;
-};
-
 /** Буква для логотипа: «ООО «Вектор»» → «В». */
 export function logoLetter(company: string): string {
   const name = company.replace(/^\s*(ооо|оао|зао|пао|ао|ип|нко|ано)\s+/i, '');
