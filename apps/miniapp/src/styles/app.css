@@ -218,3 +218,20 @@
 .screen-wait{padding-top:16px;animation:screen-wait .2s .2s ease-out backwards}
 @keyframes screen-wait{from{opacity:0}}
 .skeleton-head{height:34px;width:62%;margin:12px 0 10px;border-radius:12px;background:var(--surf2)}
+
+/* главный (макет c3 Main): знак и «О сервисе», сфера, выбор роли; ниже — «Как проверить за 5 минут» */
+.home{width:100%;max-width:520px;margin:0 auto}
+.home .home-top{padding:16px 0 10px}
+.home-mark{font-size:16px;font-weight:700}
+.home-hero{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:8px 8px 28px;text-align:center}
+.home-orb{width:240px;height:184px}
+.home-orb i{top:12px;width:160px;height:160px}
+.home-text{display:flex;flex-direction:column;gap:12px}
+.home-h1{font-size:34px;line-height:1.05;font-weight:800}
+.home-lead{color:var(--ink2);font-size:16px}
+.btn.home-student{background:var(--surf);box-shadow:inset 0 0 0 1px var(--line)}
+.home-note{text-align:center}
+@media (min-height:900px){
+  .home-orb{width:300px;height:230px}
+  .home-orb i{top:15px;width:200px;height:200px}
+}
