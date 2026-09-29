@@ -8,6 +8,7 @@ import type { Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { copyText, selectText } from '../../app/clipboard';
 import { placeLink, placeLinkText, placeShareText } from '../../app/placeLink';
+import { parsePlaceId } from '../../app/placeParam';
 import { CopyButton } from '../../components/CopyButton';
 import { ErrorState } from '../../components/ErrorState';
 import { QrCode } from '../../components/QrCode';
@@ -43,8 +44,9 @@ function metaLine(place: Internship): string {
 }
 
 export function PlaceQr() {
-  const id = Number(useParams().id);
-  if (!Number.isInteger(id) || id <= 0) return <Navigate to="/employer" replace />;
+  // Только цифры и не больше integer в базе: «1e1» или огромный id на сервер не уходят
+  const id = parsePlaceId(useParams().id);
+  if (id === null) return <Navigate to="/employer" replace />;
   return <QrScreen key={id} id={id} />;
 }
 
@@ -196,8 +198,9 @@ interface FullQrProps {
 }
 
 /**
- * Код на весь экран — показать с телефона у стенда. Яркость экрана мини-приложение менять не может,
- * поэтому просто белый фон и код во всю ширину. Раскрывается из нажатой кнопки; при reduced motion — проявление.
+ * Код на весь экран — показать с телефона у стенда: белый фон и код во всю ширину. Яркость экрана пока не поднимаем:
+ * метод Bridge для этого ещё не внесён в docs/05_max_platform.md. Раскрывается из нажатой кнопки; при reduced
+ * motion — проявление.
  */
 function FullQr({ place, link, origin, onClose }: FullQrProps) {
   const reduced = useReduced();

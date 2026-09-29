@@ -6,8 +6,8 @@ import { useLoad } from '../api/useLoad';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
-import { rememberPlace } from '../app/afterProfile';
 import type { AsStudentState, LaunchState, OwnLinkState } from '../app/launchState';
+import { parsePlaceId } from '../app/placeParam';
 import { copyText } from '../app/clipboard';
 import { placeLink, placeLinkText, placeShareText } from '../app/placeLink';
 import { Toast } from '../components/Toast';
@@ -35,8 +35,10 @@ const STATUS: Record<InterestStatus, { label: string; text: string; cls: string 
  * Студенту — расшифровка совпадения, условия и отклик.
  */
 export function InternshipScreen() {
-  const id = Number(useParams().id);
-  const valid = Number.isInteger(id) && id > 0;
+  // Только цифры и не больше integer в базе: «1e1» или огромный id на сервер не уходят
+  const parsed = parsePlaceId(useParams().id);
+  const valid = parsed !== null;
+  const id = parsed ?? 0;
   const navigate = useNavigate();
   // Своё место из колоды студента («Ваше место»), сканера или «Посмотреть как студент» — глазами студента,
   // а не списком кандидатов
@@ -128,23 +130,15 @@ export function InternshipScreen() {
     });
   };
 
-  /** Без анкеты: онбординг и анкета, потом — обратно на это место (QR на ярмарке, ссылка друга). */
-  const fillProfile = () => {
-    rememberPlace(place.id);
-    navigate('/student');
-  };
+  /**
+   * Без анкеты: онбординг и анкета, потом — обратно на это место (QR на ярмарке, ссылка друга). Место передаём
+   * адресом (`?place=`): его несёт и `next` онбординга, а «Не сейчас» уводит с этой записи и забывает его.
+   */
+  const fillProfile = () => navigate(`/student?place=${place.id}`);
 
+  // Закрытое место — сразу «Место закрыто», даже без анкеты: онбординг ради него не нужен
   let bar: ReactNode;
-  if (!isStudent) {
-    bar = (
-      <>
-        <p className="m0 lbl pd-note">Заполните анкету — покажем, насколько место вам подходит, и вернём сюда.</p>
-        <button type="button" className="btn pri" onClick={fillProfile}>
-          Заполнить анкету
-        </button>
-      </>
-    );
-  } else if (interest) {
+  if (isStudent && interest) {
     const s = STATUS[interest];
     bar = (
       <>
@@ -174,6 +168,15 @@ export function InternshipScreen() {
         <p className="m0 lbl pd-note">Место закрыто — отклики больше не принимаются.</p>
         <button type="button" className="btn sec" onClick={() => navigate('/student')}>
           К местам для вас
+        </button>
+      </>
+    );
+  } else if (!isStudent) {
+    bar = (
+      <>
+        <p className="m0 lbl pd-note">Заполните анкету — покажем, насколько место вам подходит, и вернём сюда.</p>
+        <button type="button" className="btn pri" onClick={fillProfile}>
+          Заполнить анкету
         </button>
       </>
     );

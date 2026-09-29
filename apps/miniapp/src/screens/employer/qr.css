@@ -44,7 +44,7 @@
 .qr-skel-poster{height:520px;border-radius:28px}
 .qr-skel-btn{height:54px}
 
-/* на весь экран: белый фон, код во всю ширину (яркость экрана мини-приложение не меняет) */
+/* на весь экран: белый фон, код во всю ширину (яркость пока не поднимаем: метода Bridge нет в docs/05_max_platform.md) */
 .qr-full{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:var(--surf);padding:calc(64px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));overflow-y:auto}
 .qr-full-close{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;background:var(--surf2);cursor:pointer;box-shadow:none}
 .qr-full-in{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;text-align:center}

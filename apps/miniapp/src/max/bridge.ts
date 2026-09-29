@@ -123,11 +123,15 @@ export function requestContact(): Promise<MaxContact> {
   return app.requestContact();
 }
 
-/** Сканер QR: камера или файл. Возвращает строку из кода. */
+/** Сканер QR: камера или файл. Возвращает строку из кода. Синхронный отказ клиента — тоже отклонённый промис. */
 export function openCodeReader(fileSelect = true): Promise<string> {
   const app = maxApp();
   if (!app) return Promise.reject(new Error('Сканер доступен только в MAX'));
-  return app.openCodeReader(fileSelect);
+  try {
+    return Promise.resolve(app.openCodeReader(fileSelect));
+  } catch (err) {
+    return Promise.reject(err);
+  }
 }
 
 /**
