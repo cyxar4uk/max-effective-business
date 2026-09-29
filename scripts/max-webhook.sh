@@ -9,6 +9,8 @@ cd "$(dirname "$0")/.."
 set -a; source .env; set +a
 
 API="${MAX_API_BASE:-https://platform-api2.max.ru}"
+# MAX работает на сертификате Минцифры, которого нет в системном наборе Ubuntu/Windows (см. apps/server/src/tls/)
+CA="deploy/russian_trusted_root_ca.crt"
 URL="https://${DOMAIN:?Нет DOMAIN в .env}/bot/webhook"
 : "${MAX_BOT_TOKEN:?Нет MAX_BOT_TOKEN в .env}"
 # Токен и секрет передаём через stdin (curl -K -), чтобы они не были видны в списке процессов.
@@ -16,7 +18,7 @@ URL="https://${DOMAIN:?Нет DOMAIN в .env}/bot/webhook"
 api() {
   { printf 'header = "Authorization: %s"\n' "$MAX_BOT_TOKEN"
     if [ -n "${BODY:-}" ]; then printf 'data = "%s"\n' "$(printf '%s' "$BODY" | sed 's/\\/\\\\/g; s/"/\\"/g')"; fi
-  } | curl -sS -K - "$@"
+  } | curl -sS --cacert "$CA" -K - "$@"
 }
 
 case "${1:-list}" in
