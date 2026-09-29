@@ -136,7 +136,7 @@ git -C /opt/max-effective-business config core.sshCommand 'ssh -i ~/.ssh/meb_dep
 DEPLOY_HOST=deploy@<ip> scripts/deploy.sh             # main
 DEPLOY_HOST=deploy@<ip> scripts/deploy.sh andrey/x    # другая ветка — только для проверки
 DEPLOY_HOST=deploy@<ip> scripts/deploy.sh 4672af1     # конкретный коммит — откат
-DEPLOY_MODE=proxy DEPLOY_HOST=deploy@<ip> scripts/deploy.sh   # за чужим прокси (сервер Ильи)
+DEPLOY_MODE=proxy DEPLOY_HOST=deploy@<ip> scripts/deploy.sh   # за чужим прокси
 ```
 
 После выкатки — `node scripts/smoke.mjs https://<DOMAIN> --no-auth`.
@@ -154,7 +154,7 @@ docker compose -f compose.yaml -f $O logs --tail 100 caddy     # только с
 docker network inspect meb-edge --format '{{range .Containers}}{{.Name}} {{end}}'   # за прокси в Docker: кто в общей сети
 ```
 
-- Откат: `scripts/deploy.sh <хеш коммита>` (с `DEPLOY_MODE=proxy` для сервера Ильи); схема БД при этом не
+- Откат: `scripts/deploy.sh <хеш коммита>` (с `DEPLOY_MODE=proxy`, если сервер за чужим прокси); схема БД при этом не
   откатывается, миграции только добавляют.
 - За прокси в Docker 502 на нашем поддомене — проверить, что контейнер прокси в сети `meb-edge` (команда выше).
 - Сертификат не выпускается — проверить A-запись домена и что порт 80 открыт: Let's Encrypt проверяет по HTTP.
