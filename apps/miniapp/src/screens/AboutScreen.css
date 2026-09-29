@@ -3,3 +3,6 @@
 .about ul{padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .about .btn{margin-top:4px}
 .about-links .li{cursor:pointer}
+.about-go{color:var(--ink3)}
+/* ссылка внутри текста (поддержка): цвет текста и подчёркивание, а не синий браузера */
+.about a{color:var(--ink);text-decoration:underline;text-underline-offset:2px}

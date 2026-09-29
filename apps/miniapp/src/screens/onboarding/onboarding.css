@@ -7,6 +7,8 @@
 .ob-sheet .btn:disabled{opacity:.45;cursor:default}
 .ob-h{font-size:24px;line-height:1.15}
 .ob-text{color:var(--ink2)}
+/* ссылка на полный текст согласия: подпись, но подчёркнута; зона нажатия — 44 px по высоте без сдвига вёрстки */
+.ob-doc{align-self:flex-start;color:var(--ink2);text-decoration:underline;text-underline-offset:2px;padding:12px 0;margin:-12px 0}
 .ob-list{background:var(--surf2)}
 .ob-error{margin:0;padding:10px 12px;border-radius:12px;background:var(--neg-bg);color:var(--neg-ink);font-size:14px}
 @media (min-width:600px){
