@@ -1,5 +1,6 @@
 // Совпадение человеческим языком: одна фраза над чипами навыков, уровень для эквалайзера, счёт «2/2 · 1/3».
 // Общее для работодателя (кандидаты) и студента (карточка места). Названия навыков — из GET /api/skills.
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import type { Match, SkillCode, Skills } from '../api/types';
 
@@ -21,6 +22,24 @@ export function loadSkillNames(): Promise<SkillNames> {
     });
   }
   return cache;
+}
+
+const NO_NAMES: SkillNames = new Map();
+
+/** Названия навыков для экрана. Пока справочник грузится или не загрузился — коды (skillName их покажет как есть). */
+export function useSkillNames(): SkillNames {
+  const [names, setNames] = useState<SkillNames>(NO_NAMES);
+  useEffect(() => {
+    let alive = true;
+    loadSkillNames().then(
+      (loaded) => alive && setNames(loaded),
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return names;
 }
 
 export const skillName = (names: SkillNames, code: SkillCode): string => names.get(code) ?? code;

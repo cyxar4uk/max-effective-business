@@ -1,4 +1,5 @@
 // Кандидат глазами компании: имя, аватар, строка о студенте, время отклика. Контракт — docs/api.md «Кандидаты».
+import { api } from '../../api/client';
 import type { Candidate, Internship, InternshipType } from '../../api/types';
 import { FORMAT_LABEL, plural } from './draft';
 
@@ -109,3 +110,41 @@ export async function copyText(text: string): Promise<boolean> {
     }
   }
 }
+
+/** Место и его кандидаты — данные экранов кандидатов, «Это тандем!» и документов. */
+export interface PlaceData {
+  place: Internship;
+  items: Candidate[];
+}
+
+export const loadPlaceData = (id: number): Promise<PlaceData> =>
+  Promise.all([api.internship(id), api.candidates(id)]).then(([place, list]) => ({ place, items: list.items }));
+
+/** Подставить кандидата из ответа сервера (приглашение, отказ). */
+export const withCandidate = (data: PlaceData, c: Candidate): PlaceData => ({
+  ...data,
+  items: data.items.map((x) => (x.studentId === c.studentId ? c : x)),
+});
+
+export type Tab = 'waiting' | 'invited' | 'declined';
+
+export const TAB_STATUS: Record<Tab, Candidate['status']> = {
+  waiting: 'interested',
+  invited: 'invited',
+  declined: 'declined',
+};
+
+export const TAB_LABEL: Record<Tab, string> = {
+  waiting: 'Ждут решения',
+  invited: 'Приглашены',
+  declined: 'Отказ',
+};
+
+export const isTab = (v: string | null): v is Tab => v === 'waiting' || v === 'invited' || v === 'declined';
+
+/** Адреса экранов кандидата. */
+export const paths = {
+  candidates: (placeId: number) => `/employer/internships/${placeId}/candidates`,
+  tandem: (placeId: number, studentId: number) => `/employer/internships/${placeId}/tandem/${studentId}`,
+  docs: (placeId: number, studentId: number) => `/employer/internships/${placeId}/docs/${studentId}`,
+};

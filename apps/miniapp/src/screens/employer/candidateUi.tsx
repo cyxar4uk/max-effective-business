@@ -1,10 +1,11 @@
-// Общие куски кандидата: аватар, эквалайзер совпадения, навыки, «Скопировать».
+// Общие куски кандидата: аватар, эквалайзер совпадения, навыки, «Скопировать», тост отмены и короткие сообщения.
 import { useEffect, useState } from 'react';
 import type { Candidate, Match } from '../../api/types';
 import { matchBars, matchLevel, skillName, type SkillNames } from '../../app/matchText';
 import { haptic } from '../../max/bridge';
 import { avatarClass, copyText, initial } from './candidate';
-import { CheckIcon, CopyIcon } from './icons';
+import { CheckIcon, CopyIcon, CrossIcon } from './icons';
+import { UNDO_MS, type Decision } from './useDecision';
 
 export function Avatar({ c, size = 42 }: { c: Pick<Candidate, 'studentId' | 'firstName'>; size?: number }) {
   return (
@@ -92,5 +93,76 @@ export function CopyButton({ text, label = 'Скопировать', className =
       {done === true ? <CheckIcon /> : <CopyIcon />}
       {done === true ? 'Скопировано' : done === false ? 'Не вышло — выделите номер' : label}
     </button>
+  );
+}
+
+const UNDO_S = Math.round(UNDO_MS / 1000);
+const NBSP = String.fromCharCode(0xa0);
+
+/**
+ * Тост «Приглашение отправится через 5 с · Отменить»: выезжает снизу, полоска убывает.
+ * Секунды тикают на экране, а экранному диктору решение объявляется один раз.
+ * Отсчёт начинается при появлении: родитель задаёт key по номеру решения.
+ */
+export function UndoToast({ action, name, onCancel }: { action: Decision; name: string; onCancel: () => void }) {
+  const [left, setLeft] = useState(UNDO_S);
+
+  useEffect(() => {
+    const started = Date.now();
+    const t = window.setInterval(() => {
+      setLeft(Math.max(1, Math.ceil((UNDO_MS - (Date.now() - started)) / 1000)));
+    }, 200);
+    return () => window.clearInterval(t);
+  }, []);
+
+  // Неразрывные пробелы: «через 5 с» не рвётся между строками
+  const text = action === 'invite' ? `Приглашение отправится через${NBSP}${left}${NBSP}с` : `Отказ через${NBSP}${left}${NBSP}с`;
+  const spoken =
+    action === 'invite'
+      ? `${name}: приглашение отправится через ${UNDO_S} секунд. Можно отменить.`
+      : `${name}: отказ отправится через ${UNDO_S} секунд. Можно отменить.`;
+
+  return (
+    <div className={`cd-toast ${action === 'invite' ? 'inv' : 'dec'}`}>
+      <span className="sr-only" role="status">
+        {spoken}
+      </span>
+      <span className="grow num" aria-hidden="true">
+        {text}
+      </span>
+      <button type="button" className="cd-toast-btn" onClick={onCancel}>
+        Отменить
+      </button>
+      <i className="cd-toast-bar" style={{ animationDuration: `${UNDO_MS}ms` }} aria-hidden="true" />
+    </div>
+  );
+}
+
+export interface NoticeValue {
+  text: string;
+  tone: 'ok' | 'error';
+  /** Номер сообщения: одинаковый текст подряд тоже показывается заново. */
+  n: number;
+}
+
+/** Короткое сообщение внизу: «Отказ отправлен», ошибка сервера. Подтверждение скрывается через 3 с, ошибка — через 6 с. */
+export function Notice({ notice, onClose }: { notice: NoticeValue; onClose: () => void }) {
+  useEffect(() => {
+    const t = window.setTimeout(onClose, notice.tone === 'error' ? 6000 : 3000);
+    return () => window.clearTimeout(t);
+  }, [notice, onClose]);
+
+  return (
+    <div className={`cd-toast ${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>
+      {notice.tone === 'ok' && (
+        <span className="cd-toast-ic" aria-hidden="true">
+          <CheckIcon className="ic xs" />
+        </span>
+      )}
+      <span className="grow">{notice.text}</span>
+      <button type="button" className="cd-toast-x" aria-label="Скрыть сообщение" onClick={onClose}>
+        <CrossIcon />
+      </button>
+    </div>
   );
 }

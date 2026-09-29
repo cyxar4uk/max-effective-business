@@ -55,3 +55,128 @@
   .emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.fab .c,.dc-item,.check,.toggle){transition:none}
   .emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.dc-item):active:not(:disabled),.emp .fab:active:not(:disabled) .c{transform:none}
 }
+
+/* ---------- кандидаты ---------- */
+.cd{gap:12px;padding-bottom:96px}
+.cd-loading{display:flex;flex-direction:column;padding-top:16px}
+.cd-head{display:flex;align-items:center;gap:12px;padding:16px 0 0}
+.thumb.cd-thumb{display:block;width:48px;height:48px;border-radius:14px}
+.thumb.cd-thumb.sm{width:40px;height:40px;border-radius:12px}
+.cd-kicker{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd-title{margin:0;font-family:var(--font-display);font-weight:700;font-size:19px;line-height:1.15;letter-spacing:-.015em;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.seg.cd-views{width:84px;flex-shrink:0}
+.seg.cd-views button{height:32px}
+.cd-views button{display:flex;align-items:center;justify-content:center;padding:0}
+.seg.cd-tabs button{flex:1 1 auto;padding:0 8px;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cd-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px}
+.cd-bar > .lbl{min-width:0}
+.cd-closed{flex-direction:row;align-items:center;gap:12px;padding:12px 14px}
+.cd-closed-t{font-weight:600}
+.cd-closed .btn:disabled{opacity:.6}
+.cd-panel{display:flex;flex-direction:column;gap:10px;flex-grow:1}
+.cd-empty{display:flex;flex-direction:column;gap:12px;padding:24px 0 8px}
+.cd-empty .actions{margin-top:8px}
+.cd-tab-empty{margin:0;padding:28px 8px;text-align:center}
+.cd-close-link{align-self:center;margin-top:auto}
+
+/* строка кандидата */
+.cd-list{list-style:none;margin:0;padding:0}
+.cd-li{border-bottom:1px solid var(--line)}
+.cd-li:last-child{border-bottom:0}
+.cd-row{display:flex;align-items:flex-start;gap:12px;width:100%;padding:14px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.cd-row.on{background:var(--surf2)}
+.cd-row-name{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cd-row-n{font-weight:600;font-size:16px}
+.cd-row-phrase{font-size:13px;line-height:1.35;color:var(--ink2)}
+.cd-row-st{align-self:flex-start;margin-top:2px}
+.cd-row-pct{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.cd-row .pct-sm{font-size:22px}
+
+/* колода: по одной карточке */
+.cd-deck{display:flex;flex-direction:column;gap:10px}
+.cd-pager{display:flex;align-items:center;gap:6px}
+.cd-pager .ibtn{width:36px;height:36px;cursor:pointer}
+.cd-pager .lbl{min-width:44px;text-align:center}
+.cd-pager .ibtn:disabled{opacity:.35;cursor:default}
+.cd-stack{position:relative;touch-action:pan-y;border-radius:28px;-webkit-user-select:none;user-select:none}
+.cd-slide{position:relative}
+.cd-slide:not(.dragging){transition:transform 200ms var(--pf-ease)}
+.cd-slide.from-next{animation:cd-from-r 220ms var(--pf-ease)}
+.cd-slide.from-prev{animation:cd-from-l 220ms var(--pf-ease)}
+@keyframes cd-from-r{from{opacity:0;transform:translateX(32px)}}
+@keyframes cd-from-l{from{opacity:0;transform:translateX(-32px)}}
+
+/* карточка кандидата — всегда тёмная, как карточка места */
+.card.cd-card{position:relative;inset:auto;min-height:420px;display:flex;flex-direction:column;justify-content:flex-end}
+.cd-card .shade{height:82%}
+.cd-card .info{position:relative;padding-top:124px}
+.cd-initial{position:absolute;left:0;right:0;top:14px;text-align:center;font-family:var(--font-display);font-weight:800;font-size:150px;line-height:1;color:rgba(255,255,255,.88)}
+.skills.cd-skills{list-style:none;margin:0;padding:0}
+.cd-name{font-size:28px;overflow-wrap:anywhere}
+.cd-counts{font-size:12.5px}
+.cd-phrase{margin:0;font-weight:600;font-size:15px;line-height:1.35}
+.cd-lock{display:flex;align-items:center;gap:6px;margin:0;font-size:13px}
+.gchip.cd-gchip-ok{background:var(--ok-bg);color:var(--ok-ink)}
+
+/* под карточкой */
+.acts.cd-acts{gap:40px;padding:14px 0 4px}
+.cd-acts .fab{cursor:pointer}
+.cd-acts .fab:disabled{opacity:.45;cursor:default}
+.cd-after{margin:0;padding:16px 8px 0;text-align:center}
+.cd-contact{margin-top:12px}
+.cd-contact .li{gap:12px}
+.cd-contact-name{font-weight:600}
+.cd-phone{font-size:15px;color:var(--ink2)}
+.li.cd-docs-link{width:100%;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer}
+.cd-ico{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* тосты: отмена решения и короткие сообщения */
+.cd-toasts{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
+.cd-toast{pointer-events:auto;position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;width:100%;max-width:480px;min-height:54px;padding:8px 6px 8px 16px;border-radius:18px;background:var(--btn);color:var(--btn-ink);box-shadow:var(--shadow);font-size:14.5px;line-height:1.3;animation:cd-toast-in 260ms var(--pf-ease)}
+.cd-toast.error{background:var(--neg-bg);color:var(--neg-ink)}
+.cd-toast-btn{flex-shrink:0;height:38px;padding:0 10px;border:0;border-radius:12px;background:transparent;color:inherit;font:600 15px/1 var(--font);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.cd-toast-x{flex-shrink:0;width:38px;height:38px;border:0;border-radius:12px;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.75}
+.cd-toast-ic{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--hi);color:var(--btn-ink)}
+.cd-toast-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--em);transform-origin:left center;animation-name:cd-drain;animation-timing-function:linear;animation-fill-mode:forwards}
+@keyframes cd-toast-in{from{opacity:0;transform:translateY(16px)}}
+@keyframes cd-drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* шторка «Закрыть набор?» */
+.cd-modal{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.cd-dim{position:absolute;inset:0;background:rgba(12,13,17,.45);animation:cd-fade 200ms ease-out}
+.sheet.cd-sheet{position:relative;left:auto;right:auto;bottom:auto;width:100%;max-width:560px;max-height:92vh;max-height:92dvh;overflow:auto;padding:10px 20px calc(20px + env(safe-area-inset-bottom));outline:0;animation:cd-sheet-in 280ms var(--pf-ease)}
+@keyframes cd-sheet-in{from{transform:translateY(100%)}}
+.cd-sheet-place{display:flex;align-items:center;gap:10px;min-width:0}
+.cd-sheet-place .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd-sheet-t{font-size:26px}
+.cd-switch{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:20px;background:var(--bg)}
+.cd-switch-t{font-weight:600;line-height:1.3}
+.emp .toggle{cursor:pointer}
+.emp .toggle:disabled{opacity:.6;cursor:default}
+.emp .toggle i{transition:transform 150ms var(--pf-ease)}
+.emp .toggle.on i{left:3px;transform:translateX(20px)}
+.cd-sheet .btn:disabled{opacity:.6;cursor:default}
+
+@media (min-width:1024px){
+  .cd{padding-left:max(36px,calc((100% - 1168px) / 2));padding-right:max(36px,calc((100% - 1168px) / 2));gap:18px}
+  .cd-head{padding-top:28px;gap:16px}
+  .thumb.cd-thumb{width:64px;height:64px;border-radius:18px}
+  .cd-title{font-size:30px}
+  .cd-desk{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:28px;align-items:start}
+  .cd-desk-list{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .cd-pane{position:sticky;top:24px;min-width:0}
+  .cd-pane-in{max-width:520px}
+  .cd-pane .card.cd-card{min-height:470px}
+  .cd-pane-empty{padding:40px 0;text-align:center}
+  .cd-keys{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0}
+  .cd-modal{align-items:center}
+  .sheet.cd-sheet{max-width:480px;border-radius:30px;padding:24px 28px;animation:cd-rise 240ms var(--pf-ease)}
+  .cd-sheet .grab{display:none}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .cd-slide.from-next,.cd-slide.from-prev,.cd-toast,.sheet.cd-sheet{animation:cd-fade 150ms ease-out}
+  .cd-slide:not(.dragging){transition:none}
+  .cd-toast-bar{display:none}
+  .emp .toggle i{transition:none}
+}
