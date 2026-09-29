@@ -1,0 +1,7 @@
+/* «Тандем» · движение: ячейка для переходов экранов и отклик на нажатие. Анимируем только transform и opacity. */
+.routes{display:grid;min-height:100vh;min-height:100dvh}
+.route{grid-area:1/1;min-width:0;position:relative;background:var(--bg)}
+
+/* нажатие: отклик сразу на касание, а не на отпускание */
+.btn,.ibtn,.chip,.bub,.fab .c{transition:transform .1s ease-out}
+.btn:active:not(:disabled),.ibtn:active,.chip:active:not(:disabled),.bub:active,.fab:active:not(:disabled) .c{transform:scale(.97)}

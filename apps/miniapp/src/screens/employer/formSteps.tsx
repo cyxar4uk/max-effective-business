@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { InternshipType, SkillCode, Tag, WorkFormat } from '../../api/types';
 import { haptic } from '../../max/bridge';
+import { tagColor } from '../student/place';
 import { cityOf, LIMITS, slotsText, type Dict, type Draft, type Errors } from './draft';
 import { CheckIcon, CrossIcon, MinusIcon, PlusIcon, SearchIcon } from './icons';
 import { Choice, FieldError, type ChoiceOption } from './ui';
@@ -84,7 +85,7 @@ export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
                 disabled={!on && full}
                 onClick={() => toggleTag(tag)}
               >
-                <i className="dot" style={{ background: `var(--tag-${tag.code}, var(--lo))` }} aria-hidden="true" />
+                <i className="dot" style={{ background: tagColor(tag.code) }} aria-hidden="true" />
                 {tag.name}
               </button>
             );

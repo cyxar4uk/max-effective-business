@@ -6,10 +6,10 @@
   --line: rgba(12, 13, 17, .08); --line2: rgba(12, 13, 17, .16); --chip: rgba(12, 13, 17, .06); --btn: #0c0d11; --btn-ink: #ffffff;
   --ok-bg: #dcf5e6; --ok-ink: #0b7a3d; --wait-bg: #e3ebff; --wait-ink: #1d4fd6; --warn-bg: #fff0d6; --warn-ink: #8a4b00;
   --neg-bg: #ffe5e6; --neg-ink: #c42b33; --grab: rgba(12, 13, 17, .2);
-  --st: #3d6fff; --em: #ff9f1a; --em-ink: #a85300; --hi: #16a35a; --md: #3d6fff; --lo: #8a909b; --nope: #e2383f;
+  --st: #3d6fff; --em: #ff9f1a; --em-ink: #a85300; --on-em: #2a1600; --hi: #16a35a; --md: #3d6fff; --lo: #8a909b; --nope: #e2383f;
   --shadow: 0 18px 40px rgba(12, 13, 17, .16);
-  /* цвет тега задачи (точка у чипа) — по обложке карточки; одинаковый в обеих темах */
-  --tag-marketplaces: #ff7a45; --tag-spreadsheets: #3d7bff; --tag-website: #b15cff; --tag-one_c: #ffb020; --tag-social_ads: #ff4d6d; --tag-sales: #14b8a6;
+  /* теги мест: точка у чипа фильтра ленты (--tag-<код тега>, «_» → «-»); одинаковые в обеих темах */
+  --tag-marketplaces: #ff7a45; --tag-spreadsheets: #3d7bff; --tag-website: #b15cff; --tag-one-c: #ffb020; --tag-social-ads: #ff4d6d; --tag-sales: #14b8a6;
   --font: "Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Unbounded", "Onest", sans-serif;
 }
