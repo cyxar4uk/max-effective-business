@@ -11,6 +11,7 @@ import { CompanyProfile } from './screens/employer/CompanyProfile';
 import { EmployerDocsScreen } from './screens/employer/Docs';
 import { PlaceForm } from './screens/employer/PlaceForm';
 import { PlacePublished } from './screens/employer/PlacePublished';
+import { PlaceQr } from './screens/employer/PlaceQr';
 import { EmployerTandemScreen } from './screens/employer/Tandem';
 import { Home } from './screens/Home';
 import { InternshipScreen } from './screens/InternshipScreen';
@@ -40,6 +41,7 @@ export function App() {
           <Route path="/employer/profile" element={<CompanyProfile />} />
           <Route path="/employer/new" element={<PlaceForm />} />
           <Route path="/employer/internships/:id/published" element={<PlacePublished />} />
+          <Route path="/employer/internships/:id/qr" element={<PlaceQr />} />
           <Route path="/internships/:id" element={<InternshipScreen />} />
           <Route path="/employer/internships/:id/candidates" element={<CandidatesScreen />} />
           <Route path="/employer/internships/:id/tandem/:studentId" element={<EmployerTandemScreen />} />

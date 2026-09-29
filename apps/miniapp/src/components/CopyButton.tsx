@@ -1,15 +1,6 @@
 import { useEffect, useState, type RefObject } from 'react';
-import { copyText } from '../app/clipboard';
+import { copyText, selectText } from '../app/clipboard';
 import { haptic } from '../max/bridge';
-
-/** Выделить текст элемента, чтобы пользователь скопировал его сам. */
-function selectText(el: HTMLElement): void {
-  const range = document.createRange();
-  range.selectNodeContents(el);
-  const selection = window.getSelection();
-  selection?.removeAllRanges();
-  selection?.addRange(range);
-}
 
 interface CopyButtonProps {
   text: string;

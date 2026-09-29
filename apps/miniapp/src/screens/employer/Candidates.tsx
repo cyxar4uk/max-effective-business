@@ -35,7 +35,7 @@ import { CandidateActions, CandidateCard, CandidateCardBody } from './CandidateC
 import { Avatar, Eq, Notice, UndoToast, type NoticeValue } from './candidateUi';
 import { CloseSheet } from './CloseSheet';
 import { plural } from './draft';
-import { CardIcon, ChevronIcon, ListIcon } from './icons';
+import { CardIcon, ChevronIcon, ListIcon, QrIcon } from './icons';
 import { PlaceArt } from './PlaceArt';
 import { useDecision, type Decision, type Pending } from './useDecision';
 import { useDesktop } from './useDesktop';
@@ -288,6 +288,17 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
         </span>
         <h1 className="cd-title">{place.title}</h1>
       </div>
+      {place.status === 'open' &&
+        (desktop ? (
+          <Link className="btn sec sm" to={paths.qr(place.id)}>
+            <QrIcon />
+            QR для стенда
+          </Link>
+        ) : (
+          <Link className="ibtn" to={paths.qr(place.id)} aria-label="QR для стенда" title="QR для стенда">
+            <QrIcon />
+          </Link>
+        ))}
       {desktop && place.status === 'open' && (
         <button type="button" className="btn sec sm" onClick={openSheet}>
           Закрыть набор

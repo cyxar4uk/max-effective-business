@@ -1,0 +1,72 @@
+/* QR для стенда (макет c3 Fair). Плакат и показ на весь экран — всегда светлые: их печатают и сканируют с экрана,
+   поэтому внутри .qr-light токены переопределены светлыми значениями (как .card у тёмной карточки колоды).
+   Цвета QR-кода задаёт сам компонент QrCode. Движение — только transform и opacity (motion). */
+
+.qr-light{
+  --bg:#f3f4f7; --surf:#ffffff; --surf2:#eceef3; --ink:#0c0d11; --ink2:rgba(12,13,17,.74); --ink3:rgba(12,13,17,.6);
+  --line:rgba(12,13,17,.08); --line2:rgba(12,13,17,.16); --chip:rgba(12,13,17,.06); --btn:#0c0d11; --btn-ink:#ffffff;
+  --st:#3d6fff; --em:#ff9f1a;
+  color:var(--ink);
+}
+
+.qr{gap:0}
+.qr-head,.qr-poster,.qr-actions,.qr-closed,.qr-skel{width:100%;max-width:380px;align-self:center}
+.qr-head{display:flex;flex-direction:column;gap:2px;padding:16px 0 14px}
+.qr-h1{font-size:24px}
+
+/* плакат */
+.qr-poster{display:flex;flex-direction:column;background:var(--surf);border-radius:28px;overflow:hidden;box-shadow:var(--shadow);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.qr-cover{position:relative;height:96px;flex-shrink:0;color:#fff}
+.qr-cover-label{top:auto;bottom:14px;font-size:26px}
+.qr-body{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 20px 22px;text-align:center}
+.qr-title{margin:0;font-size:18px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.qr-meta{margin-top:-8px}
+.qr-code{display:block;width:min(236px,100%);aspect-ratio:1/1;padding:0;border:0;border-radius:14px;background:#fff;box-shadow:0 0 0 1px var(--line);cursor:zoom-in;transition:transform 100ms ease-out}
+.qr-code:active{transform:scale(.98)}
+.qr-code:focus-visible{outline:2px solid var(--st);outline-offset:3px}
+.qr-svg{display:block;width:100%;height:100%;border-radius:14px}
+.qr-hint{font-weight:600}
+.qr-brand{gap:6px}
+.qr-dots{position:relative;width:26px;height:16px;flex-shrink:0}
+.qr-dots i{position:absolute;top:0;width:16px;height:16px;border-radius:50%}
+.qr-dots i:first-child{left:0;background:var(--st)}
+.qr-dots i:last-child{right:0;background:var(--em);opacity:.9}
+
+/* под плакатом */
+.qr-actions{display:flex;flex-direction:column;gap:8px;padding-top:18px}
+.qr-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.qr-row .btn{height:48px;padding:0 10px;font-size:14.5px;white-space:normal;line-height:1.15;text-align:center;border-radius:16px}
+.qr-link{text-align:center;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text;padding-top:4px}
+.qr-closed{gap:2px;padding:12px 14px;margin-bottom:12px}
+
+/* загрузка */
+.qr-skel{display:flex;flex-direction:column;gap:18px}
+.qr-skel-poster{height:520px;border-radius:28px}
+.qr-skel-btn{height:54px}
+
+/* на весь экран: белый фон, код во всю ширину (яркость экрана мини-приложение не меняет) */
+.qr-full{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:var(--surf);padding:calc(64px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));overflow-y:auto}
+.qr-full-close{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;background:var(--surf2);cursor:pointer;box-shadow:none}
+.qr-full-in{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;text-align:center}
+.qr-full-svg{display:block;width:min(100%,calc(100vh - 230px),560px);width:min(100%,calc(100dvh - 230px),560px);min-width:220px;height:auto;aspect-ratio:1/1}
+.qr-full-title{font-size:20px;font-weight:700;line-height:1.2;max-width:560px;overflow-wrap:anywhere}
+.qr-full-hint{color:var(--ink2);font-weight:500}
+
+/* кнопка «QR для стенда» на плитке «Моих мест» */
+.pl-tile-wrap{position:relative;min-width:0}
+.pl-tile-wrap > .pl-tile{height:100%}
+.pl-qr{position:absolute;top:10px;left:10px;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.38);color:#fff;text-decoration:none;transition:transform 100ms ease-out}
+.pl-qr:active{transform:scale(.94)}
+
+@media (prefers-reduced-motion: reduce){
+  .qr-code,.pl-qr{transition:none}
+  .qr-code:active,.pl-qr:active{transform:none}
+}
+
+/* печать: только плакат */
+@media print{
+  body *{visibility:hidden}
+  .qr-poster,.qr-poster *{visibility:visible}
+  .qr-poster{position:absolute;left:0;right:0;top:0;margin:0 auto;box-shadow:none;border:1px solid rgba(12,13,17,.16)}
+  html,body,.app-root,.route{background:#fff !important}
+}

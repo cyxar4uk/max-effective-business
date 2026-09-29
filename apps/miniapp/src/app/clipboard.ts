@@ -32,3 +32,12 @@ export async function copyText(text: string): Promise<boolean> {
     active?.focus?.({ preventScroll: true });
   }
 }
+
+/** Выделить текст элемента, чтобы пользователь скопировал его сам. */
+export function selectText(el: HTMLElement): void {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
