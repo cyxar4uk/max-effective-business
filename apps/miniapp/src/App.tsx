@@ -14,6 +14,7 @@ import { ConsentScreen } from './screens/onboarding/ConsentScreen';
 import { StudentHome } from './screens/StudentHome';
 import { StudentInterests } from './screens/student/StudentInterests';
 import { StudentProfileEdit, StudentProfileScreen } from './screens/student/StudentProfile';
+import { TandemScreen } from './screens/student/TandemScreen';
 
 export function App() {
   return (
@@ -29,6 +30,7 @@ export function App() {
           <Route path="/student/interests" element={<StudentInterests />} />
           <Route path="/student/profile" element={<StudentProfileScreen />} />
           <Route path="/student/profile/edit" element={<StudentProfileEdit />} />
+          <Route path="/student/tandem/:id" element={<TandemScreen />} />
           <Route path="/employer" element={<EmployerHome />} />
           <Route path="/internships/:id" element={<InternshipScreen />} />
           <Route path="/employer/internships/:id/candidates" element={<CandidatesScreen />} />
