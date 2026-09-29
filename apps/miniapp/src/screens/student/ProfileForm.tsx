@@ -13,12 +13,15 @@ import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
 import { useReduced } from '../../motion/springs';
 import { listItem } from '../../motion/variants';
+import { useBubbleLooks } from './bubble';
 import { loadSkills } from './dict';
 import { FORMAT_LABEL, FORMATS, groupCover, MONTHS } from './place';
 import { Icon } from './ui';
 
 const MIN_SKILLS = 3;
 const MAX_SKILLS = 30;
+/** Пузырь навыка не из справочника (не бывает, но на всякий случай). */
+const SIZE_FALLBACK = 132;
 const DEFAULT_UNIVERSITY = 'РАНХиГС';
 
 interface Draft {
@@ -134,6 +137,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   const [group, setGroup] = useState<string | null>(null);
 
   const months = useMemo(() => monthOptions(initial?.practiceMonth ?? null), [initial]);
+  const looks = useBubbleLooks(skills);
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -375,7 +379,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
 
   const bubble = (s: { code: string; name: string; color: string }) => {
     const on = draft.skills.includes(s.code);
-    const size = Math.round(Math.min(132, Math.max(84, 70 + s.name.length * 1.9)));
+    const { size, fontSize } = looks.get(s.code) ?? { size: SIZE_FALLBACK };
     return (
       <button
         key={s.code}
@@ -386,7 +390,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
         onClick={() => toggleSkill(s.code)}
       >
         {on && <i className={`cover ${s.color}`} aria-hidden="true" />}
-        <span>{s.name}</span>
+        <span style={fontSize ? { fontSize } : undefined}>{s.name}</span>
         {on && (
           <i className="ck" aria-hidden="true">
             <Icon name="check" size="sm" style={{ strokeWidth: 3 }} />
