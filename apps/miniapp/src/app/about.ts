@@ -35,5 +35,5 @@ export const ABOUT: AboutContent = {
   documents: [LEGAL.terms, LEGAL.privacy, LEGAL.consent],
   // Реквизитов у команды хакатона нет — блок скрыт
   requisites: [],
-  support: { title: 'GitHub Issues проекта', url: 'https://github.com/cyxar4uk/max-effective-business/issues' },
+  support: { title: 'i.r.melnikov@gmail.com', url: 'mailto:i.r.melnikov@gmail.com' },
 };
