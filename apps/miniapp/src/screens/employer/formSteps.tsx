@@ -209,6 +209,10 @@ const TYPE_OPTIONS: ChoiceOption<InternshipType>[] = [
   { value: 'part_time', label: 'Подработка', hint: 'Неполный день или разовые задачи' },
 ];
 
+/** Как оформляется место: под выбором типа, а у стажировки и подработки без оплаты — ещё и на шаге оплаты. */
+const PRACTICE_TERMS = 'Практика — по договору с вузом, оплата по желанию.';
+const WORK_TERMS = 'Стажировка и подработка — по трудовому договору, с оплатой не ниже МРОТ при полной занятости.';
+
 export function TypeStep({ draft, update, errors, compact }: StepProps) {
   return (
     <div className="pf-group">
@@ -223,8 +227,8 @@ export function TypeStep({ draft, update, errors, compact }: StepProps) {
       />
       <FieldError id="pf-type-err" msg={errors.type} />
       <p className="lbl m0 pf-terms">
-        <span>Практика — по договору с вузом, оплата по желанию.</span>
-        <span>Стажировка и подработка — по трудовому договору, с оплатой не ниже МРОТ при полной занятости.</span>
+        <span>{PRACTICE_TERMS}</span>
+        <span>{WORK_TERMS}</span>
       </p>
     </div>
   );
@@ -550,8 +554,13 @@ export function PayStep({ draft, update, errors, compact }: StepProps) {
           </span>
         </div>
       )}
-      {draft.paid === false && !compact && (
-        <p className="lbl m0">Практика без оплаты — нормально: для студента важнее задачи и документы для вуза.</p>
+      {/* Практика без оплаты — нормально; стажировке и подработке без оплаты напоминаем про трудовой договор и МРОТ */}
+      {draft.paid === false && !compact && draft.type !== null && (
+        <p className="lbl m0">
+          {draft.type === 'practice'
+            ? 'Практика без оплаты — нормально: для студента важнее задачи и документы для вуза.'
+            : WORK_TERMS}
+        </p>
       )}
     </>
   );
