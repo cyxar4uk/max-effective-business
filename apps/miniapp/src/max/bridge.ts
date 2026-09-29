@@ -123,15 +123,31 @@ export function requestContact(): Promise<MaxContact> {
   return app.requestContact();
 }
 
-/** Сканер QR: камера или файл. Возвращает строку из кода. */
+/** Сканер QR: камера или файл. Возвращает строку из кода. Синхронный отказ клиента — тоже отклонённый промис. */
 export function openCodeReader(fileSelect = true): Promise<string> {
   const app = maxApp();
   if (!app) return Promise.reject(new Error('Сканер доступен только в MAX'));
-  return app.openCodeReader(fileSelect);
+  try {
+    return Promise.resolve(app.openCodeReader(fileSelect));
+  } catch (err) {
+    return Promise.reject(err);
+  }
 }
 
-export function shareMaxContent(params: ShareParams): void {
-  maxApp()?.shareMaxContent(params);
+/**
+ * Поделиться внутри MAX. Вызывать прямо из обработчика нажатия, без await перед вызовом: MAX открывает экран
+ * шеринга только после клика пользователя. Вернёт false вне MAX — тогда предложите скопировать ссылку.
+ * Отказ клиента (пользователь закрыл экран шеринга) молча игнорируем.
+ */
+export function shareMaxContent(params: ShareParams): boolean {
+  const app = maxApp();
+  if (!app) return false;
+  try {
+    void Promise.resolve(app.shareMaxContent(params)).catch(() => undefined);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Диплинк MAX (https://max.ru/…). Вне MAX — обычный переход. */

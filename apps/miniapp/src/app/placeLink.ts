@@ -1,0 +1,59 @@
+// Ссылка на место для QR-кода стенда и «Поделиться»: диплинк мини-приложения с параметром запуска
+// (docs/05_max_platform.md): https://max.ru/<ник_бота>?startapp=internship_<id>. Разбор — для сканера студента.
+import { ABOUT } from './about';
+import { placeIdFromParam } from './placeParam';
+
+/** Параметр запуска места: `internship_<id>` (docs/api.md, бот использует тот же). */
+export const placeParam = (id: number): string => `internship_${id}`;
+
+/** Диплинк на место: открывает мини-приложение сразу на карточке. */
+export const placeLink = (id: number): string => `https://max.ru/${ABOUT.botNick}?startapp=${placeParam(id)}`;
+
+/** Ссылка без протокола — подпись под QR-кодом. */
+export const placeLinkText = (id: number): string => placeLink(id).replace(/^https:\/\//, '');
+
+/** Текст для «Поделиться»: «Место: Настроить карточки на Wildberries — ООО «Вектор»». */
+export const placeShareText = (place: { title: string; company: { name: string } }): string =>
+  `Место: ${place.title} — ${place.company.name}`;
+
+/**
+ * id места из строки QR-кода. Принимаем:
+ * - `https://max.ru/<ник нашего бота>?startapp=internship_<id>` (и `http://`, и без протокола, и `www.max.ru`);
+ * - тот же адрес с `?start=` — диплинк на диалог с ботом, который тоже ведёт к месту;
+ * - сам параметр `internship_<id>`.
+ * Чужой бот, чужой сайт или другой параметр — null.
+ */
+export function placeIdFromCode(raw: string): number | null {
+  const text = raw.trim();
+  const direct = placeIdFromParam(text);
+  if (direct !== null) return direct;
+
+  let url: URL;
+  try {
+    url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(text) ? text : `https://${text}`);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  const host = url.hostname.toLowerCase();
+  if (host !== 'max.ru' && host !== 'www.max.ru') return null;
+  const nick = url.pathname.replace(/^\/+|\/+$/g, '');
+  if (nick.toLowerCase() !== ABOUT.botNick.toLowerCase()) return null;
+  return placeIdFromParam(url.searchParams.get('startapp') ?? url.searchParams.get('start'));
+}
+
+/**
+ * id места из результата сканера. Bridge по документации возвращает строку; если клиент вернёт объект,
+ * проверяем его строковые поля — не завязываясь на их названия.
+ */
+export function placeIdFromScan(value: unknown): number | null {
+  if (typeof value === 'string') return placeIdFromCode(value);
+  if (value && typeof value === 'object') {
+    for (const v of Object.values(value)) {
+      if (typeof v !== 'string') continue;
+      const id = placeIdFromCode(v);
+      if (id !== null) return id;
+    }
+  }
+  return null;
+}

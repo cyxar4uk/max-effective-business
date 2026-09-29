@@ -35,7 +35,8 @@ import { CandidateActions, CandidateCard, CandidateCardBody } from './CandidateC
 import { Avatar, Eq, Notice, UndoToast, type NoticeValue } from './candidateUi';
 import { CloseSheet } from './CloseSheet';
 import { plural } from './draft';
-import { CardIcon, ChevronIcon, ListIcon } from './icons';
+import { CardIcon, ChevronIcon, ListIcon, QrIcon } from './icons';
+import { OwnLinkBanner } from './OwnLinkBanner';
 import { PlaceArt } from './PlaceArt';
 import { useDecision, type Decision, type Pending } from './useDecision';
 import { useDesktop } from './useDesktop';
@@ -289,6 +290,17 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
         </span>
         <h1 className="cd-title">{place.title}</h1>
       </div>
+      {place.status === 'open' &&
+        (desktop ? (
+          <Link className="btn sec sm" to={paths.qr(place.id)}>
+            <QrIcon />
+            QR для стенда
+          </Link>
+        ) : (
+          <Link className="ibtn" to={paths.qr(place.id)} aria-label="QR для стенда" title="QR для стенда">
+            <QrIcon />
+          </Link>
+        ))}
       {desktop && place.status === 'open' && (
         <button type="button" className="btn sec sm" onClick={openSheet}>
           Закрыть набор
@@ -370,6 +382,7 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
     return (
       <>
         {head}
+        <OwnLinkBanner placeId={place.id} />
         {closedBanner}
         <section className="cd-empty cd-in">
           <h2 className="h2">{place.status === 'closed' ? 'Откликов не было' : 'Откликов пока нет'}</h2>
@@ -428,6 +441,7 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
     return (
       <>
         {head}
+        <OwnLinkBanner placeId={place.id} />
         <div className="cd-desk">
           <section className="cd-desk-list">
             {closedBanner}
@@ -461,6 +475,7 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
   return (
     <>
       {head}
+      <OwnLinkBanner placeId={place.id} />
       {closedBanner}
       {tabs}
       <div id="cd-panel" role="tabpanel" aria-labelledby={`cd-tab-${tab}`} key={`${tab}-${view}`} className="cd-panel cd-fade">

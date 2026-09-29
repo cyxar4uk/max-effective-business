@@ -14,8 +14,12 @@
 - Параметр запуска: `window.WebApp.initDataUnsafe.start_param`.
 - Методы, которые нам нужны:
   - `requestContact()` — номер телефона в модальном окне. **Как результат доходит и как его проверить — уточнить в документации** (Илья + Андрей);
-  - `openCodeReader()` — сканирование QR камерой или из файла;
-  - `shareMaxContent(params)` — поделиться внутри MAX;
+  - `openCodeReader(fileSelect?)` — сканирование QR камерой или из файла: `fileSelect = true` (по умолчанию) — камера
+    и выбор фото из галереи, `false` — только камера; возвращает Promise со строкой из кода. Коды ошибок сканера
+    документация не описывает (общий формат ошибок клиента — `{ error: { code } }`);
+  - `shareMaxContent(params)` — поделиться внутри MAX: `{ text?, link? }` или `{ mid, chatType }`, возвращает Promise.
+    **Вызывать прямо из обработчика нажатия**: перед вызовом MAX проверяет клик пользователя, без клика экран
+    шеринга не откроется ([Bridge](https://dev.max.ru/docs/webapps/bridge), сверено 29.09);
   - `openMaxLink(url)` и `openLink(url)` — открыть диплинк MAX или внешнюю ссылку;
   - `BackButton` (`show`, `hide`, `onClick`, `offClick`);
   - `HapticFeedback` (`impactOccurred`, `notificationOccurred`, `selectionChanged`);

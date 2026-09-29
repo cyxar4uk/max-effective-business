@@ -119,3 +119,34 @@ export function BuildingIcon({ className = 'ic sm' }: { className?: string }) {
     </svg>
   );
 }
+
+/** QR-код: три «глаза» и модули — кнопка «QR для стенда». */
+export function QrIcon({ className = 'ic sm' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2" />
+    </svg>
+  );
+}
+
+/** Поделиться: стрелка из лотка. */
+export function ShareIcon({ className = 'ic sm' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3v12M7.5 7.5L12 3l4.5 4.5" />
+      <path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+    </svg>
+  );
+}
+
+/** На весь экран: четыре угла. */
+export function ExpandIcon({ className = 'ic sm' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+    </svg>
+  );
+}

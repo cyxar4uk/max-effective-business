@@ -124,4 +124,6 @@ export const paths = {
   candidates: (placeId: number) => `/employer/internships/${placeId}/candidates`,
   tandem: (placeId: number, studentId: number) => `/employer/internships/${placeId}/tandem/${studentId}`,
   docs: (placeId: number, studentId: number) => `/employer/internships/${placeId}/docs/${studentId}`,
+  /** QR для стенда: плакат места с кодом диплинка. */
+  qr: (placeId: number) => `/employer/internships/${placeId}/qr`,
 };

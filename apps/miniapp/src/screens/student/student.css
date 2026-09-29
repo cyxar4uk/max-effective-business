@@ -31,14 +31,20 @@
 .pc-own{padding-left:10px;border-left:3px solid var(--st);font-size:13px;line-height:1.35;color:var(--ink2)}
 .bot-hint{position:fixed;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));margin:0 auto;width:calc(100% - 24px);max-width:480px;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:18px;background:var(--surf);color:var(--ink);font-size:14px;line-height:1.35;box-shadow:var(--shadow);z-index:20}
 .bot-hint .btn{flex-shrink:0}
+/* режим ярмарки: кнопка сканера в шапке колоды и подсказка, если код не наш или сканер не открылся */
+.feed-scan{cursor:pointer}
+.scan-notice{position:fixed;left:0;right:0;bottom:calc(78px + env(safe-area-inset-bottom));margin:0 auto;width:calc(100% - 24px);max-width:480px;display:flex;align-items:flex-start;gap:12px;padding:14px 8px 14px 14px;border-radius:20px;background:var(--surf);color:var(--ink);box-shadow:var(--shadow);z-index:20}
+.scan-ic{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--wait-bg);color:var(--wait-ink)}
+.scan-ic.err{background:var(--neg-bg);color:var(--neg-ink)}
+.scan-t{font-weight:600;line-height:1.3}
+.scan-retry{align-self:flex-start;margin-top:8px}
+.scan-x{width:44px;height:44px;margin:-10px -2px 0 0;border-radius:50%;border:0;padding:0;background:transparent;color:var(--ink3);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .pc-skills .sk{max-width:100%}
 .pc-sk-name{overflow:hidden;text-overflow:ellipsis}
 .pc-skel{position:absolute;inset:0;border-radius:28px;background:var(--surf);padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
 .pc-skel .skeleton-line{border-radius:10px}
 .fab-l{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .fab .kbd{display:none}
-.toast{position:fixed;left:0;right:0;margin:0 auto;top:calc(12px + env(safe-area-inset-top));width:max-content;max-width:min(420px,calc(100% - 32px));padding:12px 16px;border-radius:16px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;box-shadow:var(--shadow);z-index:20}
-.toast.error{background:linear-gradient(var(--neg-bg),var(--neg-bg)),var(--surf);color:var(--neg-ink)}
 
 /* подробности места: экран места и панель колоды */
 .sd{display:flex;flex-direction:column;gap:14px}
@@ -60,6 +66,12 @@
 /* экран места */
 .pd{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;width:100%;max-width:720px;margin:0 auto}
 .pd-cover{position:relative;height:250px;flex-shrink:0;border-radius:0 0 30px 30px;overflow:hidden;color:#fff}
+.pd-top{align-items:center}
+.pd-top-r{gap:8px;flex-shrink:0}
+.pd-share{width:44px;height:44px;border-radius:50%;border:0;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(0,0,0,.38);color:#fff;cursor:pointer;transition:transform .1s ease-out}
+.pd-share:active{transform:scale(.94)}
+.pd-share:focus-visible{outline:2px solid #fff;outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.pd-share{transition:none}.pd-share:active{transform:none}}
 .pd-body{flex:1;display:flex;flex-direction:column;gap:14px;padding:18px 16px 16px}
 .pd-title{font-size:26px;line-height:1.12}
 .pd-bar{position:sticky;bottom:0;display:flex;flex-direction:column;gap:10px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
@@ -129,6 +141,7 @@
   .feed-aside{width:400px;flex-shrink:0;max-width:none;margin:0;padding:26px 24px;border-left:1px solid var(--line);overflow-y:auto}
   .fab .kbd{display:inline-flex}
   .bot-hint{bottom:24px;left:220px}
+  .scan-notice{bottom:24px;left:220px}
   .acts{gap:28px;padding:18px 0 26px}
 }
 @media (min-width:1024px) and (prefers-color-scheme: dark){

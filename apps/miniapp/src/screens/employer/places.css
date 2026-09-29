@@ -82,6 +82,16 @@
 .cd-tab-empty{margin:0;padding:28px 8px;text-align:center}
 .cd-close-link{align-self:center;margin-top:auto}
 
+/* плашка «Вы открыли ссылку на своё место» (OwnLinkBanner): над списком, на телефоне кнопка — второй строкой */
+.surf.cd-own{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"ic t x" ". go go";align-items:center;column-gap:12px;row-gap:6px;padding:10px 4px 12px 12px}
+.cd-own-ic{grid-area:ic;width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--wait-bg);color:var(--wait-ink)}
+.cd-own-t{grid-area:t;font-weight:600;font-size:14.5px;line-height:1.3}
+.cd-own-go{grid-area:go;justify-self:start}
+.cd-own-x{grid-area:x;width:44px;height:44px;border:0;padding:0;border-radius:50%;background:transparent;color:var(--ink3);display:flex;align-items:center;justify-content:center;cursor:pointer}
+@media (min-width:600px){
+  .surf.cd-own{grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"ic t go x";padding:8px 4px 8px 12px}
+}
+
 /* строка кандидата */
 .cd-list{list-style:none;margin:0;padding:0}
 .cd-li{border-bottom:1px solid var(--line)}

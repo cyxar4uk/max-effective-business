@@ -9,12 +9,13 @@ import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { DemoBadge } from '../../components/DemoBadge';
 import { haptic } from '../../max/bridge';
-import { responsesText } from './candidate';
+import { paths, responsesText } from './candidate';
 import { plural } from './draft';
-import { BuildingIcon, ChevronIcon, PlusIcon, RouteIcon } from './icons';
+import { BuildingIcon, ChevronIcon, PlusIcon, QrIcon, RouteIcon } from './icons';
 import { PlaceArt } from './PlaceArt';
 import './employer.css';
 import './places.css';
+import './qr.css';
 
 /** Лимит сервера на открытые места (docs/api.md, 409). */
 const OPEN_LIMIT = 20;
@@ -38,25 +39,38 @@ function PlaceTile({ place, index }: { place: Internship; index: number }) {
   const waiting = counts(place).interested;
   const status = statusText(place);
   return (
-    <Link
-      to={`/employer/internships/${place.id}/candidates`}
-      className="pl-tile cd-in"
-      style={{ animationDelay: `${Math.min(index, 10) * 20}ms` }}
-      aria-label={`${place.title}. ${status}`}
-      onClick={() => haptic.selection()}
-    >
-      <span className="pl-art">
-        <PlaceArt place={place} variant="tile" />
-        {waiting > 0 && (
-          <span className="pl-badge num" aria-hidden="true">
-            {waiting}
-          </span>
-        )}
-      </span>
-      <span className="pl-title">{place.title}</span>
-      <span className="lbl">{status}</span>
-      <DemoBadge isDemo={place.isDemo} />
-    </Link>
+    <div className="pl-tile-wrap cd-in" style={{ animationDelay: `${Math.min(index, 10) * 20}ms` }}>
+      <Link
+        to={paths.candidates(place.id)}
+        className="pl-tile"
+        aria-label={`${place.title}. ${status}`}
+        onClick={() => haptic.selection()}
+      >
+        <span className="pl-art">
+          <PlaceArt place={place} variant="tile" />
+          {waiting > 0 && (
+            <span className="pl-badge num" aria-hidden="true">
+              {waiting}
+            </span>
+          )}
+        </span>
+        <span className="pl-title">{place.title}</span>
+        <span className="lbl">{status}</span>
+        <DemoBadge isDemo={place.isDemo} />
+      </Link>
+      {/* Отдельная ссылка поверх обложки: вложить её в плитку-ссылку нельзя */}
+      {place.status === 'open' && (
+        <Link
+          to={paths.qr(place.id)}
+          className="pl-qr"
+          aria-label={`QR для стенда: ${place.title}`}
+          title="QR для стенда"
+          onClick={() => haptic.selection()}
+        >
+          <QrIcon />
+        </Link>
+      )}
+    </div>
   );
 }
 

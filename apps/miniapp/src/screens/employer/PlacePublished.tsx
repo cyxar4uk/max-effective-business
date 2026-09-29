@@ -3,7 +3,8 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { api } from '../../api/client';
 import { ABOUT } from '../../app/about';
 import { haptic, openMaxLink } from '../../max/bridge';
-import { CheckIcon, InfoIcon } from './icons';
+import { paths } from './candidate';
+import { CheckIcon, InfoIcon, QrIcon } from './icons';
 import { Swap } from './ui';
 import './employer.css';
 
@@ -149,6 +150,10 @@ function Published({ id }: { id: number }) {
         </button>
         <button type="button" className="btn sec" onClick={() => navigate('/employer', { replace: true })}>
           Мои места
+        </button>
+        <button type="button" className="btn ghost" onClick={() => navigate(paths.qr(id))}>
+          <QrIcon />
+          QR для стенда на ярмарке
         </button>
       </div>
     </main>

@@ -16,7 +16,9 @@ import { loadOwnPlaces, withOwnFirst } from './ownPlaces';
 import { PlaceCardFace } from './PlaceCard';
 import { PlaceDetails } from './PlaceDetails';
 import { plural, skillNames, tagColor, type SkillNames } from './place';
+import { ScanNotice } from './ScanNotice';
 import { Icon } from './ui';
+import { useScanPlace } from './useScanPlace';
 
 function FeedLayout({ head, aside, children }: { head: ReactNode; aside?: ReactNode; children: ReactNode }) {
   return (
@@ -308,6 +310,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
 /** Лента студента «Для вас»: фильтр тегами и колода мест. */
 export function StudentFeed() {
   const { me } = useMe();
+  const scanner = useScanPlace();
   const [tags, setTags] = useState<string[]>([]);
   const [tagsState] = useLoad(loadTags, []);
   const [state, retry] = useLoad(async () => {
@@ -340,6 +343,10 @@ export function StudentFeed() {
             </span>
           )}
         </div>
+        {/* Режим ярмарки: QR-код на стенде компании → карточка места */}
+        <button type="button" className="ibtn feed-scan" aria-label="Сканировать QR-код места" title="Сканировать QR-код места" onClick={scanner.scan}>
+          <Icon name="qr" size="sm" />
+        </button>
       </div>
       {tagsState.status === 'ok' && tagsState.data.items.length > 0 && (
         <div className="chips feed-chips" role="group" aria-label="Фильтр по задачам">
@@ -360,27 +367,38 @@ export function StudentFeed() {
     </>
   );
 
+  const notice = <ScanNotice problem={scanner.problem} onRetry={scanner.scan} onClose={scanner.dismiss} />;
+
   if (state.status === 'loading') {
     return (
-      <FeedLayout head={head('loading')}>
-        <DeckSkeleton />
-      </FeedLayout>
+      <>
+        <FeedLayout head={head('loading')}>
+          <DeckSkeleton />
+        </FeedLayout>
+        {notice}
+      </>
     );
   }
   if (state.status === 'error') {
     return (
-      <FeedLayout head={head('error')}>
-        <ErrorState error={state.error} onRetry={retry} />
-      </FeedLayout>
+      <>
+        <FeedLayout head={head('error')}>
+          <ErrorState error={state.error} onRetry={retry} />
+        </FeedLayout>
+        {notice}
+      </>
     );
   }
   return (
-    <Deck
-      items={state.data.items}
-      names={state.data.names}
-      filtered={tags.length > 0}
-      onResetFilter={() => setTags([])}
-      head={head}
-    />
+    <>
+      <Deck
+        items={state.data.items}
+        names={state.data.names}
+        filtered={tags.length > 0}
+        onResetFilter={() => setTags([])}
+        head={head}
+      />
+      {notice}
+    </>
   );
 }

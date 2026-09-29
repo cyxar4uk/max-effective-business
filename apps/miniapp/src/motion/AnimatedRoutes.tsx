@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Routes, useLocation, useNavigationType, type Location } from 'react-router';
 import { ScreenBoundary } from '../app/ScreenBoundary';
 import { ScreenSkeleton } from '../components/Skeleton';
+import { ScreenPresence } from './screenPresence';
 import './motion.css';
 
 /**
@@ -86,11 +87,13 @@ export function AnimatedRoutes({ children }: { children: ReactNode }) {
           inert={s.out}
         >
           {/* Экран грузится своим чанком: пока его нет — скелетон, сбой загрузки — ошибка с «Повторить» */}
-          <ScreenBoundary>
-            <Suspense fallback={<ScreenSkeleton />}>
-              <Routes location={s.location}>{children}</Routes>
-            </Suspense>
-          </ScreenBoundary>
+          <ScreenPresence.Provider value={!s.out}>
+            <ScreenBoundary>
+              <Suspense fallback={<ScreenSkeleton />}>
+                <Routes location={s.location}>{children}</Routes>
+              </Suspense>
+            </ScreenBoundary>
+          </ScreenPresence.Provider>
         </div>
       ))}
     </div>
