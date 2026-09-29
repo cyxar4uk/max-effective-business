@@ -59,7 +59,7 @@ function writeDone(key: string, done: string[]): void {
   }
 }
 
-export function DocsScreen() {
+export function EmployerDocsScreen() {
   const params = useParams();
   const id = Number(params.id);
   const studentId = Number(params.studentId);

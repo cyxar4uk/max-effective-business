@@ -16,7 +16,7 @@ import './places.css';
 const readState = (state: unknown): TandemState =>
   typeof state === 'object' && state !== null ? (state as TandemState) : {};
 
-export function TandemScreen() {
+export function EmployerTandemScreen() {
   const params = useParams();
   const id = Number(params.id);
   const studentId = Number(params.studentId);
