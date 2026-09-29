@@ -1,10 +1,8 @@
-import { motion } from 'motion/react';
 import { useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import { useMe } from '../../app/me';
 import { haptic, requestContact, type MaxContact } from '../../max/bridge';
-import { fade, sheet, useReduced } from '../../motion/springs';
 import './onboarding.css';
 
 /** Куда вести после онбординга: только свой путь, без внешних адресов и без петли на /consent. */
@@ -75,7 +73,6 @@ export function ConsentScreen() {
   const employer = next.startsWith('/employer');
   const lastStep = employer ? 'профиль компании' : 'анкета';
 
-  const reduced = useReduced();
   const [step, setStep] = useState<Step>(() => (!me.consent ? 'consent' : !me.hasPhone ? 'phone' : 'done'));
   const [firstStep] = useState(step);
   const [busy, setBusy] = useState(false);
@@ -195,37 +192,18 @@ export function ConsentScreen() {
     );
   }
 
-  // Скрим проявляется, шторка выезжает снизу пружиной; шаги внутри сменяются проявлением.
-  // prefers-reduced-motion — только короткое проявление без сдвигов
+  // Скрим проявляется, шторка выезжает снизу пружиной; шаги внутри сменяются проявлением (onboarding.css).
+  // prefers-reduced-motion — только короткое проявление без сдвигов. Без библиотеки движения: экран в первом чанке
   return (
     <main className="ob">
       <Orb />
-      <motion.div
-        className="ob-dim"
-        aria-hidden="true"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={reduced ? fade : { ...fade, duration: 0.25 }}
-      />
-      <motion.section
-        className="sheet ob-sheet"
-        role="dialog"
-        aria-labelledby="ob-title"
-        initial={reduced ? { opacity: 0 } : { y: '100%' }}
-        animate={reduced ? { opacity: 1 } : { y: 0 }}
-        transition={reduced ? fade : sheet}
-      >
+      <div className="ob-dim" aria-hidden="true" />
+      <section className="sheet ob-sheet" role="dialog" aria-labelledby="ob-title">
         <span className="grab" aria-hidden="true" />
-        <motion.div
-          key={step}
-          className="ob-step"
-          initial={step === firstStep ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ ...fade, duration: 0.2 }}
-        >
+        <div key={step} className={step === firstStep ? 'ob-step' : 'ob-step ob-step-in'}>
           {content}
-        </motion.div>
-      </motion.section>
+        </div>
+      </section>
     </main>
   );
 }

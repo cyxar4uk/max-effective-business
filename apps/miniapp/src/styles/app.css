@@ -6,6 +6,8 @@
 :root .app-root{--font:inherit;min-height:100vh;min-height:100dvh;background:var(--bg);color:var(--ink);font-family:var(--font)}
 
 .screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;padding:0 16px 24px}
+/* безопасные зоны: вырез и полоска «домой» не перекрывают края и последнюю кнопку экрана */
+.screen{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));padding-bottom:calc(24px + env(safe-area-inset-bottom))}
 .d{font-family:var(--font-display);letter-spacing:-.015em}
 .ic{width:24px;height:24px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .ic.sm{width:18px;height:18px}
@@ -21,13 +23,16 @@
 
 /* шапка и кнопки */
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 10px}
-.ibtn{width:42px;height:42px;border-radius:50%;background:var(--surf);color:var(--ink);display:flex;align-items:center;justify-content:center;border:0;text-decoration:none;flex-shrink:0;box-shadow:0 1px 2px rgba(12,13,17,.06)}
+.ibtn{width:44px;height:44px;border-radius:50%;background:var(--surf);color:var(--ink);display:flex;align-items:center;justify-content:center;border:0;text-decoration:none;flex-shrink:0;box-shadow:0 1px 2px rgba(12,13,17,.06)}
 .btn{height:54px;border-radius:18px;border:0;font:600 16px/1 "Onest",system-ui,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;padding:0 22px;cursor:pointer;white-space:nowrap}
 .btn.pri{background:var(--btn);color:var(--btn-ink)}
 .btn.sec{background:var(--surf2);color:var(--ink)}
 .btn.ghost{background:transparent;color:var(--ink2);height:44px}
 .btn.neg{background:var(--neg-bg);color:var(--neg-ink)}
 .btn.sm{height:40px;border-radius:13px;font-size:14px;padding:0 14px}
+/* занятые и недоступные кнопки — общее для всех разделов (раньше жило в student.css и до его загрузки не действовало) */
+.chip,.fab,.bub{cursor:pointer}
+.btn:disabled,.fab:disabled,.chip:disabled{opacity:.45;cursor:default}
 
 /* чипы */
 .chips{display:flex;gap:8px;flex-wrap:wrap}
@@ -49,6 +54,7 @@
 .av-c{background:radial-gradient(60% 55% at 30% 25%,#ffc46b 0,rgba(255,196,107,0) 70%),radial-gradient(60% 55% at 80% 70%,#ff5c8a 0,rgba(255,92,138,0) 70%),#5a1d14}
 .av-d{background:radial-gradient(60% 55% at 30% 25%,#c4f36b 0,rgba(196,243,107,0) 70%),radial-gradient(60% 55% at 80% 70%,#14b8a6 0,rgba(20,184,166,0) 70%),#0b3a2a}
 .cv-label{position:absolute;left:22px;right:22px;top:62px;font-family:"Unbounded","Onest",sans-serif;font-weight:800;font-size:44px;line-height:.95;letter-spacing:-.03em;text-transform:uppercase;color:rgba(255,255,255,.9)}
+.cv-label{overflow-wrap:break-word;hyphens:manual}
 .cv-ring{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.3)}
 .cv-grid{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 28px),repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 28px)}
 .ava{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Unbounded","Onest",sans-serif;font-weight:800;color:#fff;flex-shrink:0}
@@ -61,7 +67,7 @@
 .info{position:absolute;left:0;right:0;bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px}
 .topchips{position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;gap:6px}
 .gchip{height:28px;padding:0 10px;border-radius:999px;background:rgba(0,0,0,.38);color:#fff;font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.gchip.demo{background:#ffd76a;color:#3a2a00}
+.gchip.demo{background:var(--demo-cover-bg);color:var(--demo-cover-ink)}
 .title{font-family:"Unbounded","Onest",sans-serif;font-weight:700;font-size:24px;line-height:1.12;letter-spacing:-.02em;margin:0}
 .logo{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--on-em);flex-shrink:0;background:#ffa51f}
 .facts{font-size:13.5px;color:var(--ink2)}
@@ -98,7 +104,7 @@
 .nav{display:flex;padding:8px 8px 26px;background:var(--surf);border-top:1px solid var(--line)}
 .nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:var(--ink3);text-decoration:none;position:relative}
 .nav a.on{color:var(--ink)}
-.badge{position:absolute;top:-3px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:var(--nope);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.badge{position:absolute;top:-3px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:var(--count-bg);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
 
 /* поверхности */
 .surf{background:var(--surf);border-radius:22px;overflow:hidden;display:flex;flex-direction:column}
@@ -110,7 +116,7 @@
 .st.wait{background:var(--wait-bg);color:var(--wait-ink)}
 .st.ok{background:var(--ok-bg);color:var(--ok-ink)}
 .st.no{background:var(--chip);color:var(--ink3)}
-.st.demo{background:#ffe7a3;color:#5a3d00}
+.st.demo{background:var(--demo-bg);color:var(--demo-ink)}
 .search{display:flex;align-items:center;gap:8px;height:46px;border-radius:16px;background:var(--surf);padding:0 14px;color:var(--ink3);box-shadow:inset 0 0 0 1px var(--line)}
 .search input{border:0;outline:0;background:transparent;font:16px "Onest",system-ui,sans-serif;color:var(--ink);flex-grow:1;padding:0}
 .search input::placeholder{color:var(--ink3)}
@@ -201,6 +207,8 @@
 .state-title{margin:0;font-size:20px;line-height:1.2}
 .state-text{margin:0;color:var(--ink2);max-width:320px}
 .state .btn{margin-top:8px;align-self:stretch}
+.state .btn + .btn{margin-top:0}
+.state-ic{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:var(--warn-bg);color:var(--warn-ink);margin-bottom:6px}
 
 /* заголовки экранов */
 .h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.1;letter-spacing:-.02em;margin:0}
@@ -213,3 +221,41 @@
 .page-head .btn.ghost{padding:0 8px}
 .place{padding-top:16px}
 .pct-sm{font-size:24px}
+
+/* экран ждёт свой чанк: скелетон проявляется, только если загрузка дольше 0,2 с */
+.screen-wait{padding-top:16px;animation:screen-wait .2s .2s ease-out backwards}
+@keyframes screen-wait{from{opacity:0}}
+.skeleton-head{height:34px;width:62%;margin:12px 0 10px;border-radius:12px;background:var(--surf2)}
+
+/* главный (макет c3 Main): знак и «О сервисе», сфера, выбор роли; ниже — «Как проверить за 5 минут» */
+.home{width:100%;max-width:520px;margin:0 auto}
+.home .home-top{padding:16px 0 10px}
+.home-mark{font-size:16px;font-weight:700}
+.home-hero{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding:8px 8px 28px;text-align:center}
+.home-orb{width:240px;height:184px}
+.home-orb i{top:12px;width:160px;height:160px}
+.home-text{display:flex;flex-direction:column;gap:12px}
+.home-h1{font-size:34px;line-height:1.05;font-weight:800}
+.home-lead{color:var(--ink2);font-size:16px}
+.btn.home-student{background:var(--surf);box-shadow:inset 0 0 0 1px var(--line)}
+.home-note{text-align:center}
+@media (min-height:900px){
+  .home-orb{width:300px;height:230px}
+  .home-orb i{top:15px;width:200px;height:200px}
+}
+
+/* подтверждение успеха поверх экрана (components/Flash.tsx): проявляется, без сдвигов */
+.flash-host{position:fixed;left:0;right:0;top:calc(12px + env(safe-area-inset-top));z-index:50;display:flex;justify-content:center;pointer-events:none;padding:0 16px}
+.flash{margin:0;display:flex;align-items:center;gap:8px;max-width:420px;padding:12px 16px;border-radius:16px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;box-shadow:var(--shadow);animation:flash-in .2s ease-out backwards}
+.flash .ic{color:var(--hi)}
+@keyframes flash-in{from{opacity:0}}
+
+/* доступность: видимый фокус с клавиатуры у всего, что нажимается; мышью и касанием рамки нет (:focus-visible) */
+:where(a,button,summary,[role="button"],[role="tab"],[role="switch"],[role="checkbox"],[tabindex]:not([tabindex="-1"])):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+/* поля ввода без своей рамки: подсвечиваем контейнер */
+.search:focus-within,.field:focus-within{outline:2px solid var(--focus);outline-offset:-2px}
+
+/* цели касания не меньше 44 px: вид прежний, область нажатия шире (только у самих кнопок — внутри них нет других кнопок) */
+:where(button.chip,.seg button,button.btn.sm,button.toggle,.sd-link){position:relative}
+:where(button.chip,.seg button,button.btn.sm,.sd-link)::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;min-height:100%;transform:translateY(-50%)}
+button.toggle::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;transform:translate(-50%,-50%)}

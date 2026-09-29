@@ -6,6 +6,7 @@ import type { EmployerProfile } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
+import { flash } from '../../components/flashMessage';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
 import type { Errors } from './draft';
@@ -128,8 +129,11 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
       haptic.notify('success');
       setMe({ ...me, roles: { ...me.roles, employer: true } });
       if (isNew) navigate('/employer/new', { replace: true });
-      else if (historyIndex() > 0) navigate(-1);
-      else navigate('/employer', { replace: true });
+      else {
+        flash('Профиль компании сохранён');
+        if (historyIndex() > 0) navigate(-1);
+        else navigate('/employer', { replace: true });
+      }
     } catch (err) {
       const apiErr =
         err instanceof ApiError ? err : new ApiError(0, 'INTERNAL', 'Не получилось сохранить. Повторите попытку.');

@@ -1,25 +1,30 @@
 import { BrowserRouter, Route } from 'react-router';
 import { BackButtonSync } from './app/BackButtonSync';
 import { LastRoleSync } from './app/lastRole';
+import { lazyScreen, loadAbout, loadEmployer, loadPlaceForm, loadStudent } from './app/lazyScreen';
 import { MeProvider } from './app/MeProvider';
 import { StartParamRedirect } from './app/StartParamRedirect';
+import { FlashHost } from './components/Flash';
 import { AnimatedRoutes } from './motion/AnimatedRoutes';
-import { AboutScreen } from './screens/AboutScreen';
-import { CandidatesScreen } from './screens/CandidatesScreen';
-import { EmployerHome } from './screens/EmployerHome';
-import { CompanyProfile } from './screens/employer/CompanyProfile';
-import { EmployerDocsScreen } from './screens/employer/Docs';
-import { PlaceForm } from './screens/employer/PlaceForm';
-import { PlacePublished } from './screens/employer/PlacePublished';
-import { EmployerTandemScreen } from './screens/employer/Tandem';
 import { Home } from './screens/Home';
-import { InternshipScreen } from './screens/InternshipScreen';
 import { NotFound } from './screens/NotFound';
 import { ConsentScreen } from './screens/onboarding/ConsentScreen';
-import { StudentHome } from './screens/StudentHome';
-import { StudentInterests } from './screens/student/StudentInterests';
-import { StudentProfileEdit, StudentProfileScreen } from './screens/student/StudentProfile';
-import { TandemScreen } from './screens/student/TandemScreen';
+
+// В первом чанке — главный экран и онбординг; разделы ролей, форма места и «О сервисе» — отдельные чанки
+const StudentHome = lazyScreen(loadStudent, (m) => m.StudentHome);
+const StudentInterests = lazyScreen(loadStudent, (m) => m.StudentInterests);
+const StudentProfileScreen = lazyScreen(loadStudent, (m) => m.StudentProfileScreen);
+const StudentProfileEdit = lazyScreen(loadStudent, (m) => m.StudentProfileEdit);
+const TandemScreen = lazyScreen(loadStudent, (m) => m.TandemScreen);
+const InternshipScreen = lazyScreen(loadStudent, (m) => m.InternshipScreen);
+const EmployerHome = lazyScreen(loadEmployer, (m) => m.EmployerHome);
+const CompanyProfile = lazyScreen(loadEmployer, (m) => m.CompanyProfile);
+const PlacePublished = lazyScreen(loadEmployer, (m) => m.PlacePublished);
+const CandidatesScreen = lazyScreen(loadEmployer, (m) => m.CandidatesScreen);
+const EmployerTandemScreen = lazyScreen(loadEmployer, (m) => m.EmployerTandemScreen);
+const EmployerDocsScreen = lazyScreen(loadEmployer, (m) => m.EmployerDocsScreen);
+const PlaceForm = lazyScreen(loadPlaceForm, (m) => m.PlaceForm);
+const AboutScreen = lazyScreen(loadAbout, (m) => m.AboutScreen);
 
 export function App() {
   return (
@@ -47,6 +52,7 @@ export function App() {
           <Route path="/about" element={<AboutScreen />} />
           <Route path="*" element={<NotFound />} />
         </AnimatedRoutes>
+        <FlashHost />
       </MeProvider>
     </BrowserRouter>
   );

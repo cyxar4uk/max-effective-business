@@ -1,7 +1,52 @@
 /* «Тандем» · движение: ячейка для переходов экранов и отклик на нажатие. Анимируем только transform и opacity. */
+:root{
+  /* Пружина без отскока, 0,35 с (как spring в springs.ts): кривая критически затухающей пружины */
+  --ease-spring:cubic-bezier(.2,.9,.3,1);
+  /* Шторка: пружина с лёгким отскоком (sheet в springs.ts) */
+  --ease-sheet:cubic-bezier(.2,.9,.25,1.02);
+}
+@supports (animation-timing-function:linear(0,1)){
+  :root{
+    --ease-spring:linear(0,.079 5%,.236 10%,.403 15%,.551 20%,.671 25%,.764 30%,.883 40%,.944 50%,.974 60%,.988 70%,.995 80%,1);
+    --ease-sheet:linear(0,.066 5%,.208 10%,.372 15%,.528 20%,.662 25%,.768 30%,.907 40%,.974 50%,.999 60%,1.006 70%,1.004 85%,1);
+  }
+}
+
 .routes{display:grid;min-height:100vh;min-height:100dvh}
-.route{grid-area:1/1;min-width:0;position:relative;background:var(--bg)}
+.route{grid-area:1/1;min-width:0;position:relative;background:var(--bg);z-index:1}
+.route.out{pointer-events:none;z-index:0}
+/* «Назад»: уходит верхний экран, прежний выезжает под ним.
+   Входящий экран заполняет только начало (backwards): после анимации у него нет transform, и position:fixed
+   внутри снова считается от окна */
+.route.out.back{z-index:1}
+.route.in.back{z-index:0}
+
+.route.in.forward{animation:rt-from-right .35s var(--ease-spring) backwards,rt-show .2s ease-out backwards}
+.route.out.forward{animation:rt-to-left .35s var(--ease-spring) both,rt-hide .01s .3s linear both}
+.route.in.back{animation:rt-from-left .35s var(--ease-spring) backwards}
+.route.out.back{animation:rt-to-right .35s var(--ease-spring) both,rt-show .2s .05s ease-out reverse both}
+.route.in.tab{animation:rt-show .2s ease-out backwards}
+.route.out.tab{animation:rt-hide .01s .2s linear both}
+.route.in.fade{animation:rt-show .15s ease-out backwards}
+.route.out.fade{animation:rt-hide .01s .15s linear both}
+
+@keyframes rt-from-right{from{transform:translateX(24px)}to{transform:none}}
+@keyframes rt-from-left{from{transform:translateX(-24px)}to{transform:none}}
+@keyframes rt-to-left{from{transform:none}to{transform:translateX(-24px)}}
+@keyframes rt-to-right{from{transform:none}to{transform:translateX(24px)}}
+@keyframes rt-show{from{opacity:0}to{opacity:1}}
+@keyframes rt-hide{from{opacity:1}to{opacity:0}}
+
+/* Меньше движения: без сдвигов, только короткое проявление */
+@media (prefers-reduced-motion:reduce){
+  /* та же специфичность, что у правил режимов выше (0,3,0), — иначе уходящий экран всё равно сдвигался */
+  .route.in.forward,.route.in.back,.route.in.tab,.route.in.fade{animation:rt-show .15s ease-out backwards}
+  .route.out.forward,.route.out.back,.route.out.tab,.route.out.fade{animation:rt-hide .01s .15s linear both}
+}
 
 /* нажатие: отклик сразу на касание, а не на отпускание */
 .btn,.ibtn,.chip,.bub,.fab .c{transition:transform .1s ease-out}
 .btn:active:not(:disabled),.ibtn:active,.chip:active:not(:disabled),.bub:active,.fab:active:not(:disabled) .c{transform:scale(.97)}
+@media (prefers-reduced-motion:reduce){
+  .btn:active:not(:disabled),.ibtn:active,.chip:active:not(:disabled),.bub:active,.fab:active:not(:disabled) .c{transform:none;opacity:.85}
+}

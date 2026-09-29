@@ -1,6 +1,7 @@
 import type { Internship } from '../../api/types';
 import { companyInitial, coverOf, nameOf, placeFacts, placeWhere, typeChip, type SkillNames } from './place';
 import { Cover, Eq, Icon, Pct } from './ui';
+import { DemoBadge } from '../../components/DemoBadge';
 
 /** Сколько навыков помещается на карточке, остальное — «+N». */
 const CARD_SKILLS = 6;
@@ -27,7 +28,7 @@ export function PlaceCardFace({ place, names, active }: { place: Internship; nam
           <span className="gchip">{typeChip(place)}</span>
           {place.isOwner && <span className="gchip own">Ваше место</span>}
         </span>
-        {place.isDemo && <span className="gchip demo">тестовые данные</span>}
+        <DemoBadge isDemo={place.isDemo} onCover />
       </div>
       <div className="shade" />
       <div className="info">
