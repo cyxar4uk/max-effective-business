@@ -15,7 +15,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
   if (state.status === 'error' && !updated) {
     return (
       <main className="screen">
-        <ErrorState error={state.error} onRetry={retry} />
+        <ErrorState error={state.error} onRetry={retry} exit={false} />
       </main>
     );
   }

@@ -56,7 +56,7 @@ function PlaceTile({ place, index }: { place: Internship; index: number }) {
         </span>
         <span className="pl-title">{place.title}</span>
         <span className="lbl">{status}</span>
-        {place.isDemo && <DemoBadge isDemo />}
+        <DemoBadge isDemo={place.isDemo} />
       </Link>
       {/* Отдельная ссылка поверх обложки: вложить её в плитку-ссылку нельзя */}
       {place.status === 'open' && (

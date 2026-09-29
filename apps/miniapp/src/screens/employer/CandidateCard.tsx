@@ -10,6 +10,7 @@ import { aboutLine, avatarClass, firstName, fullName, initial, paths, phoneText,
 import { Avatar, Eq, MatchSkills } from './candidateUi';
 import { CheckIcon, CrossIcon, DocIcon, LockIcon } from './icons';
 import type { Decision, Pending } from './useDecision';
+import { DemoBadge } from '../../components/DemoBadge';
 
 interface CardProps {
   c: Candidate;
@@ -45,7 +46,7 @@ export function CandidateCardBody({ c, names, pending }: CardProps) {
           {c.status === 'declined' && <span className="gchip">Отказ</span>}
           {c.status === 'interested' && when && <span className="gchip">{when}</span>}
         </span>
-        {c.isDemo && <span className="gchip demo">тестовый отклик</span>}
+        <DemoBadge isDemo={c.isDemo} kind="response" onCover />
       </div>
       <div className="shade" />
       <div className="info">
@@ -110,7 +111,7 @@ export function ContactBlock({ c, place, compact = false, docs = true }: Contact
           <span className="lbl grow">
             {[studyLine(c), `совпадение ${c.match.score} %`].filter(Boolean).join(' · ')}
           </span>
-          {c.isDemo && <span className="st demo">тестовый отклик</span>}
+          <DemoBadge isDemo={c.isDemo} kind="response" />
         </div>
       )}
       {docs && (

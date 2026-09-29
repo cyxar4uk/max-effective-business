@@ -5,7 +5,7 @@ import { Skeleton } from '../components/Skeleton';
 import { getStartParam } from '../max/bridge';
 import { lastRole } from './lastRole';
 import { useMe } from './me';
-import { placeIdFromParam } from './placeLink';
+import { placeIdFromParam } from './placeParam';
 
 /** Куда вести при запуске и как: поверх главного (push) или вместо него (replace). */
 interface Target {

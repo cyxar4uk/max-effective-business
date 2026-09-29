@@ -5,7 +5,7 @@
 .qr-light{
   --bg:#f3f4f7; --surf:#ffffff; --surf2:#eceef3; --ink:#0c0d11; --ink2:rgba(12,13,17,.74); --ink3:rgba(12,13,17,.6);
   --line:rgba(12,13,17,.08); --line2:rgba(12,13,17,.16); --chip:rgba(12,13,17,.06); --btn:#0c0d11; --btn-ink:#ffffff;
-  --st:#3d6fff; --em:#ff9f1a;
+  --st:#3d6fff; --em:#ff9f1a; --focus:#1d4fd6;
   color:var(--ink);
 }
 
@@ -23,7 +23,7 @@
 .qr-meta{margin-top:-8px}
 .qr-code{display:block;width:min(236px,100%);aspect-ratio:1/1;padding:0;border:0;border-radius:14px;background:#fff;box-shadow:0 0 0 1px var(--line);cursor:zoom-in;transition:transform 100ms ease-out}
 .qr-code:active{transform:scale(.98)}
-.qr-code:focus-visible{outline:2px solid var(--st);outline-offset:3px}
+.qr-code:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
 .qr-svg{display:block;width:100%;height:100%;border-radius:14px}
 .qr-hint{font-weight:600}
 .qr-brand{gap:6px}
@@ -55,7 +55,7 @@
 /* кнопка «QR для стенда» на плитке «Моих мест» */
 .pl-tile-wrap{position:relative;min-width:0}
 .pl-tile-wrap > .pl-tile{height:100%}
-.pl-qr{position:absolute;top:10px;left:10px;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.38);color:#fff;text-decoration:none;transition:transform 100ms ease-out}
+.pl-qr{position:absolute;top:8px;left:8px;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.38);color:#fff;text-decoration:none;transition:transform 100ms ease-out}
 .pl-qr:active{transform:scale(.94)}
 
 @media (prefers-reduced-motion: reduce){

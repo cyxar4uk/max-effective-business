@@ -86,7 +86,7 @@
 .pf-edit:last-child{border-bottom:0}
 .pf-edit .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pf-edit.bad .lbl{color:var(--neg-ink)}
-.pf-edit-a{color:var(--st);font-weight:500;font-size:14px;flex-shrink:0}
+.pf-edit-a{color:var(--wait-ink);font-weight:500;font-size:14px;flex-shrink:0}
 .pf-desc{padding:14px 16px;gap:6px}
 .pf-desc p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink2)}
 
@@ -108,7 +108,7 @@
 .pf-live-row{display:inline-flex;align-items:center;gap:10px}
 .pf-live-ok{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink);flex-shrink:0}
 .pf-pulse{width:10px;height:10px;border-radius:50%;background:var(--st);flex-shrink:0;animation:pf-breathe 1.6s ease-in-out infinite}
-.pf-link{border:0;background:none;padding:0;font:inherit;font-weight:500;color:var(--st);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.pf-link{border:0;background:none;padding:0;font:inherit;font-weight:500;color:var(--wait-ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 
 /* профиль компании */
 .co{flex-grow:1;display:flex;flex-direction:column;gap:14px;width:100%;max-width:560px;margin:0 auto;padding-top:28px}

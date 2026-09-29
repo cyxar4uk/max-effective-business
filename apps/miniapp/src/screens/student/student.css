@@ -30,7 +30,7 @@
 /* карточка колоды */
 .pc-where{font-size:14px;color:var(--ink2)}
 .pc-chips{gap:6px;min-width:0;flex-wrap:wrap}
-.gchip.own{background:var(--st)}
+.gchip.own{background:var(--own-bg)}
 .pc-own{padding-left:10px;border-left:3px solid var(--st);font-size:13px;line-height:1.35;color:var(--ink2)}
 .bot-hint{position:fixed;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));margin:0 auto;width:calc(100% - 24px);max-width:480px;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:18px;background:var(--surf);color:var(--ink);font-size:14px;line-height:1.35;box-shadow:var(--shadow);z-index:20}
 .bot-hint .btn{flex-shrink:0}
@@ -41,7 +41,7 @@
 .scan-ic.err{background:var(--neg-bg);color:var(--neg-ink)}
 .scan-t{font-weight:600;line-height:1.3}
 .scan-retry{align-self:flex-start;margin-top:8px}
-.scan-x{width:36px;height:36px;margin:-6px 0 0;border-radius:50%;border:0;padding:0;background:transparent;color:var(--ink3);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.scan-x{width:44px;height:44px;margin:-10px -2px 0 0;border-radius:50%;border:0;padding:0;background:transparent;color:var(--ink3);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .pc-skills .sk{max-width:100%}
 .pc-sk-name{overflow:hidden;text-overflow:ellipsis}
 .pc-skel{position:absolute;inset:0;border-radius:28px;background:var(--surf);padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
@@ -71,7 +71,7 @@
 .pd-cover{position:relative;height:250px;flex-shrink:0;border-radius:0 0 30px 30px;overflow:hidden;color:#fff}
 .pd-top{align-items:center}
 .pd-top-r{gap:8px;flex-shrink:0}
-.pd-share{width:40px;height:40px;border-radius:50%;border:0;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(0,0,0,.38);color:#fff;cursor:pointer;transition:transform .1s ease-out}
+.pd-share{width:44px;height:44px;border-radius:50%;border:0;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(0,0,0,.38);color:#fff;cursor:pointer;transition:transform .1s ease-out}
 .pd-share:active{transform:scale(.94)}
 .pd-share:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media (prefers-reduced-motion: reduce){.pd-share{transition:none}.pd-share:active{transform:none}}
@@ -86,24 +86,25 @@
 .pd-error{color:var(--neg-ink);font-size:14px}
 
 /* анкета */
-.pf{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;width:100%;max-width:640px;margin:0 auto}
-.pf-prog{display:flex;gap:4px;padding:12px 16px 0}
-.pf-prog i{flex:1;height:3px;border-radius:2px;background:var(--line2)}
-.pf-prog i.on{background:var(--ink)}
-.pf-head{padding:22px 16px 12px;display:flex;flex-direction:column;gap:8px}
-.pf-h1{font-size:28px;line-height:1.1}
-.pf-back{height:32px;padding:0 4px}
-.pf-body{flex:1;display:flex;flex-direction:column;gap:16px;padding:0 16px}
-.pf-group{gap:8px}
-.pf-tools{padding:0 16px 12px;display:flex;flex-direction:column;gap:10px}
-.pf-skills{flex:1;display:flex;flex-direction:column;gap:18px;padding:4px 0 16px}
-.pf-sgroup{display:flex;flex-direction:column;gap:10px}
-.pf-sgroup .cap{padding:0 16px}
-.pf-none{margin:24px auto;text-align:center;padding:0 16px}
-.pf-foot{position:sticky;bottom:0;display:flex;flex-direction:column;gap:8px;padding:12px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 72%,transparent)}
-.pf-foot .btn{width:100%}
-.pf-skills-err{text-align:center}
-.pf-banner{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:16px;background:var(--neg-bg);color:var(--neg-ink);font-size:14px}
+/* анкета студента: префикс sf-, а не pf- — у формы места компании (employer.css) свои .pf-*, и стили смешивались */
+.sf{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;width:100%;max-width:640px;margin:0 auto}
+.sf-prog{display:flex;gap:4px;padding:12px 16px 0}
+.sf-prog i{flex:1;height:3px;border-radius:2px;background:var(--line2)}
+.sf-prog i.on{background:var(--ink)}
+.sf-head{padding:22px 16px 12px;display:flex;flex-direction:column;gap:8px}
+.sf-h1{font-size:28px;line-height:1.1}
+.sf-back{height:32px;padding:0 4px}
+.sf-body{flex:1;display:flex;flex-direction:column;gap:16px;padding:0 16px}
+.sf-group{gap:8px}
+.sf-tools{padding:0 16px 12px;display:flex;flex-direction:column;gap:10px}
+.sf-skills{flex:1;display:flex;flex-direction:column;gap:18px;padding:4px 0 16px}
+.sf-sgroup{display:flex;flex-direction:column;gap:10px}
+.sf-sgroup .cap{padding:0 16px}
+.sf-none{margin:24px auto;text-align:center;padding:0 16px}
+.sf-foot{position:sticky;bottom:0;display:flex;flex-direction:column;gap:8px;padding:12px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 72%,transparent)}
+.sf-foot .btn{width:100%}
+.sf-skills-err{text-align:center}
+.sf-banner{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:16px;background:var(--neg-bg);color:var(--neg-ink);font-size:14px}
 .field{display:flex;flex-direction:column;gap:3px;padding:11px 16px;border-bottom:1px solid var(--line)}
 .field:last-child{border-bottom:0}
 .field label{font-size:12.5px;color:var(--ink3)}

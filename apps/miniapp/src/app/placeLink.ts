@@ -1,9 +1,7 @@
 // Ссылка на место для QR-кода стенда и «Поделиться»: диплинк мини-приложения с параметром запуска
 // (docs/05_max_platform.md): https://max.ru/<ник_бота>?startapp=internship_<id>. Разбор — для сканера студента.
 import { ABOUT } from './about';
-
-/** Самый большой id места: столбец в базе — integer. */
-const MAX_ID = 2_147_483_647;
+import { placeIdFromParam } from './placeParam';
 
 /** Параметр запуска места: `internship_<id>` (docs/api.md, бот использует тот же). */
 export const placeParam = (id: number): string => `internship_${id}`;
@@ -17,14 +15,6 @@ export const placeLinkText = (id: number): string => placeLink(id).replace(/^htt
 /** Текст для «Поделиться»: «Место: Настроить карточки на Wildberries — ООО «Вектор»». */
 export const placeShareText = (place: { title: string; company: { name: string } }): string =>
   `Место: ${place.title} — ${place.company.name}`;
-
-/** id места из параметра запуска `internship_<id>`; иначе null. */
-export function placeIdFromParam(param: string | null | undefined): number | null {
-  const m = /^internship_(\d{1,10})$/.exec(param ?? '');
-  if (!m) return null;
-  const id = Number(m[1]);
-  return Number.isSafeInteger(id) && id > 0 && id <= MAX_ID ? id : null;
-}
 
 /**
  * id места из строки QR-кода. Принимаем:

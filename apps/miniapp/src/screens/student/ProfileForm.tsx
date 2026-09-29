@@ -6,6 +6,7 @@ import type { Skills, StudentProfile, WorkFormat } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { takePlace } from '../../app/afterProfile';
 import { useMe } from '../../app/me';
+import { flash } from '../../components/flashMessage';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
@@ -192,8 +193,9 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
         practiceMonth: draft.practiceMonth,
       });
       haptic.notify('success');
-      // Одним переходом с адресом (роутер меняет его в startTransition): иначе уходящий экран анкеты успеет
-      // показать колоду, и экран не уйдёт (motion не дождётся её анимаций)
+      if (mode === 'edit') flash('Анкета сохранена — подбор мест обновлён');
+      // Пользователь и адрес меняются одним переходом (роутер меняет адрес в startTransition): уходящий экран
+      // анкеты сразу помечен уходящим и не перерисовывается колодой (StudentHome, useScreenPresent)
       startTransition(() => {
         if (!me.roles.student) setMe({ ...me, roles: { ...me.roles, student: true } });
         leave();
@@ -226,14 +228,14 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   };
 
   const progress = (
-    <div className="pf-prog" aria-hidden="true">
+    <div className="sf-prog" aria-hidden="true">
       <i className="on" />
       <i className={step === 2 ? 'on' : undefined} />
     </div>
   );
 
   const banner = message && (
-    <div className="pf-banner" role="alert">
+    <div className="sf-banner" role="alert">
       <strong>{message}</strong>
       {step === 2 &&
         STEP1_FIELDS.filter((k) => errors[k]).map((k) => (
@@ -247,9 +249,9 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   if (step === 1) {
     const text = (key: 'university' | 'direction' | 'city', label: string, max: number, hint?: string) => (
       <div className={errors[key] ? 'field err' : 'field'}>
-        <label htmlFor={`pf-${key}`}>{label}</label>
+        <label htmlFor={`sf-${key}`}>{label}</label>
         <input
-          id={`pf-${key}`}
+          id={`sf-${key}`}
           value={draft[key]}
           maxLength={max}
           placeholder={hint}
@@ -261,20 +263,20 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
       </div>
     );
     return (
-      <main className="pf">
+      <main className="sf">
         {progress}
-        <div className="pf-head">
+        <div className="sf-head">
           <span className="lbl">Анкета · 1 из 2 · около 2 минут</span>
-          <h1 className="d m0 pf-h1">{mode === 'edit' ? 'Анкета' : 'Расскажите о себе'}</h1>
+          <h1 className="d m0 sf-h1">{mode === 'edit' ? 'Анкета' : 'Расскажите о себе'}</h1>
         </div>
-        <div className="pf-body">
+        <div className="sf-body">
           {banner}
           <div className="surf">
             {text('university', 'Вуз', 200)}
             {text('direction', 'Направление', 200, 'Например, «Маркетинг»')}
             {text('city', 'Город', 100, 'Например, «Москва»')}
           </div>
-          <div className="col pf-group">
+          <div className="col sf-group">
             <span className="lbl">Курс</span>
             <div className="chips" role="group" aria-label="Курс">
               {[1, 2, 3, 4, 5, 6].map((n) => (
@@ -291,7 +293,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
             </div>
             {errors.course && <span className="field-err">{errors.course}</span>}
           </div>
-          <div className="col pf-group">
+          <div className="col sf-group">
             <span className="lbl">Формат — можно несколько</span>
             <div className="chips" role="group" aria-label="Формат">
               {FORMATS.map((f) => {
@@ -311,7 +313,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
             </div>
             {errors.formats && <span className="field-err">{errors.formats}</span>}
           </div>
-          <div className="col pf-group">
+          <div className="col sf-group">
             <span className="lbl">Месяц практики — по желанию</span>
             <div className="chips" role="group" aria-label="Месяц практики">
               {months.map((m) => {
@@ -332,7 +334,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
             {errors.practiceMonth && <span className="field-err">{errors.practiceMonth}</span>}
           </div>
         </div>
-        <div className="pf-foot">
+        <div className="sf-foot">
           <button type="button" className="btn pri" onClick={goStep2}>
             Дальше — навыки
           </button>
@@ -374,26 +376,26 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   };
 
   return (
-    <main className="pf">
+    <main className="sf">
       {progress}
-      <div className="pf-head">
+      <div className="sf-head">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <span className="lbl">Анкета · 2 из 2</span>
-          <button type="button" className="btn ghost sm pf-back" onClick={goStep1}>
+          <button type="button" className="btn ghost sm sf-back" onClick={goStep1}>
             ← Вуз, курс, формат
           </button>
         </div>
-        <h1 className="d m0 pf-h1">Что вы умеете?</h1>
+        <h1 className="d m0 sf-h1">Что вы умеете?</h1>
         <p className="m0" style={{ color: 'var(--ink2)' }}>
           Минимум {MIN_SKILLS}, максимум {MAX_SKILLS}. По ним считаем совпадение.
         </p>
       </div>
-      <div className="pf-tools">
+      <div className="sf-tools">
         {banner}
-        <label className="search" htmlFor="pf-q">
+        <label className="search" htmlFor="sf-q">
           <Icon name="search" size="sm" />
           <input
-            id="pf-q"
+            id="sf-q"
             type="search"
             placeholder="Найти навык"
             value={query}
@@ -418,24 +420,24 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
           </button>
         ))}
       </div>
-      <div className="pf-skills">
+      <div className="sf-skills">
         {shown ? (
           shown.length > 0 ? (
             <div className="bubbles">{shown.map(bubble)}</div>
           ) : (
-            <p className="state-text pf-none">Ничего не нашли. Попробуйте другое слово или группу «Все».</p>
+            <p className="state-text sf-none">Ничего не нашли. Попробуйте другое слово или группу «Все».</p>
           )
         ) : (
           groups.map((g, i) => (
-            <motion.section key={g.name} className="pf-sgroup" aria-label={g.name} {...listItem(i, reduced)}>
+            <motion.section key={g.name} className="sf-sgroup" aria-label={g.name} {...listItem(i, reduced)}>
               {!group && <span className="cap">{g.name}</span>}
               <div className="bubbles">{g.skills.map((s) => bubble({ ...s, color: g.color }))}</div>
             </motion.section>
           ))
         )}
       </div>
-      <div className="pf-foot">
-        {errors.skills && <span className="field-err pf-skills-err">{errors.skills}</span>}
+      <div className="sf-foot">
+        {errors.skills && <span className="field-err sf-skills-err">{errors.skills}</span>}
         <button type="button" className="btn pri" onClick={save} disabled={saving || count < MIN_SKILLS}>
           {saving
             ? 'Сохраняем…'
