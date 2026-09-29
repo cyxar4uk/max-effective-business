@@ -125,7 +125,7 @@ export function Places() {
         </span>
         <span className="col grow">
           <span className="pl-howto-t">Как проверить за 5 минут</span>
-          <span className="lbl">Весь сценарий одним аккаунтом: компания и студент</span>
+          <span className="lbl">Для проверяющих: компания и студент одним аккаунтом</span>
         </span>
         <ChevronIcon />
       </button>
