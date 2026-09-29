@@ -104,6 +104,8 @@
 .cd-row-st{align-self:flex-start;margin-top:2px}
 .cd-row-pct{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .cd-row .pct-sm{font-size:22px}
+/* откуда процент: под списком и в карточке кандидата */
+.cd-list + .cd-basis{padding:0 14px}
 
 /* колода: по одной карточке */
 .cd-deck{display:flex;flex-direction:column;gap:10px}

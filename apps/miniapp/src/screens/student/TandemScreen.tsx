@@ -112,8 +112,16 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
                   <span ref={phoneRef} className="num tm-phone">
                     {formatPhone(contact.phone)}
                   </span>
+                ) : me.hasPhone ? (
+                  <span className="lbl">Номер компания не указала — ваш номер у неё уже есть, ждите звонка</span>
                 ) : (
-                  <span className="lbl">Телефон не указан</span>
+                  <span className="lbl">
+                    Номера нет ни у компании, ни у вас —{' '}
+                    <button type="button" className="tm-link" onClick={() => navigate(`/consent?next=/student/tandem/${place.id}`)}>
+                      поделитесь номером
+                    </button>
+                    , чтобы компания могла связаться
+                  </span>
                 )}
               </div>
               {contact.phone && <CopyButton text={contact.phone} target={phoneRef} label="Скопировать номер" />}
@@ -134,7 +142,7 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
               </li>
             ))}
           </ol>
-          <span className="lbl">Этот чек-лист бот пришлёт и в чат — с 22:00 до 9:00 утром.</span>
+          <span className="lbl">Бот продублирует чек-лист в чат. Ночью, с 22:00 до 9:00, сообщение придёт утром.</span>
         </motion.section>
       </div>
       <motion.div className="tm-acts" {...item(2)}>

@@ -128,7 +128,7 @@ export function ConsentScreen() {
       <>
         <span className="lbl">Шаг 1 из 3 · потом номер и {lastStep}</span>
         <h1 id="ob-title" className="d m0 ob-h">
-          Пара формальностей
+          Согласие на обработку данных
         </h1>
         <p className="m0 ob-text">
           {employer

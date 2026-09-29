@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { matchStudentToInternship } from '../matching/index.js';
 import { DEMO_EMPLOYERS, DEMO_INTERNSHIPS, DEMO_INVITE_KEYS, DEMO_STUDENTS } from './demo/data.js';
 import { INTERESTS_PER_INTERNSHIP, planDemoInterests } from './demo/plan.js';
+import { pickDemoResponders, STRONG_SCORE } from './demo/responder.js';
+import { TASK_TAGS } from './tags.js';
 import { skillRows } from './skills.js';
 
 const skillCodes = new Set(skillRows().map((r) => r.code));
@@ -13,8 +15,8 @@ describe('демо-данные: объём и ключи', () => {
     expect(DEMO_EMPLOYERS).toHaveLength(12);
     expect(DEMO_INTERNSHIPS.length).toBeGreaterThanOrEqual(20);
     expect(DEMO_INTERNSHIPS.length).toBeLessThanOrEqual(30);
-    expect(DEMO_STUDENTS.length).toBeGreaterThanOrEqual(30);
-    expect(DEMO_STUDENTS.length).toBeLessThanOrEqual(40);
+    expect(DEMO_STUDENTS.length).toBeGreaterThanOrEqual(50);
+    expect(DEMO_STUDENTS.length).toBeLessThanOrEqual(60);
   });
 
   it('max_user_id отрицательные и уникальные — не пересекаются с настоящими пользователями MAX', () => {
@@ -84,6 +86,35 @@ describe('демо-данные: разный процент у каждой с�
     const newcomer = { skills: ['excel', 'copywriting', 'smm'], formats: ['remote' as const], city: 'Москва' };
     const feed = DEMO_INTERNSHIPS.map((i) => matchStudentToInternship(newcomer, i)).filter((r) => r.passesFilters);
     expect(feed.length).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('демо-отклики на место проверяющего под типовую задачу (#64)', () => {
+  // Проверяющий выбирает тег в форме места: тег подставляет свои навыки обязательными (formSteps.tsx), желательных нет.
+  // Москва, гибрид — самый частый случай; порог уведомления — 60 %.
+  const candidates = DEMO_STUDENTS.map((s, i) => ({ userId: i + 1, skills: s.skills, formats: s.formats, city: s.city }));
+  const placeFor = (skills: string[]) => ({ requiredSkills: skills, niceSkills: [], format: 'hybrid' as const, city: 'Москва' });
+
+  it.each(['marketplaces', 'website', 'spreadsheets', 'social_ads', 'one_c'])('%s: не меньше 4 откликов, из них не меньше 2 от 80 %%', (code) => {
+    const tag = TASK_TAGS.find((t) => t.code === code)!;
+    const picked = pickDemoResponders(placeFor(tag.skills), candidates, 60);
+    expect(picked.length).toBeGreaterThanOrEqual(4);
+    expect(picked.filter((p) => p.match.score >= STRONG_SCORE).length).toBeGreaterThanOrEqual(2);
+    // Кроме сильных, есть и кандидат с пробелами — видно, чего не хватает
+    expect(picked.some((p) => p.match.score < STRONG_SCORE)).toBe(true);
+  });
+
+  it('sales: хотя бы два отклика, один от 80 %', () => {
+    const tag = TASK_TAGS.find((t) => t.code === 'sales')!;
+    const picked = pickDemoResponders(placeFor(tag.skills), candidates, 60);
+    expect(picked.length).toBeGreaterThanOrEqual(2);
+    expect(picked.some((p) => p.match.score >= STRONG_SCORE)).toBe(true);
+  });
+});
+
+describe('демо-места: занятость в описании (#64)', () => {
+  it('у каждого места указана занятость — «25 000 ₽» не читается как полный день ниже МРОТ', () => {
+    for (const i of DEMO_INTERNSHIPS) expect(i.description, i.key).toMatch(/часов в неделю/);
   });
 });
 

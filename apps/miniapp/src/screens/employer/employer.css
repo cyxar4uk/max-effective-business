@@ -28,6 +28,8 @@
 
 /* поля */
 .pf-line{width:100%;border:0;border-bottom:2px solid var(--ink);border-radius:0;background:transparent;outline:0;padding:6px 0 10px;font:600 22px/1.25 var(--font);color:var(--ink)}
+/* задача — многострочное поле без рамки и ручки: растёт по содержимому (TitleField в formSteps.tsx) */
+textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywhere}
 .pf-line.sm{font-size:19px;border-bottom-color:var(--line2);padding:4px 0 8px}
 .pf-line:focus{border-bottom-color:var(--st)}
 .pf-line[aria-invalid="true"]{border-bottom-color:var(--neg-ink)}
@@ -69,6 +71,8 @@
 .pf-grp .chips{padding-bottom:12px}
 .pf-hint{padding:14px 16px;gap:4px}
 .pf-hint-t{font-weight:600}
+/* как оформляется каждый тип места — под выбором типа */
+.pf-terms{display:flex;flex-direction:column;gap:4px}
 
 /* число мест */
 .pf-stepper{display:flex;align-items:center;gap:18px}
@@ -91,7 +95,10 @@
 .pf-desc p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink2)}
 
 /* превью карточки — как в ленте студента */
-.pf-card-wrap{position:relative;height:520px;flex-shrink:0}
+/* превью растёт по тексту: страница прокручивается, текст не обрезается; надпись обложки уступает место тексту */
+.pf-card-wrap{position:relative;display:flex;min-height:520px;flex-shrink:0}
+.pf-card-wrap .card{position:relative;inset:auto;flex:1 1 auto;display:flex;flex-direction:column}
+.pf-card-wrap .card-face{position:relative;inset:auto;flex:1 0 auto}
 .pf-card-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .pf-card-co{font-size:14px;color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* внутри .card токены переопределены под тёмную карточку (app.css) */
@@ -109,6 +116,20 @@
 .pf-live-ok{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink);flex-shrink:0}
 .pf-pulse{width:10px;height:10px;border-radius:50%;background:var(--st);flex-shrink:0;animation:pf-breathe 1.6s ease-in-out infinite}
 .pf-link{border:0;background:none;padding:0;font:inherit;font-weight:500;color:var(--wait-ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* шторка «Номер телефона» перед публикацией (PhoneSheet.tsx) — как «Закрыть набор?» в places.css */
+.pf-modal{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.pf-dim{position:absolute;inset:0;background:rgba(12,13,17,.45);animation:pf-fade 200ms ease-out}
+.sheet.pf-sheet{position:relative;left:auto;right:auto;bottom:auto;width:100%;max-width:560px;max-height:92vh;max-height:92dvh;overflow:auto;padding:10px 20px calc(20px + env(safe-area-inset-bottom));outline:0;animation:pf-sheet-in 280ms var(--pf-ease)}
+.pf-sheet-t{font-size:26px}
+/* фокус ставим на саму шторку, чтобы с клавиатуры начать с неё; рамка у неё не нужна (перебивает .emp :focus-visible) */
+.sheet.pf-sheet:focus-visible{outline:0}
+@keyframes pf-sheet-in{from{transform:translateY(100%)}}
+@media (min-width:1024px){
+  .pf-modal{align-items:center}
+  .sheet.pf-sheet{max-width:480px;border-radius:30px;padding:24px 28px;animation:pf-rise 240ms var(--pf-ease)}
+  .pf-sheet .grab{display:none}
+}
 
 /* профиль компании */
 .co{flex-grow:1;display:flex;flex-direction:column;gap:14px;width:100%;max-width:560px;margin:0 auto;padding-top:28px}
@@ -133,7 +154,7 @@
 .pf-blk .seg{max-width:420px}
 .pf-blk .pf-input,.pf-blk .pf-area{background:var(--bg)}
 .pf-desk-side{position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;gap:14px}
-.pf-desk-side .pf-card-wrap{height:540px}
+.pf-desk-side .pf-card-wrap{min-height:540px}
 
 /* ---------- движение ----------
    Только transform и opacity. «Уменьшить движение» в системе — одни проявления 150 мс, без сдвигов и перелётов. */
@@ -195,4 +216,5 @@
   .pf-live .pf-fade-in{animation:none}
   .pf-live .pf-fade-out{display:none}
   .pf-pulse{animation:none;opacity:.6}
+  .sheet.pf-sheet{animation:pf-fade 150ms ease-out}
 }
