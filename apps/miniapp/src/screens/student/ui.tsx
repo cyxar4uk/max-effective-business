@@ -169,8 +169,8 @@ export function ListSkeleton({ rows = 4, thumb = true }: { rows?: number; thumb?
   );
 }
 
-/** Обложка места: градиент по тегу, кольца или сетка и крупная надпись. */
-export function Cover({ cls, label, labelBottom }: { cls: string; label: string; labelBottom?: boolean }) {
+/** Обложка места: градиент по тегу, кольца или сетка и крупная надпись (без label — только фон, надпись снаружи). */
+export function Cover({ cls, label, labelBottom }: { cls: string; label?: string; labelBottom?: boolean }) {
   return (
     <div className={`cover ${cls}`} aria-hidden="true">
       {cls === 'cv-data' ? (
@@ -181,9 +181,11 @@ export function Cover({ cls, label, labelBottom }: { cls: string; label: string;
           <span className="cv-ring" style={{ width: 170, height: 170, right: -30, top: -10 }} />
         </>
       )}
-      <div className="cv-label" lang="ru" style={labelBottom ? { top: 'auto', bottom: 26 } : undefined}>
-        {label}
-      </div>
+      {label && (
+        <div className="cv-label" lang="ru" style={labelBottom ? { top: 'auto', bottom: 26 } : undefined}>
+          {label}
+        </div>
+      )}
     </div>
   );
 }

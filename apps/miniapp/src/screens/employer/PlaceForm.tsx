@@ -47,6 +47,7 @@ import {
   type StepProps,
 } from './formSteps';
 import { PlacePreview } from './PlacePreview';
+import { PhoneSheet } from './PhoneSheet';
 import type { PublishedState } from './PlacePublished';
 import { SavedMark } from './ui';
 import { useDesktop } from './useDesktop';
@@ -138,6 +139,7 @@ interface BodyProps {
 }
 
 function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
+  const { me } = useMe();
   const desktop = useDesktop();
   const navigate = useNavigate();
   const navType = useNavigationType();
@@ -175,7 +177,12 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
   const [attempt, setAttempt] = useState(0);
   // Шаг сменился — запоминаем направление: «Назад» (MAX или браузер) — это POP в истории
   const [shown, setShown] = useState<{ step: number; enter: Enter }>({ step, enter: 'none' });
-  if (shown.step !== step) setShown({ step, enter: navType === 'POP' ? 'back' : 'fwd' });
+  // Шторка «Номер телефона» перед публикацией (PhoneSheet); ушли с шага проверки — закрываем
+  const [askPhone, setAskPhone] = useState(false);
+  if (shown.step !== step) {
+    setShown({ step, enter: navType === 'POP' ? 'back' : 'fwd' });
+    setAskPhone(false);
+  }
   const shake = attempt % 2 ? 'sh-b' : 'sh-a';
 
   // Новый шаг — с начала экрана
@@ -234,7 +241,8 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     }
   };
 
-  const publish = async () => {
+  /** withoutPhone — шторку о номере уже показали: публикуем как есть. */
+  const publish = async (withoutPhone = false) => {
     if (publishing) return;
     const found = validateAll(draft, dict.defaultCity);
     const bad = firstErrorStep(found);
@@ -245,6 +253,12 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
       goToStep(bad);
       return;
     }
+    // Без номера студенту после «Это тандем!» некуда позвонить — сначала предлагаем поделиться им
+    if (!me.hasPhone && !withoutPhone) {
+      setAskPhone(true);
+      return;
+    }
+    setAskPhone(false);
     setPublishing(true);
     setPublishError(null);
     try {
@@ -277,6 +291,9 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
   }
 
   const stepProps = { draft, update, errors, dict };
+  const phoneSheet = askPhone && (desktop || step === REVIEW_STEP) && (
+    <PhoneSheet onPublish={() => void publish(true)} onClose={() => setAskPhone(false)} />
+  );
 
   if (desktop) {
     return (
@@ -323,6 +340,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
           </button>
           <span className="lbl pf-center">Бот разошлёт карточку студентам с совпадением от 60 %</span>
         </aside>
+        {phoneSheet}
       </main>
     );
   }
@@ -390,6 +408,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
           {step === REVIEW_STEP && <span className="lbl pf-center">Бот разошлёт карточку студентам с совпадением от 60 %</span>}
         </div>
       </form>
+      {phoneSheet}
     </main>
   );
 }
