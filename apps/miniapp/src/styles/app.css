@@ -213,3 +213,8 @@
 .page-head .btn.ghost{padding:0 8px}
 .place{padding-top:16px}
 .pct-sm{font-size:24px}
+
+/* экран ждёт свой чанк: скелетон проявляется, только если загрузка дольше 0,2 с */
+.screen-wait{padding-top:16px;animation:screen-wait .2s .2s ease-out backwards}
+@keyframes screen-wait{from{opacity:0}}
+.skeleton-head{height:34px;width:62%;margin:12px 0 10px;border-radius:12px;background:var(--surf2)}

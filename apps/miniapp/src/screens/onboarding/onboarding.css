@@ -16,3 +16,14 @@
 }
 .ob-step{display:flex;flex-direction:column;gap:14px}
 .ob-step .btn{width:100%}
+
+/* движение: скрим проявляется, шторка выезжает снизу; кривые — motion.css */
+.ob-dim{animation:ob-show .25s ease-out backwards}
+.ob-sheet{animation:ob-up .3s var(--ease-sheet) backwards}
+.ob-step-in{animation:ob-show .2s ease-out backwards}
+@keyframes ob-show{from{opacity:0}}
+@keyframes ob-up{from{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){
+  .ob-dim,.ob-step-in{animation:ob-show .15s ease-out backwards}
+  .ob-sheet{animation:ob-show .15s ease-out backwards}
+}
