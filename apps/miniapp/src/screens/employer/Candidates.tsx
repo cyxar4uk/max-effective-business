@@ -88,7 +88,7 @@ function CandidatesScreen({ id }: { id: number }) {
           <ErrorState error={data.state.error} onRetry={data.retry} />
         )
       ) : (
-        <Loaded data={data.state.data} names={names} update={data.update} refresh={data.refresh} />
+        <Loaded data={data.state.data} names={names} update={data.update} refresh={data.refresh} reload={data.retry} />
       )}
     </main>
   );
@@ -99,9 +99,11 @@ interface LoadedProps {
   names: SkillNames;
   update: (change: (d: PlaceData) => PlaceData) => void;
   refresh: () => void;
+  /** Загрузить заново со скелетоном — «Обновить» на пустом экране. */
+  reload: () => void;
 }
 
-function Loaded({ data, names, update, refresh }: LoadedProps) {
+function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
   const { place, items } = data;
   const navigate = useNavigate();
   const location = useLocation();
@@ -140,6 +142,12 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
           state: { justInvited: true, candidate: c, place } satisfies TandemState,
         });
       } else {
+        // Открыт тот, кому отказали, — переходим к следующему по списку, а не к первому
+        if (selected?.studentId === c.studentId && tab === 'waiting') {
+          const at = list.findIndex((x) => x.studentId === c.studentId);
+          const next = list[at + 1] ?? list[at - 1];
+          if (next) setQuery({ c: next.studentId });
+        }
         say(`Отказ отправлен: ${firstName(c)}`, 'ok');
       }
     },
@@ -370,14 +378,16 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
                 Бот разослал карточку студентам, которым место подходит от 60 %. Отклики появятся здесь, а бот напишет
                 вам в чат.
               </p>
-              <p className="lbl">
-                Очное место в городе, где нет тестовых студентов, может остаться без откликов — для проверки попробуйте
-                удалённый или гибридный формат.
-              </p>
+              {place.format !== 'remote' && (
+                <p className="lbl">
+                  Очное или гибридное место в городе, где нет тестовых студентов, может остаться без откликов — для
+                  проверки попробуйте удалённый формат.
+                </p>
+              )}
             </>
           )}
           <div className="actions">
-            <button type="button" className="btn pri" onClick={() => refresh()}>
+            <button type="button" className="btn pri" onClick={reload}>
               Обновить
             </button>
             <Link className="btn ghost" to="/employer">
