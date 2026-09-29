@@ -30,6 +30,9 @@
 .btn.ghost{background:transparent;color:var(--ink2);height:44px}
 .btn.neg{background:var(--neg-bg);color:var(--neg-ink)}
 .btn.sm{height:40px;border-radius:13px;font-size:14px;padding:0 14px}
+/* занятые и недоступные кнопки — общее для всех разделов (раньше жило в student.css и до его загрузки не действовало) */
+.chip,.fab,.bub{cursor:pointer}
+.btn:disabled,.fab:disabled,.chip:disabled{opacity:.45;cursor:default}
 
 /* чипы */
 .chips{display:flex;gap:8px;flex-wrap:wrap}
@@ -51,6 +54,7 @@
 .av-c{background:radial-gradient(60% 55% at 30% 25%,#ffc46b 0,rgba(255,196,107,0) 70%),radial-gradient(60% 55% at 80% 70%,#ff5c8a 0,rgba(255,92,138,0) 70%),#5a1d14}
 .av-d{background:radial-gradient(60% 55% at 30% 25%,#c4f36b 0,rgba(196,243,107,0) 70%),radial-gradient(60% 55% at 80% 70%,#14b8a6 0,rgba(20,184,166,0) 70%),#0b3a2a}
 .cv-label{position:absolute;left:22px;right:22px;top:62px;font-family:"Unbounded","Onest",sans-serif;font-weight:800;font-size:44px;line-height:.95;letter-spacing:-.03em;text-transform:uppercase;color:rgba(255,255,255,.9)}
+.cv-label{overflow-wrap:break-word;hyphens:manual}
 .cv-ring{position:absolute;border-radius:50%;border:2px solid rgba(255,255,255,.3)}
 .cv-grid{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 28px),repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 1px,transparent 1px 28px)}
 .ava{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Unbounded","Onest",sans-serif;font-weight:800;color:#fff;flex-shrink:0}

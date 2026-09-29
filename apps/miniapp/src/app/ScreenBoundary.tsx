@@ -1,57 +1,69 @@
 import { Component, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
-import { resetLazyScreens } from './lazyScreen';
+import { useLocation, useNavigate } from 'react-router';
+import { ChunkLoadError, reloadApp } from './lazyScreen';
 
-/** Не пришёл чанк экрана: формулировки браузеров — Chrome, Safari, Firefox. */
+/** Не пришёл чанк экрана. Загрузчики помечают сбой сами (ChunkLoadError); текст — запасной путь для чужих ошибок. */
 const isChunkError = (error: unknown) =>
-  error instanceof Error && /dynamically imported module|module script|Failed to fetch|Load failed|NetworkError/i.test(error.message);
+  error instanceof ChunkLoadError ||
+  (error instanceof Error &&
+    /dynamically imported module|module script|Unable to preload CSS|Failed to fetch|Load failed|NetworkError/i.test(error.message));
 
 interface BoundaryProps {
   children: ReactNode;
-  onHome: () => void;
+  /** Выход на главный; на самом главном его нет — переход на тот же адрес ничего бы не сменил. */
+  onHome: (() => void) | null;
 }
 
 interface BoundaryState {
   error: unknown;
+  /** «Повторить» не дозвался до сервера — перезагружать некуда, остаёмся здесь. */
+  offline: boolean;
+  busy: boolean;
 }
 
 class Boundary extends Component<BoundaryProps, BoundaryState> {
-  state: BoundaryState = { error: null };
+  state: BoundaryState = { error: null, offline: false, busy: false };
 
-  static getDerivedStateFromError(error: unknown): BoundaryState {
-    return { error: error ?? new Error('unknown') };
+  static getDerivedStateFromError(error: unknown): Partial<BoundaryState> {
+    return { error: error ?? new Error('unknown'), offline: false };
   }
 
-  retry = () => {
-    resetLazyScreens();
-    this.setState({ error: null });
-  };
-
-  home = () => {
-    resetLazyScreens();
-    this.setState({ error: null });
-    this.props.onHome();
+  retry = async () => {
+    if (!isChunkError(this.state.error)) {
+      // Ошибка отрисовки: пробуем нарисовать экран ещё раз
+      this.setState({ error: null });
+      return;
+    }
+    // Чанк: браузер помнит отказ до перезагрузки — перезагружаем приложение на этом же адресе
+    this.setState({ busy: true });
+    const reloading = await reloadApp();
+    if (!reloading) this.setState({ offline: true, busy: false });
   };
 
   render() {
-    const { error } = this.state;
+    const { error, offline, busy } = this.state;
     if (!error) return this.props.children;
     const network = isChunkError(error);
+    // Ошибку не сбрасываем и при «На главный»: этот экран уходит со сменой адреса и не должен мелькнуть сломанным
     return (
       <main className="screen">
         <div className="state" role="alert">
           <h2 className="state-title d">{network ? 'Экран не загрузился' : 'Что-то пошло не так'}</h2>
           <p className="state-text">
-            {network
-              ? 'Похоже, прервалась связь. Проверьте интернет и повторите.'
-              : 'Повторите. Если не поможет — вернитесь на главный экран.'}
+            {offline
+              ? 'Нет связи с сервером. Повторите, когда появится интернет.'
+              : network
+                ? 'Похоже, прервалась связь. Проверьте интернет и повторите.'
+                : 'Повторите. Если не поможет — вернитесь на главный экран.'}
           </p>
-          <button type="button" className="btn pri" onClick={this.retry}>
-            Повторить
+          <button type="button" className="btn pri" onClick={this.retry} disabled={busy}>
+            {busy ? 'Проверяем связь…' : 'Повторить'}
           </button>
-          <button type="button" className="btn ghost" onClick={this.home}>
-            На главный
-          </button>
+          {this.props.onHome && (
+            <button type="button" className="btn ghost" onClick={this.props.onHome}>
+              На главный
+            </button>
+          )}
         </div>
       </main>
     );
@@ -59,10 +71,12 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
 }
 
 /**
- * Сбой экрана — не загрузился чанк (пропала сеть) или ошибка при отрисовке: вместо белого экрана — понятный текст,
- * «Повторить» (чанк запрашивается заново) и выход на главный. Перезапускать приложение не нужно.
+ * Сбой экрана — не загрузился чанк (пропала сеть, выкатили новую версию) или ошибка при отрисовке: вместо белого экрана —
+ * понятный текст, «Повторить» и выход на главный. «На главный» заменяет запись в истории: «Назад» MAX не вернёт
+ * на сломанный экран.
  */
 export function ScreenBoundary({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  return <Boundary onHome={() => navigate('/')}>{children}</Boundary>;
+  const { pathname } = useLocation();
+  return <Boundary onHome={pathname === '/' ? null : () => navigate('/', { replace: true })}>{children}</Boundary>;
 }
