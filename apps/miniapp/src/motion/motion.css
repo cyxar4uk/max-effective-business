@@ -39,8 +39,9 @@
 
 /* Меньше движения: без сдвигов, только короткое проявление */
 @media (prefers-reduced-motion:reduce){
-  .route.in:not(.instant){animation:rt-show .15s ease-out backwards}
-  .route.out{animation:rt-hide .01s .15s linear both}
+  /* та же специфичность, что у правил режимов выше (0,3,0), — иначе уходящий экран всё равно сдвигался */
+  .route.in.forward,.route.in.back,.route.in.tab,.route.in.fade{animation:rt-show .15s ease-out backwards}
+  .route.out.forward,.route.out.back,.route.out.tab,.route.out.fade{animation:rt-hide .01s .15s linear both}
 }
 
 /* нажатие: отклик сразу на касание, а не на отпускание */

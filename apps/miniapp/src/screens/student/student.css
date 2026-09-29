@@ -2,9 +2,6 @@
    Цвета — только токены из tokens.css; обложки и карточка колоды тёмные в обеих темах, как в макете. */
 
 .cv-1c{background:radial-gradient(60% 50% at 25% 25%,#ffd84d 0,rgba(255,216,77,0) 72%),radial-gradient(55% 50% at 85% 45%,#ff8a1c 0,rgba(255,138,28,0) 72%),radial-gradient(70% 55% at 45% 75%,#fff09a 0,rgba(255,240,154,0) 70%),#3a2203}
-.cv-label{overflow-wrap:break-word;hyphens:manual}
-.chip,.fab,.bub{cursor:pointer}
-.btn:disabled,.fab:disabled,.chip:disabled{opacity:.45;cursor:default}
 .bub .cover{border-radius:50%}
 .bub .ck{top:calc(14% - 6px);right:calc(14% - 6px)}
 

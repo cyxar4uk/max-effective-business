@@ -6,7 +6,8 @@ import { openMaxLink } from '../max/bridge';
 interface ErrorStateProps {
   error: ApiError;
   onRetry: () => void;
-  /** Показать выход на главный (по умолчанию — везде, кроме самого главного и экрана до загрузки пользователя). */
+  /** Показать выход на главный (по умолчанию — везде, кроме самого главного и экрана до загрузки пользователя).
+   *  Переход заменяет запись в истории: «Назад» MAX не вернёт на экран с ошибкой. */
   exit?: boolean;
 }
 
@@ -35,11 +36,9 @@ export function ErrorState({ error, onRetry, exit = true }: ErrorStateProps) {
           Данные запуска устарели — так MAX защищает ваш аккаунт. Закройте мини-приложение и откройте его снова из чата
           с ботом: всё, что вы сохранили, на месте.
         </p>
+        {/* «Повторить» здесь нет: данные запуска читаются один раз, повтор дал бы тот же 401 */}
         <button type="button" className="btn pri" onClick={openBot}>
           Открыть бота
-        </button>
-        <button type="button" className="btn ghost" onClick={onRetry}>
-          Повторить
         </button>
       </div>
     );
@@ -54,7 +53,7 @@ export function ErrorState({ error, onRetry, exit = true }: ErrorStateProps) {
         Повторить
       </button>
       {showExit && (
-        <button type="button" className="btn ghost" onClick={() => navigate('/')}>
+        <button type="button" className="btn ghost" onClick={() => navigate('/', { replace: true })}>
           На главный
         </button>
       )}
