@@ -38,7 +38,7 @@
 .pc-sk-name{overflow:hidden;text-overflow:ellipsis}
 .pc-skel{position:absolute;inset:0;border-radius:28px;background:var(--surf);padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
 .pc-skel .skeleton-line{border-radius:10px}
-.fab-l{display:inline-flex;align-items:center;gap:6px}
+.fab-l{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .fab .kbd{display:none}
 .toast{position:fixed;left:0;right:0;margin:0 auto;top:calc(12px + env(safe-area-inset-top));width:max-content;max-width:min(420px,calc(100% - 32px));padding:12px 16px;border-radius:16px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;box-shadow:var(--shadow);z-index:20}
 .toast.error{background:linear-gradient(var(--neg-bg),var(--neg-bg)),var(--surf);color:var(--neg-ink)}
