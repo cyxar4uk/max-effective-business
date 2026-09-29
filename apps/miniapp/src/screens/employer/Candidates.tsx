@@ -41,6 +41,7 @@ import { useDecision, type Decision, type Pending } from './useDecision';
 import { useDesktop } from './useDesktop';
 import './employer.css';
 import './places.css';
+import { DemoBadge } from '../../components/DemoBadge';
 
 type View = 'list' | 'cards';
 
@@ -534,7 +535,7 @@ function CandidateList({ list, tab, closed, selected, names, pendingFor, sending
               <span className="col grow">
                 <span className="cd-row-name">
                   <span className="cd-row-n">{name}</span>
-                  {c.isDemo && <span className="st demo">тестовый отклик</span>}
+                  <DemoBadge isDemo={c.isDemo} kind="response" />
                 </span>
                 {studyLine(c) && <span className="lbl">{studyLine(c)}</span>}
                 {p ? (

@@ -5,6 +5,7 @@ import { api, ApiError } from '../../api/client';
 import type { Skills, StudentProfile, WorkFormat } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { useMe } from '../../app/me';
+import { flash } from '../../components/Flash';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
@@ -184,6 +185,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
       });
       haptic.notify('success');
       if (!me.roles.student) setMe({ ...me, roles: { ...me.roles, student: true } });
+      if (mode === 'edit') flash('Анкета сохранена — подбор мест обновлён');
       leave();
     } catch (err) {
       haptic.notify('error');

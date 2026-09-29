@@ -12,6 +12,7 @@ import { companyInitial, coverOf, placeWhere, skillNames, TYPE_LABEL } from './s
 import { PlaceDetails } from './student/PlaceDetails';
 import { tandemPath } from './student/tandem';
 import { Cover, Icon } from './student/ui';
+import { DemoBadge } from '../components/DemoBadge';
 
 const notFound = () => Promise.reject(new ApiError(404, 'NOT_FOUND', 'Место не найдено'));
 
@@ -162,7 +163,7 @@ export function InternshipScreen() {
         <Cover cls={cover.cls} label={cover.label} labelBottom />
         <div className="topchips">
           <span className="gchip">{TYPE_LABEL[place.type] ?? 'Место'}</span>
-          {place.isDemo && <span className="gchip demo">тестовые данные</span>}
+          <DemoBadge isDemo={place.isDemo} onCover />
         </div>
       </div>
       <div className="pd-body">

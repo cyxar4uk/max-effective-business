@@ -4,6 +4,7 @@ import { LastRoleSync } from './app/lastRole';
 import { lazyScreen, loadAbout, loadEmployer, loadPlaceForm, loadStudent } from './app/lazyScreen';
 import { MeProvider } from './app/MeProvider';
 import { StartParamRedirect } from './app/StartParamRedirect';
+import { FlashHost } from './components/Flash';
 import { AnimatedRoutes } from './motion/AnimatedRoutes';
 import { Home } from './screens/Home';
 import { NotFound } from './screens/NotFound';
@@ -51,6 +52,7 @@ export function App() {
           <Route path="/about" element={<AboutScreen />} />
           <Route path="*" element={<NotFound />} />
         </AnimatedRoutes>
+        <FlashHost />
       </MeProvider>
     </BrowserRouter>
   );
