@@ -137,6 +137,8 @@
 .cd-acts .fab{cursor:pointer}
 .cd-acts .fab:disabled{opacity:.45;cursor:default}
 .cd-after{margin:0;padding:16px 8px 0;text-align:center}
+/* под «Отказать» и «Пригласить»: приглашение — не оффер */
+.cd-acts-note{margin:0;padding:0 8px;text-align:center;scroll-margin-bottom:calc(84px + env(safe-area-inset-bottom))}
 .cd-contact{margin-top:12px}
 .cd-contact .li{gap:12px}
 /* «Скопировать номер» уходит под имя, если в строке тесно */

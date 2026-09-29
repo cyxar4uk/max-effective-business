@@ -1,6 +1,6 @@
 // Карточка кандидата (макет c2 Candidates): инициал на цветной обложке, совпадение фразой и навыками,
 // под карточкой — решение кнопками или контакт приглашённого.
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import type { Candidate, Internship } from '../../api/types';
 import { matchCounts, matchText, type SkillNames } from '../../app/matchText';
@@ -16,8 +16,6 @@ import { DemoBadge } from '../../components/DemoBadge';
 interface CardProps {
   c: Candidate;
   names: SkillNames;
-  /** Решение по этому кандидату ждёт отправки (идёт отсчёт тоста). */
-  pending: Decision | null;
 }
 
 /** Тёмная карточка кандидата — как карточка места в ленте студента. */
@@ -31,7 +29,7 @@ export function CandidateCard(props: CardProps) {
 }
 
 /** Содержимое карточки: в колоде «Карточки» его оборачивает SwipeDeck, на десктопе — CandidateCard. */
-export function CandidateCardBody({ c, names, pending }: CardProps) {
+export function CandidateCardBody({ c, names }: CardProps) {
   const name = c.status === 'invited' ? fullName(c) : firstName(c);
   const when = whenText(c.interestedAt);
   return (
@@ -71,7 +69,7 @@ export function CandidateCardBody({ c, names, pending }: CardProps) {
         {c.status === 'interested' && (
           <p className="facts cd-lock">
             <LockIcon />
-            {pending === 'invite' ? 'Фамилия и телефон откроются после отправки' : 'Фамилия и телефон откроются после приглашения'}
+            Фамилия и телефон откроются после приглашения
           </p>
         )}
       </div>
@@ -157,6 +155,14 @@ interface ActionsProps {
 
 /** Под карточкой: решение кнопками (свайп решений не отправляет) или контакт приглашённого. */
 export function CandidateActions({ c, place, pending, onDecide }: ActionsProps) {
+  const mine = pending && pending.candidate.studentId === c.studentId ? pending.action : null;
+  const note = useRef<HTMLParagraphElement>(null);
+  // Решение ждёт отправки — внизу выезжает тост «Приглашение отправится через…»: поднимаем строку над ним
+  // (отступ — scroll-margin-bottom в places.css)
+  useEffect(() => {
+    if (mine !== null) note.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [mine]);
+
   if (c.status === 'invited') return <ContactBlock c={c} place={place} />;
   if (c.status === 'declined') {
     return <p className="lbl cd-after">Вы отказали. Студент видит это в «Моих откликах».</p>;
@@ -164,34 +170,36 @@ export function CandidateActions({ c, place, pending, onDecide }: ActionsProps) 
   if (place.status === 'closed') {
     return <p className="lbl cd-after">Набор закрыт. Чтобы пригласить, откройте место снова.</p>;
   }
-  const mine = pending && pending.candidate.studentId === c.studentId ? pending.action : null;
   const name = firstName(c);
   return (
-    <div className="acts cd-acts">
-      <button
-        type="button"
-        className="fab nope"
-        disabled={mine !== null}
-        onClick={() => onDecide('decline')}
-        aria-label={`Отказать: ${name}`}
-      >
-        <span className="c">
-          <CrossIcon className="ic" />
-        </span>
-        Отказать
-      </button>
-      <button
-        type="button"
-        className="fab like"
-        disabled={mine !== null}
-        onClick={() => onDecide('invite')}
-        aria-label={`Пригласить: ${name}`}
-      >
-        <span className="c">
-          <CheckIcon className="ic" />
-        </span>
-        Пригласить
-      </button>
-    </div>
+    <>
+      <div className="acts cd-acts">
+        <button
+          type="button"
+          className="fab nope"
+          disabled={mine !== null}
+          onClick={() => onDecide('decline')}
+          aria-label={`Отказать: ${name}`}
+        >
+          <span className="c">
+            <CrossIcon className="ic" />
+          </span>
+          Отказать
+        </button>
+        <button
+          type="button"
+          className="fab like"
+          disabled={mine !== null}
+          onClick={() => onDecide('invite')}
+          aria-label={`Пригласить: ${name}`}
+        >
+          <span className="c">
+            <CheckIcon className="ic" />
+          </span>
+          Пригласить
+        </button>
+      </div>
+      <p ref={note} className="lbl cd-acts-note">Приглашение открывает контакты для созвона. Это не оффер и ни к чему не обязывает.</p>
+    </>
   );
 }

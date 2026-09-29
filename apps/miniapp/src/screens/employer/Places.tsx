@@ -31,7 +31,9 @@ function statusText(p: Internship): string {
   const invited = c.invited > 0 ? `${c.invited} ${plural(c.invited, ['приглашён', 'приглашены', 'приглашены'])}` : null;
   if (p.status === 'closed') return ['Набор закрыт', invited].filter(Boolean).join(' · ');
   if (total === 0) return 'Разослали · откликов пока нет';
-  if (c.interested > 0) return `${responsesText(total)} · ${c.interested} ${plural(c.interested, ['ждёт', 'ждут', 'ждут'])}`;
+  if (c.interested > 0) {
+    return `${responsesText(total)} · ${c.interested} ${plural(c.interested, ['ждёт', 'ждут', 'ждут'])} решения`;
+  }
   return [responsesText(total), invited].filter(Boolean).join(' · ');
 }
 
