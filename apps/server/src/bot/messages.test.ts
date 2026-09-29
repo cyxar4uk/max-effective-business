@@ -46,10 +46,21 @@ describe('тексты бота', () => {
     NEXT_STEPS.job.forEach((s, i) => expect(m.text).toContain(`${i + 1}. ${s}`));
   });
 
-  it('приглашение работодателю без телефона студента — подсказка написать в MAX', () => {
-    const m = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария Иванова', phone: null, score: 70 });
+  it('приглашение работодателю без телефона студента: ждать связи, а без номеров у обоих — добавить свой', () => {
+    const m = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария Иванова', phone: null, score: 70, employerHasPhone: true });
     expect(m.text).toContain('Мария Иванова. Совпадение 70 %.');
-    expect(m.text).toContain('напишите студенту в MAX');
+    expect(m.text).toContain('Бот отправил ему ваш контакт');
+    expect(m.text).not.toContain('напишите студенту');
+
+    const none = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария Иванова', phone: null, score: 70 });
+    expect(none.text).toContain('Добавьте свой номер');
+  });
+
+  it('приглашение работодателю с телефоном студента — без подсказок про номер', () => {
+    const m = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария Иванова', phone: '+79990000000', score: 70 });
+    expect(m.text).toContain('Мария Иванова, +79990000000. Совпадение 70 %.');
+    expect(m.text).not.toContain('Бот отправил');
+    expect(m.text).not.toContain('Добавьте свой номер');
   });
 
   it('все параметры кнопок укладываются в ограничения payload MAX', () => {
