@@ -8,6 +8,8 @@ import { PlaceArt } from './PlaceArt';
 
 interface Props {
   data: PlaceData;
+  /** Кандидат, решение по которому уже ушло на сервер: его не трогаем. */
+  skip: number | null;
   onClose: () => void;
   /** Место закрыто. declined — скольким отказали; failed — текст, если часть отказов не ушла. */
   onDone: (next: PlaceData, declined: number, failed: string | null) => void;
@@ -15,8 +17,8 @@ interface Props {
 
 const message = (err: unknown, fallback: string) => (err instanceof ApiError ? err.message : fallback);
 
-export function CloseSheet({ data, onClose, onDone }: Props) {
-  const waiting = data.items.filter((c) => c.status === 'interested');
+export function CloseSheet({ data, skip, onClose, onDone }: Props) {
+  const waiting = data.items.filter((c) => c.status === 'interested' && c.studentId !== skip);
   const [declineAll, setDeclineAll] = useState(true);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -29,7 +29,10 @@ const toApiError = (err: unknown): ApiError =>
 let counter = 0;
 
 export interface DecisionHandle {
+  /** Решение в отсчёте: виден тост «Отменить». */
   pending: Pending | null;
+  /** Решение ушло на сервер, ответа ещё нет: кнопки этого кандидата пока недоступны. */
+  sending: Pending | null;
   /** Принять решение: тост с отменой, запрос — через UNDO_MS. Предыдущее решение в отсчёте уходит сразу. */
   decide: (placeId: number, candidate: Candidate, action: Decision) => void;
   /** «Отменить» в тосте. */
@@ -40,6 +43,7 @@ export interface DecisionHandle {
 
 export function useDecision(handlers: Handlers): DecisionHandle {
   const [pending, setPending] = useState<Pending | null>(null);
+  const [sending, setSending] = useState<Pending | null>(null);
   const current = useRef<Pending | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const mounted = useRef(false);
@@ -51,9 +55,17 @@ export function useDecision(handlers: Handlers): DecisionHandle {
 
   const send = useCallback((p: Pending, keepalive: boolean) => {
     const call = p.action === 'invite' ? api.invite : api.decline;
+    const settle = () => {
+      if (mounted.current) setSending((s) => (s?.n === p.n ? null : s));
+    };
+    if (mounted.current) setSending(p);
     call(p.placeId, p.candidate.studentId, { keepalive }).then(
-      (result) => latest.current.onDone(result, p.action, mounted.current),
+      (result) => {
+        settle();
+        latest.current.onDone(result, p.action, mounted.current);
+      },
       (err: unknown) => {
+        settle();
         if (mounted.current) latest.current.onError(toApiError(err));
       },
     );
@@ -108,5 +120,5 @@ export function useDecision(handlers: Handlers): DecisionHandle {
     };
   }, [release]);
 
-  return { pending, decide, cancel, flush };
+  return { pending, sending, decide, cancel, flush };
 }

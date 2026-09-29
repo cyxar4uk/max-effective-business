@@ -124,9 +124,7 @@ export function UndoToast({ action, name, onCancel }: { action: Decision; name: 
 
   return (
     <div className={`cd-toast ${action === 'invite' ? 'inv' : 'dec'}`}>
-      <span className="sr-only" role="status">
-        {spoken}
-      </span>
+      <span className="sr-only">{spoken}</span>
       <span className="grow num" aria-hidden="true">
         {text}
       </span>
@@ -153,7 +151,7 @@ export function Notice({ notice, onClose }: { notice: NoticeValue; onClose: () =
   }, [notice, onClose]);
 
   return (
-    <div className={`cd-toast ${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>
+    <div className={`cd-toast ${notice.tone}`} role={notice.tone === 'error' ? 'alert' : undefined}>
       {notice.tone === 'ok' && (
         <span className="cd-toast-ic" aria-hidden="true">
           <CheckIcon className="ic xs" />

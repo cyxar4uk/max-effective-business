@@ -9,7 +9,7 @@ import {
   type PointerEvent,
   type ReactNode,
 } from 'react';
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { Candidate, Internship } from '../../api/types';
 import { useData } from '../../api/useData';
@@ -43,6 +43,11 @@ import './employer.css';
 import './places.css';
 
 type View = 'list' | 'cards';
+
+/** Карточки открыты тапом по строке списка (переход в истории). */
+interface CardsState {
+  fromList?: boolean;
+}
 
 const TABS: Tab[] = ['waiting', 'invited', 'declined'];
 
@@ -99,6 +104,7 @@ interface LoadedProps {
 function Loaded({ data, names, update, refresh }: LoadedProps) {
   const { place, items } = data;
   const navigate = useNavigate();
+  const location = useLocation();
   const desktop = useDesktop();
   const [params, setParams] = useSearchParams();
   const [notice, setNotice] = useState<NoticeValue | null>(null);
@@ -141,7 +147,9 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
       refresh();
     },
   });
-  const { pending } = decision;
+  const { pending, sending } = decision;
+  // Решение в отсчёте или в пути — кнопки этого кандидата недоступны
+  const busy = pending ?? sending;
 
   const setQuery = (next: { tab?: Tab; view?: View; c?: number | null }, push = false) => {
     const q = new URLSearchParams(params);
@@ -157,12 +165,23 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
       if (next.c === null) q.delete('c');
       else q.set('c', String(next.c));
     }
-    setParams(q, { replace: !push });
+    setParams(q, push ? { state: { fromList: true } satisfies CardsState } : { replace: true, state: location.state });
   };
 
   const decide = (c: Candidate, action: Decision) => {
     haptic.impact(action === 'invite' ? 'medium' : 'light');
     decision.decide(place.id, c, action);
+  };
+
+  const cancel = () => {
+    haptic.selection();
+    decision.cancel();
+  };
+
+  const openSheet = () => {
+    // Решение в отсчёте уходит сразу: иначе шторка откажет тому, кого вы только что пригласили
+    decision.flush();
+    setSheet(true);
   };
 
   const select = (c: Candidate, focus = false) => {
@@ -178,6 +197,13 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
     haptic.selection();
     if (desktop) select(c);
     else setQuery({ view: 'cards', c: c.studentId }, true);
+  };
+
+  // Карточку открыли из списка — «Список» возвращает назад по истории, без лишнего шага для кнопки «Назад»
+  const toList = () => {
+    if (view === 'list') return;
+    if ((location.state as CardsState | null)?.fromList) navigate(-1);
+    else setQuery({ view: 'list' });
   };
 
   const step = (delta: number) => {
@@ -215,7 +241,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
       const free = onRow || target === document.body || target?.tagName === 'MAIN';
       if (e.key === 'Escape' && pending) {
         e.preventDefault();
-        decision.cancel();
+        cancel();
         return;
       }
       if (!free) return;
@@ -225,7 +251,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
       } else if ((e.key === 'Enter' || e.key === 'Backspace') && selected) {
         e.preventDefault();
         const canDecide =
-          selected.status === 'interested' && place.status === 'open' && pending?.candidate.studentId !== selected.studentId;
+          selected.status === 'interested' && place.status === 'open' && busy?.candidate.studentId !== selected.studentId;
         if (canDecide) decide(selected, e.key === 'Enter' ? 'invite' : 'decline');
       }
     };
@@ -238,7 +264,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
 
   const total = items.length;
   const pendingFor = (c: Candidate): Decision | null =>
-    pending && pending.candidate.studentId === c.studentId ? pending.action : null;
+    busy && busy.candidate.studentId === c.studentId ? busy.action : null;
 
   const head = (
     <header className="cd-head">
@@ -253,7 +279,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
         <h1 className="cd-title">{place.title}</h1>
       </div>
       {desktop && place.status === 'open' && (
-        <button type="button" className="btn sec sm" onClick={() => setSheet(true)}>
+        <button type="button" className="btn sec sm" onClick={openSheet}>
           Закрыть набор
         </button>
       )}
@@ -262,7 +288,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
 
   const toggle = (
     <div className="seg cd-views" role="group" aria-label="Вид">
-      <button type="button" className={view === 'list' ? 'on' : undefined} aria-pressed={view === 'list'} aria-label="Список" onClick={() => setQuery({ view: 'list' })}>
+      <button type="button" className={view === 'list' ? 'on' : undefined} aria-pressed={view === 'list'} aria-label="Список" onClick={toList}>
         <ListIcon />
       </button>
       <button type="button" className={view === 'cards' ? 'on' : undefined} aria-pressed={view === 'cards'} aria-label="Карточки" onClick={() => setQuery({ view: 'cards' })}>
@@ -306,10 +332,10 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
   );
 
   const toasts = (
-    <div className="cd-toasts">
+    <div className="cd-toasts" aria-live="polite">
       {notice && <Notice key={notice.n} notice={notice} onClose={hideNotice} />}
       {pending && (
-        <UndoToast key={pending.n} action={pending.action} name={firstName(pending.candidate)} onCancel={decision.cancel} />
+        <UndoToast key={pending.n} action={pending.action} name={firstName(pending.candidate)} onCancel={cancel} />
       )}
     </div>
   );
@@ -317,6 +343,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
   const sheetEl = sheet && (
     <CloseSheet
       data={data}
+      skip={busy?.candidate.studentId ?? null}
       onClose={() => setSheet(false)}
       onDone={(next, declined, failed) => {
         update(() => next);
@@ -356,8 +383,8 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
             </Link>
           </div>
         </section>
-        {place.status === 'open' && (
-          <button type="button" className="btn ghost sm cd-close-link" onClick={() => setSheet(true)}>
+        {place.status === 'open' && !desktop && (
+          <button type="button" className="btn ghost sm cd-close-link" onClick={openSheet}>
             Закрыть набор
           </button>
         )}
@@ -375,6 +402,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
       selected={desktop ? selected : null}
       names={names}
       pendingFor={pendingFor}
+      sendingId={sending?.candidate.studentId ?? null}
       onOpen={openCard}
       rowRef={(sid, el) => {
         if (el) rows.current.set(sid, el);
@@ -399,7 +427,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
             {selected ? (
               <div key={selected.studentId} className="cd-pane-in cd-fade">
                 <CandidateCard c={selected} names={names} pending={pendingFor(selected)} />
-                <CandidateActions c={selected} place={place} pending={pending} onDecide={(a) => decide(selected, a)} />
+                <CandidateActions c={selected} place={place} pending={busy} onDecide={(a) => decide(selected, a)} />
               </div>
             ) : (
               <p className="lbl cd-pane-empty">Выберите кандидата слева.</p>
@@ -441,7 +469,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
             index={index}
             names={names}
             place={place}
-            pending={pending}
+            pending={busy}
             onStep={step}
             onDecide={(a) => decide(selected, a)}
             toggle={toggle}
@@ -449,7 +477,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
         )}
       </div>
       {place.status === 'open' && view === 'list' && (
-        <button type="button" className="btn ghost sm cd-close-link" onClick={() => setSheet(true)}>
+        <button type="button" className="btn ghost sm cd-close-link" onClick={openSheet}>
           Закрыть набор
         </button>
       )}
@@ -473,12 +501,14 @@ interface ListProps {
   selected: Candidate | null;
   names: SkillNames;
   pendingFor: (c: Candidate) => Decision | null;
+  /** Кандидат, решение по которому уже ушло на сервер. */
+  sendingId: number | null;
   onOpen: (c: Candidate) => void;
   rowRef: (studentId: number, el: HTMLButtonElement | null) => void;
 }
 
 /** Список кандидатов: проявляется снизу со сдвигом 20 мс на строку. */
-function CandidateList({ list, tab, closed, selected, names, pendingFor, onOpen, rowRef }: ListProps) {
+function CandidateList({ list, tab, closed, selected, names, pendingFor, sendingId, onOpen, rowRef }: ListProps) {
   if (list.length === 0) {
     return <p className="lbl cd-tab-empty">{tab === 'waiting' && closed ? 'Никто не ждёт решения.' : EMPTY_TAB[tab]}</p>;
   }
@@ -506,7 +536,13 @@ function CandidateList({ list, tab, closed, selected, names, pendingFor, onOpen,
                 </span>
                 {studyLine(c) && <span className="lbl">{studyLine(c)}</span>}
                 {p ? (
-                  <span className="st wait cd-row-st">{p === 'invite' ? 'Приглашение ждёт отправки' : 'Отказ ждёт отправки'}</span>
+                  <span className="st wait cd-row-st">
+                    {sendingId === c.studentId
+                      ? 'Отправляем…'
+                      : p === 'invite'
+                        ? 'Приглашение ждёт отправки'
+                        : 'Отказ ждёт отправки'}
+                  </span>
                 ) : (
                   <span className="cd-row-phrase">{matchText(c.match, names)}</span>
                 )}
