@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { haptic } from '../../max/bridge';
 import { CheckIcon } from './icons';
 
@@ -81,5 +82,25 @@ export function Choice<T extends string>({ label, value, options, onChange, comp
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Текст, который сменяется значением (тип, формат, сроки, число откликов): старый гаснет, новый проявляется на его месте.
+ * Первый показ — без анимации.
+ */
+export function Swap({ text }: { text: string }) {
+  const [s, setS] = useState({ cur: text, prev: null as string | null, n: 0 });
+  if (s.cur !== text) setS({ cur: text, prev: s.cur, n: s.n + 1 });
+  if (s.prev === null) return <>{s.cur}</>;
+  return (
+    <span className="pf-swap">
+      <span key={`o${s.n}`} className="pf-fade-out" aria-hidden="true" onAnimationEnd={() => setS((x) => ({ ...x, prev: null }))}>
+        {s.prev}
+      </span>
+      <span key={`i${s.n}`} className="pf-fade-in">
+        {s.cur}
+      </span>
+    </span>
   );
 }

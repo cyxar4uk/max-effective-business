@@ -25,6 +25,11 @@ export interface Draft {
   salary: string;
   slots: number;
   description: string;
+  /**
+   * Когда впервые открыли пустую форму (мс, Date.now): время сборки карточки для экрана «Место опубликовано».
+   * Хранится в черновике, при восстановлении не сбрасывается; на сервер не уходит.
+   */
+  startedAt: number | null;
 }
 
 export const EMPTY_DRAFT: Draft = {
@@ -41,6 +46,7 @@ export const EMPTY_DRAFT: Draft = {
   salary: '',
   slots: 1,
   description: '',
+  startedAt: null,
 };
 
 export const LIMITS = {
@@ -288,6 +294,7 @@ function parseDraft(raw: unknown): Draft | null {
     salary: str(o.salary).replace(/\D/g, '').slice(0, 8),
     slots: Math.min(Math.max(slots, 1), LIMITS.slotsMax),
     description: str(o.description).slice(0, LIMITS.description),
+    startedAt: typeof o.startedAt === 'number' && Number.isFinite(o.startedAt) ? o.startedAt : null,
   };
 }
 

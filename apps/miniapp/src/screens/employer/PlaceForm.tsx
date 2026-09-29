@@ -93,8 +93,6 @@ function formBaseIndex(step: number, editing: boolean): number {
   return Math.max(0, idx - step);
 }
 
-const PUBLISHED_STATE: PublishedState = { justPublished: true };
-
 /** Откуда въезжает шаг: «Дальше» — справа, «Назад» — слева; первый показ — без сдвига. */
 type Enter = 'none' | 'fwd' | 'back';
 
@@ -162,7 +160,9 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
 
   const [initial] = useState(() => {
     const stored = draftStorage.load(userId);
-    return { draft: sanitize(stored ?? EMPTY_DRAFT, dict), saved: stored !== null };
+    const draft = sanitize(stored ?? EMPTY_DRAFT, dict);
+    // Время сборки карточки считаем с первого открытия пустой формы; у восстановленного черновика оно своё
+    return { draft: { ...draft, startedAt: draft.startedAt ?? Date.now() }, saved: stored !== null };
   });
   const [baseIdx] = useState(() => formBaseIndex(step, editing));
   const [draft, setDraft] = useState<Draft>(initial.draft);
@@ -170,7 +170,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
   const [errors, setErrors] = useState<Errors>({});
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [publishedId, setPublishedId] = useState<number | null>(null);
+  const [published, setPublished] = useState<{ id: number; state: PublishedState } | null>(null);
   // Неудачная попытка идти дальше: чётность переключает анимацию покачивания, чтобы она повторилась
   const [attempt, setAttempt] = useState(0);
   // Шаг сменился — запоминаем направление: «Назад» (MAX или браузер) — это POP в истории
@@ -185,10 +185,10 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
 
   // После публикации ушли назад к первой записи формы — заменяем её экраном «Место опубликовано»
   useEffect(() => {
-    if (publishedId !== null && historyIndex() <= baseIdx) {
-      navigate(`/employer/internships/${publishedId}/published`, { replace: true, state: PUBLISHED_STATE });
+    if (published !== null && historyIndex() <= baseIdx) {
+      navigate(`/employer/internships/${published.id}/published`, { replace: true, state: published.state });
     }
-  }, [publishedId, baseIdx, navigate, params]);
+  }, [published, baseIdx, navigate, params]);
 
   const update = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };
@@ -224,13 +224,13 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     else navigate({ search: `?step=${step + 1}` });
   };
 
-  const finish = (id: number) => {
+  const finish = (id: number, state: PublishedState) => {
     const back = baseIdx - historyIndex();
     if (back < 0) {
-      setPublishedId(id);
+      setPublished({ id, state });
       navigate(back);
     } else {
-      navigate(`/employer/internships/${id}/published`, { replace: true, state: PUBLISHED_STATE });
+      navigate(`/employer/internships/${id}/published`, { replace: true, state });
     }
   };
 
@@ -249,9 +249,11 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     setPublishError(null);
     try {
       const place = await api.createInternship(toInput(draft, dict.defaultCity));
+      // Черновик вместе с отметкой начала сборки — сбрасываем
       draftStorage.clear(userId);
+      const buildMs = draft.startedAt === null ? null : Date.now() - draft.startedAt;
       // Тактильный отклик «успех» — на экране «Место опубликовано», вместе с галочкой
-      finish(place.id);
+      finish(place.id, { justPublished: true, buildMs });
     } catch (err) {
       const e = toApiError(err);
       haptic.notify('error');
@@ -266,7 +268,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     }
   };
 
-  if (publishedId !== null) {
+  if (published !== null) {
     return (
       <main className="screen emp">
         <Skeleton lines={3} />
