@@ -1,22 +1,20 @@
 import { useMe } from '../app/me';
-import { EmptyState } from '../components/EmptyState';
-import { PageHeader } from '../components/PageHeader';
+import { ProfileFormScreen } from './student/ProfileForm';
+import { StudentFeed } from './student/StudentFeed';
+import { RequireConsent, StudentShell } from './student/StudentShell';
 
-/** Раздел студента. Пока заглушка: онбординг, анкета и лента — следующие задачи. */
+/** Раздел студента `/student`: нет согласия — онбординг, нет анкеты — анкета, иначе колода мест. */
 export function StudentHome() {
   const { me } = useMe();
-
   return (
-    <main className="screen">
-      <PageHeader title="Места для вас" />
+    <RequireConsent>
       {me.roles.student ? (
-        <EmptyState title="Лента скоро появится" text="Здесь будут места, подходящие под ваши навыки." />
+        <StudentShell>
+          <StudentFeed />
+        </StudentShell>
       ) : (
-        <EmptyState
-          title="Сначала анкета"
-          text="Заполните короткую анкету — и мы покажем только подходящие места."
-        />
+        <ProfileFormScreen mode="new" />
       )}
-    </main>
+    </RequireConsent>
   );
 }
