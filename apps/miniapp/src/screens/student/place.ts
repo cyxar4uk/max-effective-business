@@ -53,8 +53,18 @@ export const TAG_DOT: Record<string, string> = {
   sales: '#14b8a6',
 };
 
-/** Классы обложек по кругу — для цветных пузырей навыков по группам. */
-export const coverByIndex = (i: number) => COVER_CLASSES[i % COVER_CLASSES.length];
+/** Цвет выбранного пузыря навыка — по смыслу группы, как обложки тегов; прочие группы — по кругу. */
+const GROUP_COVERS: [RegExp, string][] = [
+  [/маркетплейс/i, 'cv-market'],
+  [/аналитик|данн/i, 'cv-data'],
+  [/маркетинг|дизайн|контент/i, 'cv-social'],
+  [/продаж|клиент/i, 'cv-sales'],
+  [/it|разработ/i, 'cv-site'],
+  [/финанс|экономик|право/i, 'cv-1c'],
+];
+export function groupCover(name: string, i: number): string {
+  return GROUP_COVERS.find(([re]) => re.test(name))?.[1] ?? COVER_CLASSES[i % COVER_CLASSES.length];
+}
 
 /** Буква для «логотипа» компании: без ООО/ИП и кавычек. */
 export function companyInitial(name: string): string {

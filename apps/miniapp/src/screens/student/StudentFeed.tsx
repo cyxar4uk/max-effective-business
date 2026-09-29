@@ -79,6 +79,8 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   const [skipped, setSkipped] = useState<Internship[]>([]);
   const [exit, setExit] = useState<{ id: number; dir: Direction } | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  // Карточка улетает: второе решение (двойное нажатие, повтор клавиши) до перерисовки не принимаем
+  const leaving = useRef(false);
   const top = queue[0];
   const next = queue[1];
 
@@ -108,11 +110,13 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   };
 
   const decide = (dir: Direction) => {
-    if (!top || exit) return;
+    if (!top || leaving.current) return;
+    leaving.current = true;
     const place = top;
     setExit({ id: place.id, dir });
     window.setTimeout(
       () => {
+        leaving.current = false;
         setExit(null);
         setQueue((q) => q.filter((p) => p.id !== place.id));
         void send(place, dir === 1 ? 'interested' : 'skipped');
@@ -123,7 +127,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
 
   const undo = () => {
     const last = skipped[skipped.length - 1];
-    if (!last || exit) return;
+    if (!last || leaving.current) return;
     haptic.impact('light');
     setSkipped((s) => s.slice(0, -1));
     setQueue((q) => [last, ...q.filter((p) => p.id !== last.id)]);

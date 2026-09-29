@@ -8,7 +8,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
 import { loadSkills } from './dict';
-import { coverByIndex, FORMAT_LABEL, FORMATS, MONTHS } from './place';
+import { FORMAT_LABEL, FORMATS, groupCover, MONTHS } from './place';
 import { Icon } from './ui';
 
 const MIN_SKILLS = 3;
@@ -326,7 +326,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
 
   const q = norm(query);
   const groups = skills.groups
-    .map((g, i) => ({ ...g, color: coverByIndex(i) }))
+    .map((g, i) => ({ ...g, color: groupCover(g.name, i) }))
     .filter((g) => !group || g.name === group);
   const shown = q
     ? groups.flatMap((g) => g.skills.filter((s) => norm(s.name).includes(q)).map((s) => ({ ...s, color: g.color })))

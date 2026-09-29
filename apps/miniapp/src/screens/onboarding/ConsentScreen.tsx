@@ -185,7 +185,8 @@ export function ConsentScreen() {
           <button type="button" className="btn pri" onClick={sharePhone} disabled={busy}>
             {busy ? 'Сохраняем…' : 'Поделиться номером'}
           </button>
-          <button type="button" className="btn ghost" onClick={() => setStep('done')} disabled={busy}>
+          {/* Не блокируем: окно MAX с номером можно закрыть без ответа, и тогда запрос повиснет */}
+          <button type="button" className="btn ghost" onClick={() => setStep('done')}>
             Пропустить
           </button>
         </section>
