@@ -125,6 +125,11 @@
 .cd-after{margin:0;padding:16px 8px 0;text-align:center}
 .cd-contact{margin-top:12px}
 .cd-contact .li{gap:12px}
+/* «Скопировать номер» уходит под имя, если в строке тесно */
+.li.cd-contact-main{flex-wrap:wrap;row-gap:10px}
+.cd-contact-main > .col{flex:1 1 160px}
+.cd-contact-main > .btn{margin-left:56px}
+.cd-phone{white-space:nowrap}
 .cd-contact-name{font-weight:600}
 .cd-phone{font-size:15px;color:var(--ink2)}
 .li.cd-docs-link{width:100%;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer}
@@ -179,4 +184,61 @@
   .cd-slide:not(.dragging){transition:none}
   .cd-toast-bar{display:none}
   .emp .toggle i{transition:none}
+}
+
+/* ---------- «Это тандем!» у компании ---------- */
+.tm{position:relative;overflow:hidden;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.tm-glow{position:absolute;left:-60px;right:-60px;top:-80px;height:420px;pointer-events:none;background:radial-gradient(50% 50% at 35% 50%,rgba(255,165,31,.34) 0,rgba(255,165,31,0) 70%),radial-gradient(50% 50% at 65% 50%,rgba(177,92,255,.3) 0,rgba(177,92,255,0) 70%)}
+.tm-body{position:relative;flex-grow:1;display:flex;flex-direction:column;gap:18px;width:100%;max-width:480px;margin:0 auto;padding:56px 0 16px}
+.tm-orbs{position:relative;display:flex;justify-content:center;height:128px}
+.tm-orb{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:4px solid var(--bg);font-family:var(--font-display);font-weight:800;font-size:48px;color:#fff}
+.tm-co{position:relative;z-index:1;margin-right:-26px;color:#2a1600;background:radial-gradient(circle at 35% 30%,#ffd9a0 0,#ffa51f 50%,#d4560a 100%)}
+.tm-ck{position:absolute;left:50%;bottom:-2px;z-index:2;width:44px;height:44px;margin-left:-22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;color:#0c0d11;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.tm-ck .ic{stroke-width:3}
+.tm-text{display:flex;flex-direction:column;gap:8px;text-align:center}
+.tm-h{margin:0;font-family:var(--font-display);font-weight:800;font-size:36px;line-height:1.05;letter-spacing:-.02em}
+.tm-note{margin:0;text-align:center}
+.tm-foot{position:relative;width:100%;max-width:480px;margin:0 auto}
+.tm .cd-contact{margin-top:0}
+
+/* шары съезжаются, галочка вспрыгивает, текст поднимается — только сразу после приглашения */
+@keyframes tm-from-l{from{opacity:0;transform:translateX(-56px) scale(.8)}}
+@keyframes tm-from-r{from{opacity:0;transform:translateX(56px) scale(.8)}}
+@keyframes tm-pop{0%{opacity:0;transform:scale(.3)}60%{opacity:1;transform:scale(1.15)}100%{transform:none}}
+.tm-fresh .tm-glow{animation:cd-fade 600ms ease-out backwards}
+.tm-fresh .tm-co{animation:tm-from-l 520ms var(--pf-spring) backwards}
+.tm-fresh .tm-st{animation:tm-from-r 520ms var(--pf-spring) backwards}
+.tm-fresh .tm-ck{animation:tm-pop 420ms var(--pf-ease) 380ms backwards}
+.tm-fresh .tm-rise{animation:pf-rise 320ms var(--pf-ease) 300ms backwards}
+.tm-fresh .tm-r2{animation-delay:380ms}
+.tm-fresh .tm-r3{animation-delay:440ms}
+.tm-fresh .tm-r4{animation-delay:500ms}
+
+/* ---------- документы практики ---------- */
+.dc{gap:16px;width:100%;max-width:640px;margin:0 auto;padding-top:16px}
+.dc-who{display:flex;align-items:center;gap:12px}
+.dc-who-name{font-weight:600;font-size:16px}
+.dc-who-place{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc-intro{display:flex;flex-direction:column;gap:10px}
+.dc-h{font-size:30px}
+.st.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.dc-draft{align-self:flex-start}
+.dc-prog{display:flex;flex-direction:column;gap:8px}
+.dc-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap}
+.track.dc-track{display:block;height:8px}
+.fill.dc-fill{display:block;width:100%;background:var(--hi);transform-origin:left center;transition:transform 260ms var(--pf-ease)}
+.dc-list{list-style:none;margin:0;padding:0}
+.dc-li{border-bottom:1px solid var(--line)}
+.dc-li:last-child{border-bottom:0}
+.dc-item{display:flex;align-items:flex-start;gap:14px;width:100%;padding:14px 16px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.dc-t{font-weight:600;line-height:1.3}
+.dc-item.on .dc-t{text-decoration:line-through;color:var(--ink3)}
+.dc-hint{line-height:1.35}
+.dc-contact{display:flex;flex-direction:column;gap:8px}
+.dc-contact .cd-contact{margin-top:0}
+.dc-foot{margin-top:auto;padding-top:8px}
+
+@media (prefers-reduced-motion: reduce){
+  .tm-fresh .tm-glow,.tm-fresh .tm-co,.tm-fresh .tm-st,.tm-fresh .tm-ck,.tm-fresh .tm-rise{animation:cd-fade 150ms ease-out backwards}
+  .fill.dc-fill{transition:none}
 }

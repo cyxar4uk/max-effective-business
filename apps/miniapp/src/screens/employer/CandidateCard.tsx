@@ -3,7 +3,6 @@
 import { useNavigate } from 'react-router';
 import type { Candidate, Internship } from '../../api/types';
 import { matchCounts, matchText, type SkillNames } from '../../app/matchText';
-import { DemoBadge } from '../../components/DemoBadge';
 import { haptic } from '../../max/bridge';
 import { aboutLine, avatarClass, firstName, fullName, initial, paths, phoneText, studyLine, whenText } from './candidate';
 import { Avatar, CopyButton, Eq, MatchSkills } from './candidateUi';
@@ -65,12 +64,21 @@ export function CandidateCard({ c, names, pending }: CardProps) {
   );
 }
 
+interface ContactProps {
+  c: Candidate;
+  place: Internship;
+  /** Без строки «вуз · курс · совпадение». */
+  compact?: boolean;
+  /** Строка-переход к документам практики или следующим шагам. */
+  docs?: boolean;
+}
+
 /** Контакт приглашённого: фамилия, телефон, «Скопировать номер». Телефона нет — студент им не делился. */
-export function ContactBlock({ c, place, compact = false }: { c: Candidate; place: Internship; compact?: boolean }) {
+export function ContactBlock({ c, place, compact = false, docs = true }: ContactProps) {
   const navigate = useNavigate();
   return (
     <div className="surf cd-contact">
-      <div className="li">
+      <div className="li cd-contact-main">
         <Avatar c={c} size={44} />
         <div className="col grow">
           <span className="cd-contact-name">{fullName(c)}</span>
@@ -87,27 +95,29 @@ export function ContactBlock({ c, place, compact = false }: { c: Candidate; plac
           <span className="lbl grow">
             {[studyLine(c), `совпадение ${c.match.score} %`].filter(Boolean).join(' · ')}
           </span>
-          <DemoBadge isDemo={c.isDemo} />
+          {c.isDemo && <span className="st demo">тестовый отклик</span>}
         </div>
       )}
-      <button
-        type="button"
-        className="li cd-docs-link"
-        onClick={() => {
-          haptic.selection();
-          navigate(paths.docs(place.id, c.studentId));
-        }}
-      >
-        <span className="ico g cd-ico" aria-hidden="true">
-          <DocIcon />
-        </span>
-        <span className="col grow">
-          <span className="cd-contact-name">{place.type === 'practice' ? 'Документы для практики' : 'Следующие шаги'}</span>
-          <span className="lbl">
-            {place.type === 'practice' ? 'Договор с вузом, руководитель, задание, отзыв' : 'Задачи, график, оформление, первый день'}
+      {docs && (
+        <button
+          type="button"
+          className="li cd-docs-link"
+          onClick={() => {
+            haptic.selection();
+            navigate(paths.docs(place.id, c.studentId));
+          }}
+        >
+          <span className="ico g cd-ico" aria-hidden="true">
+            <DocIcon />
           </span>
-        </span>
-      </button>
+          <span className="col grow">
+            <span className="cd-contact-name">{place.type === 'practice' ? 'Документы для практики' : 'Следующие шаги'}</span>
+            <span className="lbl">
+              {place.type === 'practice' ? 'Договор с вузом, руководитель, задание, отзыв' : 'Задачи, график, оформление, первый день'}
+            </span>
+          </span>
+        </button>
+      )}
     </div>
   );
 }
