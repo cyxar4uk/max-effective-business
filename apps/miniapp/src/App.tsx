@@ -8,8 +8,10 @@ import { AboutScreen } from './screens/AboutScreen';
 import { CandidatesScreen } from './screens/CandidatesScreen';
 import { EmployerHome } from './screens/EmployerHome';
 import { CompanyProfile } from './screens/employer/CompanyProfile';
+import { EmployerDocsScreen } from './screens/employer/Docs';
 import { PlaceForm } from './screens/employer/PlaceForm';
 import { PlacePublished } from './screens/employer/PlacePublished';
+import { EmployerTandemScreen } from './screens/employer/Tandem';
 import { Home } from './screens/Home';
 import { InternshipScreen } from './screens/InternshipScreen';
 import { NotFound } from './screens/NotFound';
@@ -40,6 +42,8 @@ export function App() {
           <Route path="/employer/internships/:id/published" element={<PlacePublished />} />
           <Route path="/internships/:id" element={<InternshipScreen />} />
           <Route path="/employer/internships/:id/candidates" element={<CandidatesScreen />} />
+          <Route path="/employer/internships/:id/tandem/:studentId" element={<EmployerTandemScreen />} />
+          <Route path="/employer/internships/:id/docs/:studentId" element={<EmployerDocsScreen />} />
           <Route path="/about" element={<AboutScreen />} />
           <Route path="*" element={<NotFound />} />
         </AnimatedRoutes>

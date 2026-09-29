@@ -96,10 +96,21 @@ export const backButton = {
   offClick: (cb: () => void) => webApp()?.BackButton.offClick(cb),
 };
 
+/** Тактильный отклик — только в клиенте MAX; отказ клиента (в том числе вне MAX) молча игнорируем. */
+function feel(call: (app: MaxWebApp) => unknown): void {
+  const app = maxApp();
+  if (!app) return;
+  try {
+    void Promise.resolve(call(app)).catch(() => undefined);
+  } catch {
+    // клиент без поддержки тактильного отклика
+  }
+}
+
 export const haptic = {
-  impact: (style: ImpactStyle = 'light') => webApp()?.HapticFeedback.impactOccurred(style),
-  notify: (type: NotificationType) => webApp()?.HapticFeedback.notificationOccurred(type),
-  selection: () => webApp()?.HapticFeedback.selectionChanged(),
+  impact: (style: ImpactStyle = 'light') => feel((app) => app.HapticFeedback.impactOccurred(style)),
+  notify: (type: NotificationType) => feel((app) => app.HapticFeedback.notificationOccurred(type)),
+  selection: () => feel((app) => app.HapticFeedback.selectionChanged()),
 };
 
 /**

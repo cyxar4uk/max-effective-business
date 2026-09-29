@@ -1,0 +1,233 @@
+/* Работодатель после публикации: «Мои места», кандидаты, «Это тандем!», документы, «Закрыть набор».
+   Макеты c2 Places / Candidates / EmployerMatch, c3 CandidatesList / Docs / CloseSheet / DeskCompare.
+   Цвета — токены из tokens.css; обложки и аватары — классы макета из app.css. Движение — только transform и opacity. */
+
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.emp :focus-visible{outline:2px solid var(--st);outline-offset:2px}
+
+/* ---------- общее движение ---------- */
+@keyframes cd-rise{from{opacity:0;transform:translateY(8px)}}
+@keyframes cd-fade{from{opacity:0}}
+/* элементы списка проявляются со сдвигом 8 px; задержка 20 мс на элемент задаётся в разметке */
+.cd-in{animation:cd-rise 240ms var(--pf-ease) backwards}
+/* смена вкладки или фильтра — проявление */
+.cd-fade{animation:cd-fade 180ms ease-out}
+.emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.fab .c,.dc-item,.check,.toggle){transition:transform 100ms ease-out}
+.emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.dc-item):active:not(:disabled){transform:scale(.97)}
+.emp .fab:active:not(:disabled) .c{transform:scale(.97)}
+
+/* ---------- «Мои места» ---------- */
+.pl{gap:0}
+.pl-head{display:flex;align-items:center;gap:10px;padding:16px 0 12px}
+.pl-head .h1{font-size:26px}
+.pl-add{background:var(--btn);color:var(--btn-ink);cursor:pointer;box-shadow:none}
+.pl-howto{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 14px;padding:10px 14px 10px 10px;border:0;border-radius:18px;background:var(--surf);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.pl-howto-ic{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--wait-bg);color:var(--wait-ink);flex-shrink:0}
+.pl-howto-t{font-weight:600}
+.pl-howto > .ic{color:var(--ink3)}
+.pl-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 0 14px}
+.pl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px;align-content:start}
+.pl-tile{display:flex;flex-direction:column;gap:6px;min-width:0;text-decoration:none;color:var(--ink);background:none;border:0;padding:0;text-align:left;font:inherit;cursor:pointer;border-radius:22px}
+.pl-art{position:relative;display:block;aspect-ratio:1/1;border-radius:22px;overflow:hidden;background:var(--surf2)}
+.pl-cover .cv-label{top:auto;bottom:14px;left:14px;right:14px;font-size:20px}
+.pl-cover-banner .cv-label{bottom:20px;left:22px;right:22px;font-size:34px}
+.pl-badge{position:absolute;top:10px;right:10px;min-width:26px;height:26px;border-radius:13px;padding:0 7px;display:flex;align-items:center;justify-content:center;background:var(--nope);color:#fff;font-size:13px;font-weight:700}
+.pl-title{font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.pl-tile .st{align-self:flex-start}
+.pl-new-art{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:transparent;border:2px dashed var(--line2);color:var(--ink2)}
+.pl-new-t{font-weight:600;color:var(--ink)}
+.pl-empty{display:flex;flex-direction:column;gap:12px;padding:24px 0}
+.pl-empty .btn{align-self:stretch}
+.pl-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:auto;padding-top:24px}
+.pl-links .btn{height:40px}
+
+@media (min-width:1024px){
+  .pl{padding-left:max(36px,calc((100% - 1168px) / 2));padding-right:max(36px,calc((100% - 1168px) / 2))}
+  .pl-head{padding-top:28px}
+  .pl-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px 18px}
+  .pl-howto{max-width:440px}
+}
+
+
+@media (prefers-reduced-motion: reduce){
+  .cd-in{animation:cd-fade 150ms ease-out backwards;animation-delay:0s !important}
+  .cd-fade{animation:cd-fade 150ms ease-out}
+  .emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.fab .c,.dc-item,.check,.toggle){transition:none}
+  .emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.dc-item):active:not(:disabled),.emp .fab:active:not(:disabled) .c{transform:none}
+}
+
+/* ---------- кандидаты ---------- */
+.cd{gap:12px;padding-bottom:96px}
+.cd-loading{display:flex;flex-direction:column;padding-top:16px}
+.cd-head{display:flex;align-items:center;gap:12px;padding:16px 0 0}
+.thumb.cd-thumb{display:block;width:48px;height:48px;border-radius:14px}
+.thumb.cd-thumb.sm{width:40px;height:40px;border-radius:12px}
+.cd-kicker{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd-title{margin:0;font-family:var(--font-display);font-weight:700;font-size:19px;line-height:1.15;letter-spacing:-.015em;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.seg.cd-views{width:84px;flex-shrink:0}
+.seg.cd-views button{height:32px}
+.cd-views button{display:flex;align-items:center;justify-content:center;padding:0}
+.seg.cd-tabs button{flex:1 1 auto;padding:0 8px;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cd-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px}
+.cd-bar > .lbl{min-width:0}
+.cd-closed{flex-direction:row;align-items:center;gap:12px;padding:12px 14px}
+.cd-closed-t{font-weight:600}
+.cd-closed .btn:disabled{opacity:.6}
+.cd-panel{display:flex;flex-direction:column;gap:10px;flex-grow:1}
+.cd-empty{display:flex;flex-direction:column;gap:12px;padding:24px 0 8px}
+.cd-empty .actions{margin-top:8px}
+.cd-tab-empty{margin:0;padding:28px 8px;text-align:center}
+.cd-close-link{align-self:center;margin-top:auto}
+
+/* строка кандидата */
+.cd-list{list-style:none;margin:0;padding:0}
+.cd-li{border-bottom:1px solid var(--line)}
+.cd-li:last-child{border-bottom:0}
+.cd-row{display:flex;align-items:flex-start;gap:12px;width:100%;padding:14px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.cd-row.on{background:var(--surf2)}
+.cd-row-name{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cd-row-n{font-weight:600;font-size:16px}
+.cd-row-phrase{font-size:13px;line-height:1.35;color:var(--ink2)}
+.cd-row-st{align-self:flex-start;margin-top:2px}
+.cd-row-pct{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.cd-row .pct-sm{font-size:22px}
+
+/* колода: по одной карточке */
+.cd-deck{display:flex;flex-direction:column;gap:10px}
+.cd-pager{display:flex;align-items:center;gap:6px}
+.cd-pager .ibtn{width:36px;height:36px;cursor:pointer}
+.cd-pager .lbl{min-width:44px;text-align:center}
+.cd-pager .ibtn:disabled{opacity:.35;cursor:default}
+/* колода — общий SwipeDeck: карточки абсолютные, высоту задаёт область */
+.cd-deck{flex-grow:1}
+.cd-deck-area{position:relative;display:flex;flex-direction:column;flex:1 0 auto;min-height:470px;border-radius:28px}
+.stack.deck.cd-swipe{margin:0;flex:1 0 470px}
+.cd-swipe .shade{height:82%}
+.cd-deck-end{gap:10px;padding:24px;text-align:center}
+
+/* карточка кандидата — всегда тёмная, как карточка места */
+.card.cd-card{position:relative;inset:auto;min-height:420px;display:flex;flex-direction:column;justify-content:flex-end}
+.cd-card .shade{height:82%}
+.cd-card .info{position:relative;padding-top:124px}
+.cd-initial{position:absolute;left:0;right:0;top:14px;text-align:center;font-family:var(--font-display);font-weight:800;font-size:150px;line-height:1;color:rgba(255,255,255,.88)}
+.skills.cd-skills{list-style:none;margin:0;padding:0}
+.cd-name{font-size:28px;overflow-wrap:anywhere}
+.cd-counts{font-size:12.5px}
+.cd-phrase{margin:0;font-weight:600;font-size:15px;line-height:1.35}
+.cd-lock{display:flex;align-items:center;gap:6px;margin:0;font-size:13px}
+.gchip.cd-gchip-ok{background:var(--ok-bg);color:var(--ok-ink)}
+
+/* под карточкой */
+.acts.cd-acts{gap:40px;padding:14px 0 4px}
+.cd-acts .fab{cursor:pointer}
+.cd-acts .fab:disabled{opacity:.45;cursor:default}
+.cd-after{margin:0;padding:16px 8px 0;text-align:center}
+.cd-contact{margin-top:12px}
+.cd-contact .li{gap:12px}
+/* «Скопировать номер» уходит под имя, если в строке тесно */
+.li.cd-contact-main{flex-wrap:wrap;row-gap:10px}
+.cd-contact-main > .col{flex:1 1 160px}
+.cd-contact-main > .btn{margin-left:56px}
+.cd-phone{white-space:nowrap}
+.cd-contact-name{font-weight:600}
+.cd-phone{font-size:15px;color:var(--ink2)}
+.li.cd-docs-link{width:100%;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer}
+.cd-ico{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* тосты: отмена решения и короткие сообщения */
+.cd-toasts{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none}
+.cd-toast{pointer-events:auto;position:relative;overflow:hidden;display:flex;align-items:center;gap:8px;width:100%;max-width:480px;min-height:54px;padding:8px 6px 8px 16px;border-radius:18px;background:var(--btn);color:var(--btn-ink);box-shadow:var(--shadow);font-size:14.5px;line-height:1.3;animation:cd-toast-in 260ms var(--pf-ease)}
+.cd-toast.error{background:var(--neg-bg);color:var(--neg-ink)}
+.cd-toast-btn{flex-shrink:0;height:38px;padding:0 10px;border:0;border-radius:12px;background:transparent;color:inherit;font:600 15px/1 var(--font);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.cd-toast-x{flex-shrink:0;width:38px;height:38px;border:0;border-radius:12px;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.75}
+.cd-toast-ic{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--hi);color:var(--btn-ink)}
+.cd-toast-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--em);transform-origin:left center;animation-name:cd-drain;animation-timing-function:linear;animation-fill-mode:forwards}
+@keyframes cd-toast-in{from{opacity:0;transform:translateY(16px)}}
+@keyframes cd-drain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+
+/* шторка «Закрыть набор?» */
+.cd-modal{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
+.cd-dim{position:absolute;inset:0;background:rgba(12,13,17,.45);animation:cd-fade 200ms ease-out}
+.sheet.cd-sheet{position:relative;left:auto;right:auto;bottom:auto;width:100%;max-width:560px;max-height:92vh;max-height:92dvh;overflow:auto;padding:10px 20px calc(20px + env(safe-area-inset-bottom));outline:0;animation:cd-sheet-in 280ms var(--pf-ease)}
+@keyframes cd-sheet-in{from{transform:translateY(100%)}}
+.cd-sheet-place{display:flex;align-items:center;gap:10px;min-width:0}
+.cd-sheet-place .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd-sheet-t{font-size:26px}
+.cd-switch{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:20px;background:var(--bg)}
+.cd-switch-t{font-weight:600;line-height:1.3}
+.emp .toggle{cursor:pointer}
+.emp .toggle:disabled{opacity:.6;cursor:default}
+.emp .toggle i{transition:transform 150ms var(--pf-ease)}
+.emp .toggle.on i{left:3px;transform:translateX(20px)}
+.cd-sheet .btn:disabled{opacity:.6;cursor:default}
+
+@media (min-width:1024px){
+  .cd{padding-left:max(36px,calc((100% - 1168px) / 2));padding-right:max(36px,calc((100% - 1168px) / 2));gap:18px}
+  .cd-head{padding-top:28px;gap:16px}
+  .thumb.cd-thumb{width:64px;height:64px;border-radius:18px}
+  .cd-title{font-size:30px}
+  .cd-desk{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:28px;align-items:start}
+  .cd-desk-list{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .cd-pane{position:sticky;top:24px;min-width:0}
+  .cd-pane-in{max-width:520px}
+  .cd-pane .card.cd-card{min-height:470px}
+  .cd-pane-empty{padding:40px 0;text-align:center}
+  .cd-keys{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0}
+  .cd-modal{align-items:center}
+  .sheet.cd-sheet{max-width:480px;border-radius:30px;padding:24px 28px;animation:cd-rise 240ms var(--pf-ease)}
+  .cd-sheet .grab{display:none}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .cd-toast,.sheet.cd-sheet{animation:cd-fade 150ms ease-out}
+  .cd-toast-bar{display:none}
+  .emp .toggle i{transition:none}
+}
+
+/* ---------- «Это тандем!» у компании ----------
+   Классы etm-: tm- заняты экраном студента (student/tandem.css). Движение — motion (пружины из motion/springs). */
+.etm{position:relative}
+/* свечение обрезает своя обёртка: overflow на экране сделал бы его контейнером прокрутки и сломал sticky у кнопок */
+.etm-glow-clip{position:absolute;left:0;right:0;top:0;height:340px;overflow:hidden;pointer-events:none}
+.etm-glow{position:absolute;left:-60px;right:-60px;top:-80px;height:420px;background:radial-gradient(50% 50% at 35% 50%,color-mix(in srgb,var(--em) 30%,transparent) 0,transparent 70%),radial-gradient(50% 50% at 65% 50%,color-mix(in srgb,var(--st) 30%,transparent) 0,transparent 70%)}
+.etm-body{position:relative;flex-grow:1;display:flex;flex-direction:column;gap:18px;width:100%;max-width:480px;margin:0 auto;padding:calc(48px + env(safe-area-inset-top)) 0 16px}
+.etm-pair{position:relative;display:flex;justify-content:center;height:128px}
+.ava.etm-orb{width:120px;height:120px;font-size:48px;border:4px solid var(--bg)}
+.ava.etm-co{position:relative;z-index:1;margin-right:-26px;color:var(--on-em);background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--em) 45%,white) 0,var(--em) 50%,color-mix(in srgb,var(--em) 75%,black) 100%)}
+.etm-check{position:absolute;left:50%;bottom:-2px;z-index:2;width:44px;height:44px;margin-left:-22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--btn);color:var(--btn-ink);box-shadow:var(--shadow)}
+.etm-check .ic{stroke-width:3}
+.etm-head{display:flex;flex-direction:column;gap:8px;text-align:center}
+.etm-h{margin:0;font-family:var(--font-display);font-weight:800;font-size:36px;line-height:1.05;letter-spacing:-.02em}
+.etm-note{margin:0;text-align:center}
+.etm .cd-contact{margin-top:0}
+/* действия всегда на виду */
+.etm-acts{position:sticky;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;width:100%;max-width:480px;margin:0 auto;padding:20px 0 calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 78%,transparent)}
+.etm-acts .btn{width:100%}
+
+/* ---------- документы практики ---------- */
+.dc{gap:16px;width:100%;max-width:640px;margin:0 auto;padding-top:16px}
+.dc-who{display:flex;align-items:center;gap:12px}
+.dc-who-name{font-weight:600;font-size:16px}
+.dc-who-place{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dc-intro{display:flex;flex-direction:column;gap:10px}
+.dc-h{font-size:30px}
+.st.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.dc-draft{align-self:flex-start}
+.dc-prog{display:flex;flex-direction:column;gap:8px}
+.dc-prog-row{display:flex;align-items:baseline;justify-content:space-between;gap:4px 12px;flex-wrap:wrap}
+.track.dc-track{display:block;height:8px}
+.fill.dc-fill{display:block;width:100%;background:var(--hi);transform-origin:left center;transition:transform 260ms var(--pf-ease)}
+.dc-list{list-style:none;margin:0;padding:0}
+.dc-li{border-bottom:1px solid var(--line)}
+.dc-li:last-child{border-bottom:0}
+.dc-item{display:flex;align-items:flex-start;gap:14px;width:100%;padding:14px 16px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.dc-t{font-weight:600;line-height:1.3}
+.dc-item.on .dc-t{text-decoration:line-through;color:var(--ink3)}
+.dc-hint{line-height:1.35}
+.dc-contact{display:flex;flex-direction:column;gap:8px}
+.dc-contact .cd-contact{margin-top:0}
+.dc-foot{margin-top:auto;padding-top:8px}
+
+@media (prefers-reduced-motion: reduce){
+  .fill.dc-fill{transition:none}
+}

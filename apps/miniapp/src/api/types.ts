@@ -116,17 +116,20 @@ export interface InterestResult {
 
 export interface Candidate {
   studentId: number;
-  firstName: string;
+  /** null — имени в MAX нет; поля анкеты — null, если анкету удалили после отклика. */
+  firstName: string | null;
   /** Только в статусе invited. */
   lastName: string | null;
-  university: string;
-  course: number;
-  direction: string;
-  city: string;
+  university: string | null;
+  course: number | null;
+  direction: string | null;
+  city: string | null;
   status: Exclude<InterestStatus, 'skipped'>;
   match: Match;
-  /** Только в статусе invited. */
+  /** Только в статусе invited; null — студент не делился номером. */
   phone: string | null;
+  /** Первое «Интересно» (ISO). */
+  interestedAt: string;
   isDemo: boolean;
 }
 
