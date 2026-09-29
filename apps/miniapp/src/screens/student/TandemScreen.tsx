@@ -134,7 +134,7 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
               </li>
             ))}
           </ol>
-          <span className="lbl">Этот чек-лист бот пришлёт и в чат — с 22:00 до 9:00 утром.</span>
+          <span className="lbl">Бот продублирует чек-лист в чат. Ночью, с 22:00 до 9:00, сообщение придёт утром.</span>
         </motion.section>
       </div>
       <motion.div className="tm-acts" {...item(2)}>
