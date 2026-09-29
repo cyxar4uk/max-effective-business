@@ -8,6 +8,8 @@
 .ob-h{font-size:24px;line-height:1.15}
 .ob-text{color:var(--ink2)}
 .ob-list{background:var(--surf2)}
+/* под «Пропустить» у компании: номер спросим ещё раз перед публикацией */
+.ob-note{margin-top:-8px;text-align:center}
 .ob-error{margin:0;padding:10px 12px;border-radius:12px;background:var(--neg-bg);color:var(--neg-ink);font-size:14px}
 @media (min-width:600px){
   .ob{justify-content:center;padding:24px}
