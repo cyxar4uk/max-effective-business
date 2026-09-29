@@ -22,9 +22,9 @@
 		reverse_proxy meb-server:3000
 	}
 
-	# Мини-приложение (статика за nginx, контейнер miniapp — Илья)
+	# Мини-приложение: статика за nginx, контейнер meb-miniapp
 	handle {
-		reverse_proxy miniapp:80
+		reverse_proxy meb-miniapp:80
 	}
 
 	# В журнал доступа не пишем заголовки: в них initData

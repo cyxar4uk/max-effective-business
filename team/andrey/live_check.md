@@ -29,13 +29,15 @@ scripts/max-webhook.sh subscribe && scripts/max-webhook.sh list
 С ноутбука:
 
 ```bash
-node scripts/smoke.mjs https://tandem.anyway-community.ru --no-auth     # health и 401 без подписи
+node scripts/smoke.mjs https://tandem.anyway-community.ru --no-auth     # мини-приложение, health и 401 без подписи
 DEPLOY_HOST=deploy@<IP> scripts/deploy.sh                               # следующие выкатки из main
 ```
 
 business.max.ru → «Чат-боты» → бот → ⋮ → «Настройки» → URL мини-приложения `https://tandem.anyway-community.ru`.
 
-Готово, когда: `/api/health` отвечает по HTTPS, бот отвечает на `/start`.
+Готово, когда: `https://tandem.anyway-community.ru/` открывает мини-приложение, `/api/health` отвечает по HTTPS, бот
+отвечает на `/start`. Веб-версия MAX открывает мини-приложение во фрейме, поэтому
+`curl -sI https://tandem.anyway-community.ru/ | grep -iE 'x-frame-options|frame-ancestors'` должен быть пуст.
 
 ## 2. Проверка на телефоне (#23)
 
