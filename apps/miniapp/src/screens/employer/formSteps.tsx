@@ -115,7 +115,7 @@ export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
 
       <div className="pf-group">
         <span className="lbl" id="pf-tags-l">
-          {compact ? 'Тег — подставит навыки, до трёх' : 'Тег — подставит навыки на шаге 3, до трёх'}
+          {compact ? 'Направление, до трёх — подставит навыки' : 'Направление, до трёх — по нему подставим навыки на шаге 3'}
         </span>
         <div className="chips" role="group" aria-labelledby="pf-tags-l">
           {dict.tags.map((tag) => {
@@ -278,19 +278,19 @@ export function SkillsStep({ draft, update, errors, dict, compact }: StepProps) 
   return (
     <>
       <div className="pf-group">
-        <span className="pf-sect">Обязательные — хотя бы один</span>
+        <span className="pf-sect">Обязательные — выберите хотя бы один</span>
         {renderList('required')}
         <FieldError msg={errors.requiredSkills} />
       </div>
       <div className="pf-group">
-        <span className="pf-sect">Желательные — по желанию</span>
+        <span className="pf-sect">Желательные — будут плюсом</span>
         {renderList('nice')}
         <FieldError msg={errors.niceSkills} />
       </div>
       <p className="lbl m0">
         {tagNames.length > 0 &&
-          `Подставлено из ${tagNames.length > 1 ? 'тегов' : 'тега'} ${tagNames.map((n) => `«${n}»`).join(', ')}. `}
-        Нажмите на навык, чтобы перенести его в другой список, крестик — убрать.
+          `Подставлено по ${tagNames.length > 1 ? 'направлениям' : 'направлению'} ${tagNames.map((n) => `«${n}»`).join(', ')}. `}
+        Нажмите на навык — он перейдёт в другой список. Крестик убирает навык.
       </p>
 
       <div className="pf-group">
@@ -493,7 +493,7 @@ export function PayStep({ draft, update, errors, compact }: StepProps) {
           />
           <FieldError id="pf-salary-err" msg={errors.salary} />
           <span id="pf-salary-hint" className="lbl">
-            До вычета НДФЛ
+            До вычета НДФЛ. По трудовому договору компания платит сверху страховые взносы.
           </span>
         </div>
       )}
@@ -547,7 +547,7 @@ export function DescriptionStep({ draft, update, errors, compact }: StepProps) {
         rows={compact ? 3 : 7}
         maxLength={LIMITS.description}
         value={draft.description}
-        placeholder="Например: заполнить 40 карточек товаров — названия, характеристики, фото. Покажем, как работает кабинет продавца."
+        placeholder="Например: заполнить 40 карточек товаров — названия, характеристики, фото. Около 10 часов в неделю, можно совмещать с учёбой. Наставник — руководитель, созвон по понедельникам."
         aria-label="Описание — по желанию"
         aria-invalid={Boolean(errors.description)}
         aria-describedby="pf-desc-err"
