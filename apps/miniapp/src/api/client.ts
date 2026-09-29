@@ -51,7 +51,12 @@ interface ErrorBody {
   error?: { code?: ApiErrorCode; message?: string; fields?: Record<string, string> };
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+interface RequestOptions {
+  /** Запрос доживёт до конца, даже если мини-приложение закрывают (решение по кандидату при уходе с экрана). */
+  keepalive?: boolean;
+}
+
+async function request<T>(method: string, path: string, body?: unknown, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { 'X-Max-Init-Data': initData };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
@@ -61,6 +66,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      keepalive: options.keepalive,
     });
   } catch {
     throw new ApiError(0, 'NETWORK', 'Нет связи с сервером. Проверьте интернет и повторите.');
@@ -81,7 +87,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 const get = <T>(path: string) => request<T>('GET', path);
-const post = <T>(path: string, body?: unknown) => request<T>('POST', path, body);
+const post = <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('POST', path, body, options);
 const put = <T>(path: string, body: unknown) => request<T>('PUT', path, body);
 const patch = <T>(path: string, body: unknown) => request<T>('PATCH', path, body);
 
@@ -109,6 +115,8 @@ export const api = {
   internship: (id: number) => get<Internship>(`/internships/${id}`),
   interest: (id: number, action: InterestAction) => post<InterestResult>(`/internships/${id}/interest`, { action }),
   candidates: (id: number) => get<Items<Candidate>>(`/internships/${id}/candidates`),
-  invite: (id: number, studentId: number) => post<Candidate>(`/internships/${id}/candidates/${studentId}/invite`),
-  decline: (id: number, studentId: number) => post<Candidate>(`/internships/${id}/candidates/${studentId}/decline`),
+  invite: (id: number, studentId: number, options?: RequestOptions) =>
+    post<Candidate>(`/internships/${id}/candidates/${studentId}/invite`, undefined, options),
+  decline: (id: number, studentId: number, options?: RequestOptions) =>
+    post<Candidate>(`/internships/${id}/candidates/${studentId}/decline`, undefined, options),
 };

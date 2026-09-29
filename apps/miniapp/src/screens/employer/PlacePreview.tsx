@@ -1,36 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import type { InternshipType } from '../../api/types';
+import { COVERS, logoLetter, TYPE_COVER_LABEL, type Cover } from './cover';
 import { cityOf, FORMAT_LABEL, rub, shortDate, slotsText, TYPE_LABEL, type Dict, type Draft } from './draft';
 
-/** Мягкий перенос — кодом, чтобы в исходнике не было невидимых символов. */
-const SHY = String.fromCharCode(0xad);
-
-/** Обложка карточки по первому тегу — как в ленте студента (screens/student/place.ts). */
-const COVERS: Record<string, Cover> = {
-  marketplaces: { cls: 'cv-market', label: `Маркет${SHY}плейсы` },
-  spreadsheets: { cls: 'cv-data', label: 'Таблицы' },
-  website: { cls: 'cv-site', label: 'Сайт' },
-  one_c: { cls: 'cv-1c', label: '1С' },
-  social_ads: { cls: 'cv-social', label: `Соц${SHY}сети` },
-  sales: { cls: 'cv-sales', label: 'Продажи' },
-};
-const TYPE_COVER_LABEL: Record<InternshipType, string> = {
-  practice: `Прак${SHY}тика`,
-  internship: `Стажи${SHY}ровка`,
-  part_time: `Подра${SHY}ботка`,
-};
 const MAX_SKILLS = 6;
-
-interface Cover {
-  cls: string;
-  label: string;
-}
-
-/** Буква для логотипа: «ООО «Вектор»» → «В». */
-function logoLetter(company: string): string {
-  const name = company.replace(/^\s*(ооо|оао|зао|пао|ао|ип|нко|ано)\s+/i, '');
-  return (/[\p{L}\p{N}]/u.exec(name)?.[0] ?? '·').toUpperCase();
-}
 
 /** Без тега обложку в ленте выбирает сервер по номеру места — до публикации показываем обложку с типом места. */
 function coverOf(tags: string[], type: InternshipType | null): Cover {

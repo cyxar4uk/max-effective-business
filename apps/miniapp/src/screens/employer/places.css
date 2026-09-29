@@ -1,0 +1,57 @@
+/* Работодатель после публикации: «Мои места», кандидаты, «Это тандем!», документы, «Закрыть набор».
+   Макеты c2 Places / Candidates / EmployerMatch, c3 CandidatesList / Docs / CloseSheet / DeskCompare.
+   Цвета — токены из tokens.css; обложки и аватары — классы макета из app.css. Движение — только transform и opacity. */
+
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.emp :focus-visible{outline:2px solid var(--st);outline-offset:2px}
+
+/* ---------- общее движение ---------- */
+@keyframes cd-rise{from{opacity:0;transform:translateY(8px)}}
+@keyframes cd-fade{from{opacity:0}}
+/* элементы списка проявляются со сдвигом 8 px; задержка 20 мс на элемент задаётся в разметке */
+.cd-in{animation:cd-rise 240ms var(--pf-ease) backwards}
+/* смена вкладки или фильтра — проявление */
+.cd-fade{animation:cd-fade 180ms ease-out}
+.emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.fab .c,.dc-item,.check,.toggle){transition:transform 100ms ease-out}
+.emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.dc-item):active:not(:disabled){transform:scale(.97)}
+.emp .fab:active:not(:disabled) .c{transform:scale(.97)}
+
+/* ---------- «Мои места» ---------- */
+.pl{gap:0}
+.pl-head{display:flex;align-items:center;gap:10px;padding:16px 0 12px}
+.pl-head .h1{font-size:26px}
+.pl-add{background:var(--btn);color:var(--btn-ink);cursor:pointer;box-shadow:none}
+.pl-howto{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 14px;padding:10px 14px 10px 10px;border:0;border-radius:18px;background:var(--surf);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.pl-howto-ic{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--wait-bg);color:var(--wait-ink);flex-shrink:0}
+.pl-howto-t{font-weight:600}
+.pl-howto > .ic{color:var(--ink3)}
+.pl-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 0 14px}
+.pl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 12px;align-content:start}
+.pl-tile{display:flex;flex-direction:column;gap:6px;min-width:0;text-decoration:none;color:var(--ink);background:none;border:0;padding:0;text-align:left;font:inherit;cursor:pointer;border-radius:22px}
+.pl-art{position:relative;display:block;aspect-ratio:1/1;border-radius:22px;overflow:hidden;background:var(--surf2)}
+.pl-cover .cv-label{top:auto;bottom:14px;left:14px;right:14px;font-size:20px}
+.pl-cover.banner .cv-label{bottom:20px;left:22px;right:22px;font-size:34px}
+.pl-badge{position:absolute;top:10px;right:10px;min-width:26px;height:26px;border-radius:13px;padding:0 7px;display:flex;align-items:center;justify-content:center;background:var(--nope);color:#fff;font-size:13px;font-weight:700}
+.pl-title{font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.pl-tile .st{align-self:flex-start}
+.pl-new-art{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:transparent;border:2px dashed var(--line2);color:var(--ink2)}
+.pl-new-t{font-weight:600;color:var(--ink)}
+.pl-empty{display:flex;flex-direction:column;gap:12px;padding:24px 0}
+.pl-empty .btn{align-self:stretch}
+.pl-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:auto;padding-top:24px}
+.pl-links .btn{height:40px}
+
+@media (min-width:1024px){
+  .pl{padding-left:max(36px,calc((100% - 1168px) / 2));padding-right:max(36px,calc((100% - 1168px) / 2))}
+  .pl-head{padding-top:28px}
+  .pl-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px 18px}
+  .pl-howto{max-width:440px}
+}
+
+
+@media (prefers-reduced-motion: reduce){
+  .cd-in{animation:cd-fade 150ms ease-out backwards;animation-delay:0s !important}
+  .cd-fade{animation:cd-fade 150ms ease-out}
+  .emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.fab .c,.dc-item,.check,.toggle){transition:none}
+  .emp :is(.pl-tile,.pl-howto,.cd-row,.cd-nav,.dc-item):active:not(:disabled),.emp .fab:active:not(:disabled) .c{transform:none}
+}
