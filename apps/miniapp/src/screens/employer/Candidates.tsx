@@ -36,6 +36,7 @@ import { Avatar, Eq, Notice, UndoToast, type NoticeValue } from './candidateUi';
 import { CloseSheet } from './CloseSheet';
 import { plural } from './draft';
 import { CardIcon, ChevronIcon, ListIcon, QrIcon } from './icons';
+import { OwnLinkBanner } from './OwnLinkBanner';
 import { PlaceArt } from './PlaceArt';
 import { useDecision, type Decision, type Pending } from './useDecision';
 import { useDesktop } from './useDesktop';
@@ -381,6 +382,7 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
     return (
       <>
         {head}
+        <OwnLinkBanner placeId={place.id} />
         {closedBanner}
         <section className="cd-empty cd-in">
           <h2 className="h2">{place.status === 'closed' ? 'Откликов не было' : 'Откликов пока нет'}</h2>
@@ -439,6 +441,7 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
     return (
       <>
         {head}
+        <OwnLinkBanner placeId={place.id} />
         <div className="cd-desk">
           <section className="cd-desk-list">
             {closedBanner}
@@ -472,6 +475,7 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
   return (
     <>
       {head}
+      <OwnLinkBanner placeId={place.id} />
       {closedBanner}
       {tabs}
       <div id="cd-panel" role="tabpanel" aria-labelledby={`cd-tab-${tab}`} key={`${tab}-${view}`} className="cd-panel cd-fade">

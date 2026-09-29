@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 import type { Me } from '../api/types';
 import { Skeleton } from '../components/Skeleton';
 import { getStartParam } from '../max/bridge';
+import type { LaunchState } from './launchState';
 import { lastRole } from './lastRole';
 import { useMe } from './me';
 import { placeIdFromParam } from './placeParam';
@@ -11,6 +12,7 @@ import { placeIdFromParam } from './placeParam';
 interface Target {
   to: string;
   replace: boolean;
+  state?: LaunchState;
 }
 
 /**
@@ -25,7 +27,7 @@ function launchTarget(pathname: string, me: Me): Target | null {
   if (pathname !== '/') return null;
   const param = getStartParam();
   const placeId = placeIdFromParam(param);
-  if (placeId !== null) return { to: `/internships/${placeId}`, replace: false };
+  if (placeId !== null) return { to: `/internships/${placeId}`, replace: false, state: { launch: true } };
   if (param === 'student' || param === 'employer') return { to: `/${param}`, replace: true };
   if (param) return null;
   const role = lastRole();
@@ -48,7 +50,7 @@ export function StartParamGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (handled) return;
     handled = true;
-    if (target) navigate(target.to, { replace: target.replace });
+    if (target) navigate(target.to, { replace: target.replace, state: target.state });
   }, [navigate, target]);
 
   if (!arrived && target && pathname === target.to) setArrived(true);

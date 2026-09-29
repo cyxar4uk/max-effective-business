@@ -7,6 +7,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
 import { rememberPlace } from '../app/afterProfile';
+import type { AsStudentState, LaunchState, OwnLinkState } from '../app/launchState';
 import { copyText } from '../app/clipboard';
 import { placeLink, placeLinkText, placeShareText } from '../app/placeLink';
 import { Toast } from '../components/Toast';
@@ -37,8 +38,11 @@ export function InternshipScreen() {
   const id = Number(useParams().id);
   const valid = Number.isInteger(id) && id > 0;
   const navigate = useNavigate();
-  // Своё место из колоды студента («Ваше место») — смотрим глазами студента, а не списком кандидатов
-  const asStudent = (useLocation().state as { asStudent?: boolean } | null)?.asStudent === true;
+  // Своё место из колоды студента («Ваше место»), сканера или «Посмотреть как студент» — глазами студента,
+  // а не списком кандидатов
+  const nav = useLocation().state as (AsStudentState & LaunchState) | null;
+  const asStudent = nav?.asStudent === true;
+  const fromLaunch = nav?.launch === true;
   const [state, retry] = useLoad(
     () => (valid ? Promise.all([api.internship(id), loadSkills()]) : notFound()),
     [id],
@@ -51,8 +55,11 @@ export function InternshipScreen() {
   const [toast, setToast] = useToast();
 
   useEffect(() => {
-    if (isOwner) navigate(`/employer/internships/${id}/candidates`, { replace: true });
-  }, [isOwner, id, navigate]);
+    if (!isOwner) return;
+    // По ссылке на своё место (QR камерой, кнопка бота) — к кандидатам с плашкой «Посмотреть как студент»
+    const state: OwnLinkState | undefined = fromLaunch ? { ownLink: true } : undefined;
+    navigate(`/employer/internships/${id}/candidates`, { replace: true, state });
+  }, [isOwner, fromLaunch, id, navigate]);
 
   if (!valid) return <Navigate to="/" replace />;
 

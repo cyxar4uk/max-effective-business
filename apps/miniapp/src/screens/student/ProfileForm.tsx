@@ -2,9 +2,10 @@ import { motion } from 'motion/react';
 import { startTransition, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
-import type { Skills, StudentProfile, WorkFormat } from '../../api/types';
+import type { Me, Skills, StudentProfile, WorkFormat } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { takePlace } from '../../app/afterProfile';
+import type { AsStudentState } from '../../app/launchState';
 import { useMe } from '../../app/me';
 import { flash } from '../../components/flashMessage';
 import { ErrorState } from '../../components/ErrorState';
@@ -157,14 +158,26 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
 
   /**
    * После сохранения: из редактирования — туда, откуда пришли; новая анкета — к месту, ради которого её заполняли
-   * (QR на ярмарке, ссылка друга), иначе к колоде.
+   * (QR на ярмарке, «Посмотреть как студент»), иначе к колоде. student — пользователь с анкетой, если она новая:
+   * его подставляем вместе со сменой адреса, чтобы уходящий экран анкеты не успел перерисоваться колодой.
    */
-  const leave = () => {
+  const leave = (student: Me | null) => {
     const place = mode === 'new' ? takePlace() : null;
     if (place !== null) {
-      navigate(`/internships/${place}`, { replace: true, state: { asStudent: true } });
+      // Шаги анкеты лежат в истории прямо поверх экрана места — возвращаемся на ту же запись: «Назад» с места
+      // ведёт туда же, откуда на него пришли (кандидаты, главный). История другая — просто открываем место.
+      const steps = (cameFromStep1 ? 1 : 0) + 1;
+      if (historyIndex() - place.idx === steps) {
+        // Адрес сменится по popstate — тогда же (одним переходом с роутером) обновляем пользователя
+        if (student) window.addEventListener('popstate', () => startTransition(() => setMe(student)), { once: true });
+        navigate(-steps);
+      } else {
+        if (student) setMe(student);
+        navigate(`/internships/${place.id}`, { replace: true, state: { asStudent: true } satisfies AsStudentState });
+      }
       return;
     }
+    if (student) setMe(student);
     const back = (cameFromStep1 ? 1 : 0) + (mode === 'edit' ? 1 : 0);
     if (back > 0 && historyIndex() >= back) navigate(-back);
     else navigate(mode === 'edit' ? '/student/profile' : '/student', { replace: true });
@@ -196,10 +209,8 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
       if (mode === 'edit') flash('Анкета сохранена — подбор мест обновлён');
       // Пользователь и адрес меняются одним переходом (роутер меняет адрес в startTransition): уходящий экран
       // анкеты сразу помечен уходящим и не перерисовывается колодой (StudentHome, useScreenPresent)
-      startTransition(() => {
-        if (!me.roles.student) setMe({ ...me, roles: { ...me.roles, student: true } });
-        leave();
-      });
+      const student = me.roles.student ? null : { ...me, roles: { ...me.roles, student: true } };
+      startTransition(() => leave(student));
     } catch (err) {
       haptic.notify('error');
       const apiErr = err instanceof ApiError ? err : null;
