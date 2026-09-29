@@ -1,0 +1,133 @@
+/* Работодатель: профиль компании, форма места, «Место опубликовано». Макеты c2 FormStep / DeskForm, c1 Form*.
+   Цвета интерфейса — токены из tokens.css; внутри карточки-превью — как у .card в app.css (всегда тёмная). */
+
+/* шапка шага */
+.pf-form{flex-grow:1;display:flex;flex-direction:column;width:100%;max-width:640px;margin:0 auto}
+.pf-prog{display:flex;gap:4px;padding:12px 0 0}
+.pf-prog i{flex:1;height:3px;border-radius:2px;background:var(--line2)}
+.pf-prog i.on{background:var(--ink)}
+.pf-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0 0}
+.pf-saved{display:inline-flex;align-items:center;gap:4px}
+.pf-saved .ic{width:14px;height:14px}
+.pf-saved-row{display:inline-flex;align-items:center;gap:6px}
+.pf-body{flex-grow:1;display:flex;flex-direction:column;gap:20px;padding:28px 0 16px}
+.pf-q{font-family:var(--font-display);font-weight:800;font-size:32px;line-height:1.08;letter-spacing:-.015em;margin:0;overflow-wrap:anywhere}
+.pf-sub{margin-top:-8px}
+.pf-group{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pf-sect{font-weight:600;font-size:14px}
+.pf-under{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.pf-under .lbl{margin-left:auto;white-space:nowrap}
+.pf-err{margin:0;font-size:13px;color:var(--neg-ink)}
+.pf-alert{margin:0;padding:12px 14px;border-radius:16px;background:var(--neg-bg);color:var(--neg-ink);font-size:14px}
+.pf-empty{margin:0;font-size:14px;color:var(--ink3)}
+.pf-center{text-align:center}
+
+/* поля */
+.pf-line{width:100%;border:0;border-bottom:2px solid var(--ink);border-radius:0;background:transparent;outline:0;padding:6px 0 10px;font:600 22px/1.25 var(--font);color:var(--ink)}
+.pf-line.sm{font-size:19px;border-bottom-color:var(--line2);padding:4px 0 8px}
+.pf-line:focus{border-bottom-color:var(--st)}
+.pf-line[aria-invalid="true"]{border-bottom-color:var(--neg-ink)}
+.pf-input{-webkit-appearance:none;appearance:none;width:100%;min-width:0;height:50px;border:0;border-radius:14px;background:var(--surf);box-shadow:inset 0 0 0 1px var(--line2);padding:0 14px;font:500 16px/1.2 var(--font);color:var(--ink);outline:0;text-align:left}
+.pf-input::-webkit-date-and-time-value{text-align:left}
+.pf-area{width:100%;min-height:150px;border:0;border-radius:16px;background:var(--surf);box-shadow:inset 0 0 0 1px var(--line2);padding:12px 14px;font:400 16px/1.45 var(--font);color:var(--ink);outline:0;resize:vertical}
+.pf-input:focus,.pf-area:focus{box-shadow:inset 0 0 0 2px var(--st)}
+.pf-input[aria-invalid="true"],.pf-area[aria-invalid="true"]{box-shadow:inset 0 0 0 2px var(--neg-ink)}
+.pf-line::placeholder,.pf-input::placeholder,.pf-area::placeholder{color:var(--ink3);font-weight:400}
+.pf-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+
+/* крупные варианты (тип, формат, оплата) */
+.pf-opts{display:flex;flex-direction:column;gap:10px}
+.pf-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px 18px;border:0;border-radius:20px;background:var(--surf);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font:inherit;cursor:pointer}
+.pf-opt.on{box-shadow:inset 0 0 0 2px var(--ink)}
+.pf-opt-t{font-weight:600;font-size:17px}
+.pf-radio{width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--btn-ink)}
+.pf-opt.on .pf-radio{background:var(--btn);box-shadow:none}
+.pf-opts[aria-invalid="true"] .pf-opt{box-shadow:inset 0 0 0 1px var(--neg-ink)}
+.seg button{cursor:pointer}
+
+/* теги и навыки */
+.chip{cursor:pointer}
+.chip:disabled{opacity:.45;cursor:default}
+.chip.nice{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line2);color:var(--ink)}
+.tg{background:var(--ink3)}
+.tg.tg-marketplaces{background:#ff7a45}
+.tg.tg-website{background:#b15cff}
+.tg.tg-one_c{background:#ffd84d}
+.tg.tg-social_ads{background:#ff4d6d}
+.tg.tg-spreadsheets{background:#3d7bff}
+.tg.tg-sales{background:#2ee59d}
+.pf-sk{padding:0 4px 0 14px;gap:0;max-width:100%}
+.pf-sk button{border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer;height:100%;display:inline-flex;align-items:center}
+.pf-sk-name{overflow:hidden;text-overflow:ellipsis}
+.pf-sk-x{width:30px;justify-content:center;opacity:.7}
+.pf-target{max-width:420px}
+.search input[type="search"]::-webkit-search-cancel-button{cursor:pointer}
+.pf-picker{display:flex;flex-direction:column;gap:4px}
+.pf-picker > .pf-group{padding:6px 0}
+.pf-grp{border-bottom:1px solid var(--line)}
+.pf-grp:last-child{border-bottom:0}
+.pf-grp summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;font-weight:500}
+.pf-grp summary::-webkit-details-marker{display:none}
+.pf-grp[open] summary{padding-bottom:8px}
+.pf-grp .chips{padding-bottom:12px}
+.pf-hint{padding:14px 16px;gap:4px}
+.pf-hint-t{font-weight:600}
+
+/* число мест */
+.pf-stepper{display:flex;align-items:center;gap:18px}
+.pf-stepper .ibtn{width:56px;height:56px;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line2)}
+.pf-stepper .ibtn:disabled{opacity:.4;cursor:default}
+.pf-count{font-family:var(--font-display);font-weight:700;font-size:44px;line-height:1;min-width:72px;text-align:center}
+
+/* низ экрана */
+.pf-foot{position:sticky;bottom:0;display:flex;flex-direction:column;gap:10px;padding:12px 0 calc(8px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 75%,transparent)}
+.pf-foot .btn{width:100%}
+.pf-foot .btn:disabled,.pf-desk-side .btn:disabled{opacity:.6;cursor:default}
+
+/* проверка карточки */
+.pf-edit{width:100%;background:none;border:0;border-bottom:1px solid var(--line);font:inherit;text-align:left;cursor:pointer}
+.pf-edit:last-child{border-bottom:0}
+.pf-edit .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-edit.bad .lbl{color:var(--neg-ink)}
+.pf-edit-a{color:var(--st);font-weight:500;font-size:14px;flex-shrink:0}
+.pf-desc{padding:14px 16px;gap:6px}
+.pf-desc p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink2)}
+
+/* превью карточки — как в ленте студента */
+.pf-card-wrap{position:relative;height:460px;flex-shrink:0}
+.pf-card-wrap .cv-label{white-space:pre-line}
+.pf-card-wrap .cv-label.long{font-size:34px}
+.pf-cv-plain{background:radial-gradient(60% 50% at 25% 25%,#4f7dff 0,rgba(79,125,255,0) 72%),radial-gradient(55% 50% at 85% 45%,#ffa51f 0,rgba(255,165,31,0) 72%),#14151c}
+.pf-card-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.pf-card-co{font-size:14px;color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-pct-none{color:rgba(255,255,255,.5)}
+.sk.pf-req{background:rgba(255,255,255,.16);color:#fff}
+
+/* место опубликовано */
+.pf-done{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:40px 0 24px;max-width:480px;margin:0 auto}
+.pf-done-ic{width:72px;height:72px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink)}
+.pf-note{margin:6px 0 0;padding:14px 16px;border-radius:18px;background:var(--warn-bg);color:var(--warn-ink);font-size:14px;text-align:left}
+
+/* профиль компании */
+.co{flex-grow:1;display:flex;flex-direction:column;gap:14px;width:100%;max-width:560px;margin:0 auto;padding-top:28px}
+.co-head{display:flex;flex-direction:column;gap:10px;padding-bottom:8px}
+.co .pf-foot{margin-top:auto}
+.pf-field{display:flex;flex-direction:column;gap:3px;padding:11px 16px;border-bottom:1px solid var(--line)}
+.pf-field:last-child{border-bottom:0}
+.pf-field label{font-size:12.5px;color:var(--ink3)}
+.pf-field input{border:0;outline:0;background:transparent;font:500 16px/1.3 var(--font);color:var(--ink);padding:0;width:100%}
+.pf-field input::placeholder{color:var(--ink3);font-weight:400}
+.pf-field.bad label{color:var(--neg-ink)}
+.pf-field .pf-err{font-size:12.5px}
+
+/* десктоп: форма одной страницей и живое превью справа */
+.pf-desk{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:36px;max-width:1240px;margin:0 auto;padding:28px 36px 40px;min-height:100vh}
+.pf-desk-head{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+.pf-blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.pf-blk{background:var(--surf);border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0;scroll-margin-top:24px}
+.pf-blk.wide{grid-column:1/-1}
+.pf-blk-t{margin:0;font-weight:500}
+.pf-blk .seg{max-width:420px}
+.pf-blk .pf-input,.pf-blk .pf-area{background:var(--bg)}
+.pf-desk-side{position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;gap:14px}
+.pf-desk-side .pf-card-wrap{height:520px}
