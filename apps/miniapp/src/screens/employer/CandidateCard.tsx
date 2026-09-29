@@ -4,9 +4,9 @@ import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import type { Candidate, Internship } from '../../api/types';
 import { matchCounts, matchText, type SkillNames } from '../../app/matchText';
+import { CopyButton } from '../../components/CopyButton';
 import { haptic } from '../../max/bridge';
 import { aboutLine, avatarClass, firstName, fullName, initial, paths, phoneText, studyLine, whenText } from './candidate';
-import { CopyButton } from '../../components/CopyButton';
 import { Avatar, Eq, MatchSkills } from './candidateUi';
 import { CheckIcon, CrossIcon, DocIcon, LockIcon } from './icons';
 import type { Decision, Pending } from './useDecision';
@@ -41,7 +41,7 @@ export function CandidateCardBody({ c, names, pending }: CardProps) {
       <div className="topchips">
         <span className="row" style={{ gap: 6 }}>
           {c.course ? <span className="gchip">{c.course} курс</span> : null}
-          {c.status === 'invited' && <span className="gchip cd-gchip-ok">Приглашён</span>}
+          {c.status === 'invited' && <span className="gchip cd-gchip-ok">Приглашение отправлено</span>}
           {c.status === 'declined' && <span className="gchip">Отказ</span>}
           {c.status === 'interested' && when && <span className="gchip">{when}</span>}
         </span>
