@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../../api/client';
+import type { GuideState } from '../CheckGuide';
 import type { Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { ErrorState } from '../../components/ErrorState';
@@ -102,7 +103,7 @@ export function Places() {
           <PlusIcon className="ic" />
         </button>
       </header>
-      <button type="button" className="pl-howto" onClick={() => navigate('/check')}>
+      <button type="button" className="pl-howto" onClick={() => navigate('/', { state: { guide: true } satisfies GuideState })}>
         <span className="pl-howto-ic" aria-hidden="true">
           <RouteIcon />
         </span>

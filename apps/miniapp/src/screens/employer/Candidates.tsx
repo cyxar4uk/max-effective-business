@@ -371,6 +371,7 @@ function Loaded({ data, names, update, refresh }: LoadedProps) {
     <CandidateList
       list={list}
       tab={tab}
+      closed={place.status === 'closed'}
       selected={desktop ? selected : null}
       names={names}
       pendingFor={pendingFor}
@@ -467,6 +468,8 @@ const EMPTY_TAB: Record<Tab, string> = {
 interface ListProps {
   list: Candidate[];
   tab: Tab;
+  /** Набор закрыт: новых откликов не будет. */
+  closed: boolean;
   selected: Candidate | null;
   names: SkillNames;
   pendingFor: (c: Candidate) => Decision | null;
@@ -475,8 +478,10 @@ interface ListProps {
 }
 
 /** Список кандидатов: проявляется снизу со сдвигом 20 мс на строку. */
-function CandidateList({ list, tab, selected, names, pendingFor, onOpen, rowRef }: ListProps) {
-  if (list.length === 0) return <p className="lbl cd-tab-empty">{EMPTY_TAB[tab]}</p>;
+function CandidateList({ list, tab, closed, selected, names, pendingFor, onOpen, rowRef }: ListProps) {
+  if (list.length === 0) {
+    return <p className="lbl cd-tab-empty">{tab === 'waiting' && closed ? 'Никто не ждёт решения.' : EMPTY_TAB[tab]}</p>;
+  }
   return (
     <ul className="surf cd-list">
       {list.map((c, i) => {

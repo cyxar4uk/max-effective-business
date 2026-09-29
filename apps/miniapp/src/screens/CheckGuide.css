@@ -1,0 +1,30 @@
+/* «Как проверить за 5 минут» на главном. Цвета — токены из tokens.css. */
+.cg{margin-top:16px;flex-shrink:0;box-shadow:inset 0 0 0 1px var(--line)}
+.cg :focus-visible{outline:2px solid var(--st);outline-offset:2px}
+.cg .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.cg-head{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px 12px 12px;border:0;border-radius:22px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.cg-head > .ic{color:var(--ink3)}
+.cg-ic{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--wait-bg);color:var(--wait-ink)}
+.cg-ic.done{background:var(--ok-bg);color:var(--ok-ink)}
+.cg-t{font-weight:600}
+.cg-body{padding:0 14px 14px;animation:cg-in 200ms ease-out}
+.cg-msg{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin:0;padding:4px 0 6px}
+.cg-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.cg-step{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.cg-n{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font:600 13px/1 var(--font);box-shadow:inset 0 0 0 1.5px var(--line2);color:var(--ink3)}
+.cg-step.now .cg-n{box-shadow:none;background:var(--btn);color:var(--btn-ink)}
+.cg-step.done .cg-n{box-shadow:none;background:var(--ok-bg);color:var(--ok-ink)}
+.cg-step-t{font-weight:500;line-height:1.3}
+.cg-step.done .cg-step-t{color:var(--ink3)}
+.cg-step.now .cg-step-t{font-weight:600}
+.cg-go{align-self:flex-start;margin-top:6px}
+@keyframes cg-in{from{opacity:0;transform:translateY(-4px)}}
+.cg-head,.cg-go{transition:transform 100ms ease-out}
+.cg-head:active,.cg-go:active{transform:scale(.97)}
+
+@media (prefers-reduced-motion: reduce){
+  .cg-body{animation:cg-fade 150ms ease-out}
+  .cg-head,.cg-go{transition:none}
+  .cg-head:active,.cg-go:active{transform:none}
+}
+@keyframes cg-fade{from{opacity:0}}

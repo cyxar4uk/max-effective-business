@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
 import { haptic } from '../max/bridge';
+import { CheckGuide } from './CheckGuide';
 
 /** Главный: выбор роли. Проверяющий один — проходит обе роли одним аккаунтом. */
 export function Home() {
@@ -31,6 +32,7 @@ export function Home() {
           О сервисе
         </button>
       </div>
+      <CheckGuide />
     </main>
   );
 }

@@ -8,7 +8,7 @@ export function PlaceArt({ place, variant }: { place: Pick<Internship, 'id' | 't
   const cover = placeCover(place);
   const ring = variant === 'banner' ? 260 : 150;
   return (
-    <span className={`cover ${cover.cls} pl-cover ${variant}`} aria-hidden="true">
+    <span className={`cover ${cover.cls} pl-cover pl-cover-${variant}`} aria-hidden="true">
       {cover.cls === 'cv-data' ? (
         <span className="cv-grid" />
       ) : (
