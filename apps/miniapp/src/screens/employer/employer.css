@@ -28,6 +28,8 @@
 
 /* поля */
 .pf-line{width:100%;border:0;border-bottom:2px solid var(--ink);border-radius:0;background:transparent;outline:0;padding:6px 0 10px;font:600 22px/1.25 var(--font);color:var(--ink)}
+/* задача — многострочное поле без рамки и ручки: растёт по содержимому (TitleField в formSteps.tsx) */
+textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywhere}
 .pf-line.sm{font-size:19px;border-bottom-color:var(--line2);padding:4px 0 8px}
 .pf-line:focus{border-bottom-color:var(--st)}
 .pf-line[aria-invalid="true"]{border-bottom-color:var(--neg-ink)}

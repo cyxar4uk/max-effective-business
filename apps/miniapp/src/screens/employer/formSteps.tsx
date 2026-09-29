@@ -1,5 +1,5 @@
 // Содержимое восьми шагов формы места. Одни и те же блоки идут и пошагово (телефон), и одной страницей (десктоп).
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { InternshipType, SkillCode, Tag, WorkFormat } from '../../api/types';
 import { haptic } from '../../max/bridge';
 import { tagColor } from '../student/place';
@@ -17,6 +17,56 @@ export interface StepProps {
 }
 
 // ---------- 1. Задача и теги ----------
+
+/**
+ * Задача — одна строка по смыслу, но длинная видна целиком: поле переносит слова и растёт по высоте.
+ * Перевод строки не вводится: Enter — как в однострочном поле (на телефоне — «Дальше»), вставка — через пробел.
+ */
+function TitleField({ className, value, ariaLabel, invalid, onChange }: {
+  className: string;
+  value: string;
+  ariaLabel?: string;
+  invalid: boolean;
+  onChange: (value: string) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Высота по содержимому: при вводе и при смене ширины окна (поворот, десктоп)
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const grow = () => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+    };
+    grow();
+    window.addEventListener('resize', grow);
+    return () => window.removeEventListener('resize', grow);
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      id="pf-title"
+      className={className}
+      rows={1}
+      value={value}
+      maxLength={LIMITS.title}
+      placeholder="Например, настроить карточки на Wildberries"
+      autoComplete="off"
+      enterKeyHint="next"
+      aria-label={ariaLabel}
+      aria-invalid={invalid}
+      aria-describedby="pf-title-err"
+      onChange={(e) => onChange(e.target.value.replace(/\s*[\r\n]+\s*/g, ' '))}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+        e.preventDefault();
+        e.currentTarget.form?.requestSubmit();
+      }}
+    />
+  );
+}
 
 export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
   const full = draft.tags.length >= LIMITS.tags;
@@ -48,18 +98,12 @@ export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
             Задача для студента, коротко
           </label>
         )}
-        <input
-          id="pf-title"
+        <TitleField
           className={compact ? 'pf-line sm' : 'pf-line'}
           value={draft.title}
-          maxLength={LIMITS.title}
-          placeholder="Например, настроить карточки на Wildberries"
-          autoComplete="off"
-          enterKeyHint="next"
-          aria-label={compact ? 'Задача для студента' : undefined}
-          aria-invalid={Boolean(errors.title)}
-          aria-describedby="pf-title-err"
-          onChange={(e) => update({ title: e.target.value })}
+          ariaLabel={compact ? 'Задача для студента' : undefined}
+          invalid={Boolean(errors.title)}
+          onChange={(title) => update({ title })}
         />
         <div className="pf-under">
           <FieldError id="pf-title-err" msg={errors.title} />
