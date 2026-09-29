@@ -1,6 +1,9 @@
 /* Работодатель: профиль компании, форма места, «Место опубликовано». Макеты c2 FormStep / DeskForm, c1 Form*.
    Цвета интерфейса — токены из tokens.css; внутри карточки-превью — как у .card в app.css (всегда тёмная). */
 
+/* фон экранов работодателя — из токенов (корень MaxUI красит свой): на нём видны поверхности .surf и блоки формы */
+.emp{background:var(--bg)}
+
 /* шапка шага */
 .pf-form{flex-grow:1;display:flex;flex-direction:column;width:100%;max-width:640px;margin:0 auto}
 .pf-prog{display:flex;gap:4px;padding:12px 0 0}
@@ -88,11 +91,11 @@
 .pf-desc p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink2)}
 
 /* превью карточки — как в ленте студента */
-.pf-card-wrap{position:relative;height:460px;flex-shrink:0}
+.pf-card-wrap{position:relative;height:520px;flex-shrink:0}
 .pf-card-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .pf-card-co{font-size:14px;color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* внутри .card токены переопределены под тёмную карточку (app.css) */
-.pf-pct-none{color:var(--ink3)}
+.pf-pct-none{color:var(--ink3);white-space:nowrap}
 .sk.pf-req{box-shadow:inset 0 0 0 1px var(--ink2);color:var(--ink)}
 
 /* место опубликовано */
@@ -115,7 +118,8 @@
 .pf-field .pf-err{font-size:12.5px}
 
 /* десктоп: форма одной страницей и живое превью справа */
-.pf-desk{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:36px;max-width:1240px;margin:0 auto;padding:28px 36px 40px;min-height:100vh}
+/* фон на всю ширину окна, содержимое — не шире 1168 px по центру */
+.pf-desk{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:36px;padding:28px max(36px,calc((100% - 1168px) / 2)) 40px;min-height:100vh}
 .pf-desk-head{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
 .pf-blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .pf-blk{background:var(--surf);border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0;scroll-margin-top:24px}
@@ -124,7 +128,7 @@
 .pf-blk .seg{max-width:420px}
 .pf-blk .pf-input,.pf-blk .pf-area{background:var(--bg)}
 .pf-desk-side{position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;gap:14px}
-.pf-desk-side .pf-card-wrap{height:520px}
+.pf-desk-side .pf-card-wrap{height:540px}
 
 /* ---------- движение ----------
    Только transform и opacity. «Уменьшить движение» в системе — одни проявления 150 мс, без сдвигов и перелётов. */

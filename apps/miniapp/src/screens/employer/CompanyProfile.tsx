@@ -37,14 +37,14 @@ function CompanyLoader() {
   const [state, retry] = useLoad(loadProfile, []);
   if (state.status === 'loading') {
     return (
-      <main className="screen">
+      <main className="screen emp">
         <Skeleton lines={3} height={56} />
       </main>
     );
   }
   if (state.status === 'error') {
     return (
-      <main className="screen">
+      <main className="screen emp">
         <ErrorState error={state.error} onRetry={retry} />
       </main>
     );

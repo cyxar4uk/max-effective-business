@@ -115,7 +115,7 @@ function PlaceFormLoader({ userId }: { userId: number }) {
 
   if (state.status === 'loading') {
     return (
-      <main className="screen">
+      <main className="screen emp">
         <Skeleton lines={4} />
       </main>
     );
@@ -123,7 +123,7 @@ function PlaceFormLoader({ userId }: { userId: number }) {
   if (state.status === 'error') {
     if (state.error.code === 'NOT_FOUND') return <Navigate to="/employer/profile" replace />;
     return (
-      <main className="screen">
+      <main className="screen emp">
         <ErrorState error={state.error} onRetry={retry} />
       </main>
     );
@@ -268,7 +268,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
 
   if (publishedId !== null) {
     return (
-      <main className="screen">
+      <main className="screen emp">
         <Skeleton lines={3} />
       </main>
     );
