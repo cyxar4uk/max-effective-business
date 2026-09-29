@@ -1,10 +1,10 @@
 # Деплой
 
-Владелец — Андрей. Прод — один VPS с Docker: Caddy (HTTPS) → `server` (API + вебхук бота) и `miniapp` (статика) →
+Владелец — Андрей. Прод — один VPS с Docker: Caddy (HTTPS) → `meb-server` (API + вебхук бота) и `miniapp` (статика) →
 PostgreSQL. Сертификат Let's Encrypt Caddy выпускает и продлевает сам.
 
 ```
-MAX ──HTTPS:443──> Caddy ─┬─ /api/*, /bot/* ──> server:3000 ──> db:5432
+MAX ──HTTPS:443──> Caddy ─┬─ /api/*, /bot/* ──> meb-server:3000 ──> db:5432
                           └─ всё остальное ───> miniapp:80
 ```
 
@@ -28,11 +28,10 @@ MAX ──HTTPS:443──> Caddy ─┬─ /api/*, /bot/* ──> server:3000 �
 ## Первый запуск на сервере
 
 ```bash
-# 1. Docker
+# 1. Docker; при 2 ГБ памяти и меньше — ещё своп на 2 ГБ, иначе сборка образов может не уместиться
 curl -fsSL https://get.docker.com | sh
 
-# 2. Репозиторий (приватный — нужен deploy key или токен с правом чтения)
-git clone https://github.com/cyxar4uk/max-effective-business.git /opt/max-effective-business
+# 2. Репозиторий — клон по SSH с deploy key, см. «Доступ к репозиторию на сервере» ниже
 cd /opt/max-effective-business
 
 # 3. Переменные
@@ -46,19 +45,40 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build
 curl -s https://<DOMAIN>/api/health     # {"status":"ok","db":"ok"}
 ```
 
+## Доступ к репозиторию на сервере
+
+Репозиторий приватный, а `scripts/deploy.sh` делает `git fetch` по SSH без терминала — пароль или токен там не
+ввести. Один раз, на сервере под пользователем деплоя (он в группе `docker`):
+
+```bash
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/meb_deploy -C meb-deploy
+cat ~/.ssh/meb_deploy.pub
+# владелец репозитория добавляет ключ: GitHub → репозиторий → Settings → Deploy keys, без права записи
+sudo install -d -o "$USER" /opt/max-effective-business
+GIT_SSH_COMMAND='ssh -i ~/.ssh/meb_deploy -o IdentitiesOnly=yes' \
+  git clone git@github.com:cyxar4uk/max-effective-business.git /opt/max-effective-business
+git -C /opt/max-effective-business config core.sshCommand 'ssh -i ~/.ssh/meb_deploy -o IdentitiesOnly=yes'
+```
+
+Ключ даёт доступ только к этому репозиторию и только на чтение. Пока его не добавили — запасной путь без ключей на
+сервере: зайти `ssh -A <user>@<host>`, клонировать `git@github.com:…` своим ключом через ssh-agent и выкатывать с
+`DEPLOY_FORWARD_AGENT=1 scripts/deploy.sh`. Пока открыта сессия, root сервера может пользоваться вашим агентом —
+годится только для сервера своей команды.
+
 ## Если на сервере уже есть nginx или Caddy
 
 Например, на машине уже живёт другое мини-приложение и порты 80/443 заняты его прокси. Тогда свой Caddy не
 поднимаем, а встаём за существующий прокси:
 
 1. Поддомен (например, `career.<домен>`) с A-записью на этот сервер; в `.env` — `DOMAIN=<поддомен>`,
-   `SERVER_PORT` — свободный локальный порт (по умолчанию 3000).
+   `SERVER_PORT` — свободный локальный порт (по умолчанию 3000; занят ли — `ss -ltn | grep ':3000 '`), тот же порт —
+   в блоке прокси.
 2. Запуск:
    ```bash
    docker network create meb-edge        # один раз: общая сеть с прокси, живёт независимо от обоих стеков
    docker compose -f compose.yaml -f compose.proxy.yaml up -d --build
    ```
-   Сервер слушает `127.0.0.1:$SERVER_PORT` и сеть `meb-edge` (алиас `meb-server`); БД — только в своей сети.
+   Сервер слушает `127.0.0.1:$SERVER_PORT` и сеть `meb-edge` (имя `meb-server`); БД — только в своей сети.
 3. В существующий прокси добавить блок для поддомена — смотря где прокси:
 
    | Прокси | Как ходит к серверу | Пример |
@@ -74,6 +94,9 @@ curl -s https://<DOMAIN>/api/health     # {"status":"ok","db":"ok"}
    Подключить контейнер прокси к сети: `docker network connect meb-edge <контейнер>`. Если прокси поднимается
    через compose соседнего проекта — лучше прописать сеть там (`networks: [default, meb-edge]` у сервиса и
    `meb-edge: { external: true }`), иначе подключение пропадёт при пересоздании контейнера.
+   **Не перехватить соседей:** Docker ищет имя сразу во всех сетях контейнера, а Compose регистрирует в них имена
+   сервисов. Поэтому наш сервис называется `meb-server`, а не `server`. Проверка: до и после `docker network connect`
+   имя бэкенда соседей из их конфига прокси разрешается в тот же адрес — `docker exec <контейнер> getent hosts <имя>`.
    **Важно для nginx в контейнере:** адрес `meb-server` должен разрешаться при каждом запросе (`resolver 127.0.0.11`
    и переменная в `proxy_pass`, как в примере). Иначе nginx не запустится, пока наш сервер лежит, — вместе с
    соседними сайтами.
@@ -82,8 +105,9 @@ curl -s https://<DOMAIN>/api/health     # {"status":"ok","db":"ok"}
 
 Соседнее приложение не затрагивается: у нас свои контейнеры, сеть и тома Docker, из общего — только прокси.
 
-Что узнать у владельца сервера заранее: SSH-доступ, какой прокси (nginx или Caddy, в Docker или на хосте),
-свободная память (нужно ~500 МБ), установлен ли Docker Compose v2.24+.
+Что узнать у владельца сервера заранее: SSH-доступ (пользователь в группе `docker`), какой прокси (nginx или Caddy,
+в Docker или на хосте), свободная память (нужно ~500 МБ), установлен ли Docker Compose v2.24+. Владельца
+репозитория — добавить deploy key (см. выше).
 
 ## Подключить к MAX
 
@@ -114,7 +138,7 @@ DEPLOY_MODE=proxy DEPLOY_HOST=deploy@<ip> scripts/deploy.sh   # за чужим 
 ```bash
 O=compose.prod.yaml     # свой Caddy; за чужим прокси — O=compose.proxy.yaml
 docker compose -f compose.yaml -f $O ps
-docker compose -f compose.yaml -f $O logs --tail 100 server
+docker compose -f compose.yaml -f $O logs --tail 100 meb-server
 docker compose -f compose.yaml -f $O logs --tail 100 caddy     # только со своим Caddy: проблемы с сертификатом
 docker network inspect meb-edge --format '{{range .Containers}}{{.Name}} {{end}}'   # за прокси в Docker: кто в общей сети
 ```

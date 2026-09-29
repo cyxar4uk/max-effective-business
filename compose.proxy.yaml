@@ -7,15 +7,14 @@
 #     (deploy/nginx-docker.conf.example). Подробно — docs/deploy.md.
 
 services:
-  server:
+  meb-server:
     # Только локальный интерфейс хоста: снаружи сервер доступен лишь через прокси
     ports: !override
       - "127.0.0.1:${SERVER_PORT:-3000}:3000"
     networks:
       default: {}
-      # Общая с прокси сеть. БД в неё не входит. Уникальный алиас — чтобы не пересечься с сервисами соседей
-      edge:
-        aliases: [meb-server]
+      # Общая с прокси сеть; адрес в ней — имя сервиса meb-server (уникальное, см. compose.yaml). БД в неё не входит
+      edge: {}
     environment:
       TRUST_PROXY: 1
       MINIAPP_URL: https://${DOMAIN:?Задайте DOMAIN в .env}

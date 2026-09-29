@@ -2,6 +2,7 @@
 # Выкатить ветку (по умолчанию main) на прод-сервер одной командой:
 #   DEPLOY_HOST=user@1.2.3.4 scripts/deploy.sh [ветка или коммит]
 #   DEPLOY_MODE=proxy DEPLOY_HOST=… scripts/deploy.sh     # за уже работающим на сервере nginx/Caddy
+#   DEPLOY_FORWARD_AGENT=1 …                              # нет deploy key: git на сервере берёт ваш ключ из ssh-agent
 # На сервере заранее: Docker с compose, клон репозитория в $DEPLOY_DIR и заполненный .env (см. docs/deploy.md).
 set -euo pipefail
 
@@ -14,7 +15,7 @@ case "${DEPLOY_MODE:-caddy}" in
   *) echo "DEPLOY_MODE: caddy или proxy" >&2; exit 1 ;;
 esac
 
-ssh "$HOST" bash -s -- "$DIR" "$BRANCH" "$OVERRIDE" <<'REMOTE'
+ssh ${DEPLOY_FORWARD_AGENT:+-A} "$HOST" bash -s -- "$DIR" "$BRANCH" "$OVERRIDE" <<'REMOTE'
 set -euo pipefail
 cd "$1"
 git fetch --quiet origin
@@ -25,7 +26,8 @@ git checkout --quiet --detach "$target"
 # Режим за чужим прокси: общая сеть с прокси должна существовать до запуска
 if [ "$3" = compose.proxy.yaml ]; then docker network inspect meb-edge >/dev/null 2>&1 || docker network create meb-edge >/dev/null; fi
 docker compose -f compose.yaml -f "$3" up -d --build --remove-orphans
-docker image prune -f >/dev/null
+# Только свои старые образы: на сервере живут чужие проекты
+docker image prune -f --filter label=com.docker.compose.project=max-effective-business >/dev/null
 echo "Выкачено: $(git rev-parse --short HEAD) ($2)"
 docker compose -f compose.yaml -f "$3" ps --format '{{.Service}}: {{.Status}}'
 REMOTE

@@ -16,10 +16,10 @@
 
 	# API мини-приложения и вебхук бота
 	handle /api/* {
-		reverse_proxy server:3000
+		reverse_proxy meb-server:3000
 	}
 	handle /bot/* {
-		reverse_proxy server:3000
+		reverse_proxy meb-server:3000
 	}
 
 	# Мини-приложение (статика за nginx, контейнер miniapp — Илья)

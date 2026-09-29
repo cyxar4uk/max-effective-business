@@ -29,7 +29,7 @@ scripts/freeze-check.sh
 git clone https://github.com/cyxar4uk/max-effective-business.git && cd max-effective-business
 cp .env.example .env    # MAX_BOT_TOKEN=local-check, POSTGRES_PASSWORD=любой
 docker compose up --build
-MAX_BOT_TOKEN=local-check node scripts/smoke.mjs
+node --env-file=.env scripts/smoke.mjs
 ```
 
 Всё, где пришлось догадываться, — правка в README до заморозки.

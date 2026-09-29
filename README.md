@@ -110,10 +110,10 @@ docker compose up --build
 `POSTGRES_PASSWORD`: API, подпись данных запуска для smoke-проверки и тестовые данные работают, бот только не
 отправит сообщений. Проверка в самом MAX — через нашего развёрнутого бота, токен для этого не нужен.
 
-Поднимаются `db` и `server`; при старте сервер применяет миграции, загружает справочники и (при `SEED_DEMO=true`)
+Поднимаются `db` и `meb-server`; при старте сервер применяет миграции, загружает справочники и (при `SEED_DEMO=true`)
 тестовые данные. Проверка: `curl http://localhost:3000/api/health` → `{"status":"ok","db":"ok"}` или полная
-smoke-проверка `MAX_BOT_TOKEN=<токен из .env> node scripts/smoke.mjs` (нужен Node.js 20+ на хосте; создаёт служебного
-пользователя «Smoke»).
+smoke-проверка `node --env-file=.env scripts/smoke.mjs` (токен и порт берутся из `.env`; нужен Node.js 20.6+ на хосте;
+создаёт служебного пользователя «Smoke»).
 
 **Бот локально на `/start` не отвечает:** входящие сообщения MAX доставляет только на вебхук по HTTPS на 443 при
 заданном `MAX_WEBHOOK_SECRET`, то есть на развёрнутом сервере ([docs/deploy.md](docs/deploy.md)). Локально бот только
@@ -127,7 +127,7 @@ smoke-проверка `MAX_BOT_TOKEN=<токен из .env> node scripts/smoke.
 - Docker Engine 24+ и Docker Compose v2.24+ (используется `!reset` в `compose.prod.yaml`).
 - ОС: любая с Docker. Сборка образа проверяется в CI на Ubuntu 24.04. TODO: прогон на чистой машине.
 - Свободный порт 3000 (меняется через `SERVER_PORT`).
-- Для smoke-проверки — Node.js 20+ на хосте (необязательно).
+- Для smoke-проверки — Node.js 20.6+ на хосте (необязательно).
 - Для прода — сервер с публичным IP, домен и открытые 80/443, см. [docs/deploy.md](docs/deploy.md).
 
 ## Переменные окружения
@@ -153,7 +153,7 @@ smoke-проверка `MAX_BOT_TOKEN=<токен из .env> node scripts/smoke.
 
 | Порт | Кто | Где открыт |
 |---|---|---|
-| 3000 | `server`: API `/api/*`, вебхук `/bot/webhook` (только при заданном `MAX_WEBHOOK_SECRET`) | локально — на хосте (`SERVER_PORT`); в проде со своим Caddy — только внутри сети Docker; за чужим прокси — `127.0.0.1:SERVER_PORT` и сеть `meb-edge` |
+| 3000 | `meb-server`: API `/api/*`, вебхук `/bot/webhook` (только при заданном `MAX_WEBHOOK_SECRET`) | локально — на хосте (`SERVER_PORT`); в проде со своим Caddy — только внутри сети Docker; за чужим прокси — `127.0.0.1:SERVER_PORT` и сеть `meb-edge` |
 | 5432 | `db` | только внутри сети Docker |
 | 80, 443 | прокси | только прод: свой Caddy (`compose.prod.yaml`) или уже работающий на сервере nginx/Caddy |
 

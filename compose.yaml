@@ -1,6 +1,9 @@
 # Запуск всего одной командой: docker compose up --build
 # Переменные — в .env (скопировать из .env.example).
 
+# Имя проекта фиксировано: по нему scripts/deploy.sh на общем сервере чистит только свои старые образы
+name: max-effective-business
+
 # Ротация логов Docker: иначе журнал растёт без предела (в том числе от мусорных запросов)
 x-logging: &logging
   driver: json-file
@@ -25,7 +28,9 @@ services:
       retries: 10
     restart: unless-stopped
 
-  server:
+  # Имя уникальное: за чужим прокси сервис входит в общую с ним сеть, а Compose регистрирует там имя сервиса.
+  # Обычное имя (server) перехватило бы запросы соседнего приложения, чей прокси ходит к своему «server»
+  meb-server:
     build: ./apps/server
     logging: *logging
     depends_on:
