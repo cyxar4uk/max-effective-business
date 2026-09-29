@@ -1,0 +1,28 @@
+/* «Это тандем!» (макет c3 Match). Сферы — из токенов --st (студент) и --em (компания). */
+.tm{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;width:100%;max-width:560px;margin:0 auto}
+/* свечение обрезает своя обёртка: overflow на .tm сделал бы его контейнером прокрутки и сломал sticky у кнопок */
+.tm-glow-clip{position:absolute;left:0;right:0;top:0;height:340px;overflow:hidden;pointer-events:none}
+.tm-glow{position:absolute;left:-60px;right:-60px;top:-80px;height:420px;background:radial-gradient(50% 50% at 35% 50%,color-mix(in srgb,var(--st) 30%,transparent) 0,transparent 70%),radial-gradient(50% 50% at 65% 50%,color-mix(in srgb,var(--em) 30%,transparent) 0,transparent 70%)}
+.tm-body{position:relative;flex-grow:1;display:flex;flex-direction:column;gap:16px;padding:calc(48px + env(safe-area-inset-top)) 16px 0}
+.tm-pair{position:relative;display:flex;justify-content:center;height:128px}
+.tm-ava{width:120px;height:120px;font-size:48px;border:4px solid var(--bg)}
+.tm-st{margin-right:-26px;z-index:1;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--st) 45%,white) 0,var(--st) 50%,color-mix(in srgb,var(--st) 65%,black) 100%)}
+.tm-em{color:var(--on-em);background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--em) 45%,white) 0,var(--em) 50%,color-mix(in srgb,var(--em) 75%,black) 100%)}
+.tm-check{position:absolute;left:50%;bottom:-2px;width:40px;height:40px;margin-left:-20px;border-radius:50%;background:var(--btn);color:var(--btn-ink);display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:var(--shadow)}
+.tm-head{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.tm-h1{font-size:36px;line-height:1.05;font-weight:800}
+.tm-text{color:var(--ink2)}
+.tm-contact{gap:12px}
+.tm-logo{width:44px;height:44px;font-size:17px;color:var(--on-em);background:var(--em)}
+.tm-name{font-weight:600}
+.tm-phone{color:var(--ink2);user-select:all;-webkit-user-select:all}
+.tm-steps{padding:14px 16px;gap:10px}
+.tm-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.tm-list li{display:flex;align-items:flex-start;gap:10px}
+.tm-n{flex-shrink:0;width:18px;font-size:13px;line-height:1.55;color:var(--em-ink)}
+/* действия всегда на виду: практика — пять шагов, на маленьком экране список уходит под кнопки */
+.tm-acts{position:sticky;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;padding:20px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 78%,transparent)}
+.tm-acts .btn{width:100%}
+.tm-contact{flex-wrap:wrap}
+.tm-contact .btn{flex:1 0 100%}
+@media (min-width:480px){.tm-contact{flex-wrap:nowrap}.tm-contact .btn{flex:none}}

@@ -19,8 +19,9 @@ ready();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/* Тема — по устройству: MaxUI сам следит за prefers-color-scheme, наши токены — тоже */}
-    <MaxUI>
+    {/* Тема — по устройству: MaxUI сам следит за prefers-color-scheme, наши токены — тоже.
+        app-root возвращает корню наш фон, цвет текста и шрифт (styles/app.css) */}
+    <MaxUI className="app-root">
       <App />
     </MaxUI>
   </StrictMode>,
