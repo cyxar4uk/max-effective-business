@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import type { InternshipType } from '../../api/types';
 import { COVERS, logoLetter, TYPE_COVER_LABEL, type Cover } from './cover';
 import { cityOf, FORMAT_LABEL, rub, shortDate, slotsText, TYPE_LABEL, type Dict, type Draft } from './draft';
+import { Swap } from './ui';
 
 const MAX_SKILLS = 6;
 
@@ -51,23 +52,6 @@ function CrossfadeCover({ cover }: { cover: Cover }) {
     ) : (
       <CoverArt key={l.n} cover={l.cover} />
     ),
-  );
-}
-
-/** Текст, который меняется выбором (тип, формат, сроки, число мест): старый гаснет, новый проявляется на его месте. */
-function Swap({ text }: { text: string }) {
-  const [s, setS] = useState({ cur: text, prev: null as string | null, n: 0 });
-  if (s.cur !== text) setS({ cur: text, prev: s.cur, n: s.n + 1 });
-  if (s.prev === null) return <>{s.cur}</>;
-  return (
-    <span className="pf-swap">
-      <span key={`o${s.n}`} className="pf-fade-out" aria-hidden="true" onAnimationEnd={() => setS((x) => ({ ...x, prev: null }))}>
-        {s.prev}
-      </span>
-      <span key={`i${s.n}`} className="pf-fade-in">
-        {s.cur}
-      </span>
-    </span>
   );
 }
 
