@@ -139,12 +139,22 @@ export function employerInvitedMessage(opts: {
   studentName: string;
   phone: string | null;
   score: number;
+  /** Есть ли телефон у самого работодателя: его бот передаёт студенту в приглашении. */
+  employerHasPhone?: boolean;
 }): QueuedMessage {
   const lines = [
     `Вы пригласили студента на «${opts.title}».`,
     `${opts.studentName}${opts.phone ? `, ${opts.phone}` : ''}. Совпадение ${opts.score} %.`,
   ];
-  if (!opts.phone) lines.push('Телефона нет — напишите студенту в MAX.');
+  // Написать студенту в MAX работодателю не через что: ник студента мы не храним. Тексты — как на «Это тандем!»
+  // в мини-приложении (apps/miniapp/src/screens/employer/CandidateCard.tsx)
+  if (!opts.phone) {
+    lines.push(
+      opts.employerHasPhone
+        ? 'Студент не указал телефон. Бот отправил ему ваш контакт — ждите звонка или сообщения.'
+        : 'Телефона нет ни у вас, ни у студента. Добавьте свой номер в мини-приложении, чтобы студент мог с вами связаться.',
+    );
+  }
   return { text: lines.join('\n'), buttons: [[{ text: 'Кандидаты', startapp: internshipParam(opts.internshipId) }]] };
 }
 
