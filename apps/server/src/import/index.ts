@@ -7,6 +7,7 @@ import type { Logger } from 'pino';
 import type { DataSource } from 'typeorm';
 import { fetchPilotVacancies, mapVacancy, type FetchOptions, type ImportedPlace, type TrudvsemVacancy } from './trudvsem.js';
 import { TRUDVSEM_SNAPSHOT } from './trudvsemSnapshot.js';
+import { tagsForSkills } from '../seed/tags.js';
 
 export interface ImportResult {
   /** Откуда вакансии: живой API, сохранённый снимок (база была пуста) или ниоткуда (API молчит, база уже заполнена). */
@@ -15,6 +16,8 @@ export interface ImportResult {
   imported: number;
   skipped: number;
   closed: number;
+  /** Скольким уже загруженным местам проставлены теги (backfillTrudvsemTags). */
+  tagged: number;
 }
 
 type Query = (sql: string, params?: unknown[]) => Promise<unknown>;
@@ -23,8 +26,8 @@ type Query = (sql: string, params?: unknown[]) => Promise<unknown>;
 async function upsert(db: { query: Query }, p: ImportedPlace, fromSnapshot: boolean): Promise<void> {
   await db.query(
     `INSERT INTO internships (company_name, title, description, required_skills, nice_skills, format, city, slots,
-                              type, paid, salary, source, source_id, source_url, is_demo, status)
-     VALUES ($1, $2, $3, $4, '{}', $5, $6, $7, $10, $11, $12, 'trudvsem', $8, $9, false, 'open')
+                              type, paid, salary, tags, source, source_id, source_url, is_demo, status)
+     VALUES ($1, $2, $3, $4, '{}', $5, $6, $7, $10, $11, $12, $13, 'trudvsem', $8, $9, false, 'open')
      ON CONFLICT (source, source_id) ${
        fromSnapshot
          ? 'DO NOTHING'
@@ -32,10 +35,28 @@ async function upsert(db: { query: Query }, p: ImportedPlace, fromSnapshot: bool
        company_name = EXCLUDED.company_name, title = EXCLUDED.title, description = EXCLUDED.description,
        required_skills = EXCLUDED.required_skills, format = EXCLUDED.format, city = EXCLUDED.city,
        slots = EXCLUDED.slots, source_url = EXCLUDED.source_url, type = EXCLUDED.type, paid = EXCLUDED.paid,
-       salary = EXCLUDED.salary, status = 'open', updated_at = now()`
+       salary = EXCLUDED.salary, tags = EXCLUDED.tags, status = 'open', updated_at = now()`
      }`,
-    [p.companyName, p.title, p.description, p.requiredSkills, p.format, p.city, p.slots, p.sourceId, p.sourceUrl, p.type, p.paid, p.salary],
+    [p.companyName, p.title, p.description, p.requiredSkills, p.format, p.city, p.slots, p.sourceId, p.sourceUrl, p.type, p.paid, p.salary, tagsForSkills(p.requiredSkills)],
   );
+}
+
+/**
+ * Теги местам «Работа России», загруженным до того, как импорт начал их ставить (или из снимка, который существующие
+ * записи не трогает). Только пустые теги — выставленное не перезаписываем. Возвращает число обновлённых мест.
+ */
+export async function backfillTrudvsemTags(db: { query: Query }): Promise<number> {
+  const rows = (await db.query(
+    `SELECT id, required_skills FROM internships WHERE source = 'trudvsem' AND cardinality(tags) = 0`,
+  )) as { id: number; required_skills: string[] }[];
+  let updated = 0;
+  for (const r of rows) {
+    const tags = tagsForSkills(r.required_skills);
+    if (!tags.length) continue;
+    await db.query(`UPDATE internships SET tags = $2 WHERE id = $1 AND cardinality(tags) = 0`, [r.id, tags]);
+    updated++;
+  }
+  return updated;
 }
 
 export async function importTrudvsem(
@@ -53,7 +74,7 @@ export async function importTrudvsem(
     // которые живой импорт уже закрыл, и затёр бы свежие данные старыми.
     const [row] = (await db.query(`SELECT count(*)::int AS n FROM internships WHERE source = 'trudvsem'`)) as { n: number }[];
     if ((row?.n ?? 0) > 0) {
-      return { from: 'none', vacancies: 0, imported: 0, skipped: 0, closed: 0 };
+      return { from: 'none', vacancies: 0, imported: 0, skipped: 0, closed: 0, tagged: await backfillTrudvsemTags(db) };
     }
     from = 'snapshot';
     vacancies = opts.snapshot ?? TRUDVSEM_SNAPSHOT.vacancies;
@@ -75,7 +96,8 @@ export async function importTrudvsem(
     closed = Array.isArray(rows[0]) ? (rows[0] as unknown[]).length : rows.length;
   }
 
-  return { from, vacancies: vacancies.length, imported: places.length, skipped: vacancies.length - places.length, closed };
+  const tagged = await backfillTrudvsemTags(db);
+  return { from, vacancies: vacancies.length, imported: places.length, skipped: vacancies.length - places.length, closed, tagged };
 }
 
 /** Раз в 6 часов: чаще незачем, API медленный. */
