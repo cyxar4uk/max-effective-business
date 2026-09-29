@@ -25,6 +25,12 @@
 .feed-orb{transform:scale(.6);margin:-50px 0}
 
 /* карточка колоды */
+.pc-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+/* ужатие текста, когда он не помещается в карточку (squeezeSteps в PlaceCard.tsx) */
+.card-face:is(.t1,.t2,.t3) .pc-title{-webkit-line-clamp:2}
+.card-face.t2 .pc-facts{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-face.t3 .pc-facts{display:none}
+.card-face.t3 .pc-own{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pc-where{font-size:14px;color:var(--ink2)}
 .pc-chips{gap:6px;min-width:0;flex-wrap:wrap}
 .gchip.own{background:var(--own-bg)}

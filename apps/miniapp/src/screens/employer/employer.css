@@ -93,7 +93,10 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-desc p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--ink2)}
 
 /* превью карточки — как в ленте студента */
-.pf-card-wrap{position:relative;height:520px;flex-shrink:0}
+/* превью растёт по тексту: страница прокручивается, текст не обрезается; надпись обложки уступает место тексту */
+.pf-card-wrap{position:relative;display:flex;min-height:520px;flex-shrink:0}
+.pf-card-wrap .card{position:relative;inset:auto;flex:1 1 auto;display:flex;flex-direction:column}
+.pf-card-wrap .card-face{position:relative;inset:auto;flex:1 0 auto}
 .pf-card-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .pf-card-co{font-size:14px;color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* внутри .card токены переопределены под тёмную карточку (app.css) */
@@ -135,7 +138,7 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-blk .seg{max-width:420px}
 .pf-blk .pf-input,.pf-blk .pf-area{background:var(--bg)}
 .pf-desk-side{position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;gap:14px}
-.pf-desk-side .pf-card-wrap{height:540px}
+.pf-desk-side .pf-card-wrap{min-height:540px}
 
 /* ---------- движение ----------
    Только transform и opacity. «Уменьшить движение» в системе — одни проявления 150 мс, без сдвигов и перелётов. */

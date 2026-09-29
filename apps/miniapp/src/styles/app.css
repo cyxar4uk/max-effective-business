@@ -71,6 +71,14 @@
 .title{font-family:"Unbounded","Onest",sans-serif;font-weight:700;font-size:24px;line-height:1.12;letter-spacing:-.02em;margin:0}
 .logo{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--on-em);flex-shrink:0;background:#ffa51f}
 .facts{font-size:13.5px;color:var(--ink2)}
+/* лицевая сторона карточки места (лента студента, превью в форме места) — колонкой: плашки, надпись обложки, текст.
+   Надпись (components/FitLabel.tsx) занимает только высоту между плашками и текстом и вписывается в неё:
+   44 px, если места хватает, иначе меньше; совсем тесно — скрыта. Так она не наезжает на заголовок. */
+.card-face{position:absolute;inset:0;display:flex;flex-direction:column}
+.card-face .topchips{position:static;flex:none;flex-wrap:wrap;margin:16px 16px 0}
+.card-cv{flex:1 1 0;min-height:0;margin:18px 22px 0;contain:size layout}
+.card-cv .cv-label{position:static;overflow-wrap:normal}
+.card-face .info{position:static;flex:none}
 
 /* совпадение */
 .match{display:flex;align-items:center;gap:12px}

@@ -3,6 +3,7 @@ import type { InternshipType } from '../../api/types';
 import { COVERS, logoLetter, TYPE_COVER_LABEL, type Cover } from './cover';
 import { cityOf, FORMAT_LABEL, rub, shortDate, slotsText, TYPE_LABEL, type Dict, type Draft } from './draft';
 import { Swap } from './ui';
+import { FitLabel } from '../../components/FitLabel';
 
 const MAX_SKILLS = 6;
 
@@ -33,14 +34,11 @@ function CoverArt({ cover, className, onAnimationEnd }: CoverArtProps) {
           <span className="cv-ring" style={{ width: 170, height: 170, right: -30, top: -10 }} />
         </>
       )}
-      <div className="cv-label" lang="ru">
-        {cover.label}
-      </div>
     </div>
   );
 }
 
-/** Смена обложки — новая проявляется поверх старой за 150 мс, старая убирается после. */
+/** Смена обложки — новая проявляется поверх старой за 150 мс, старая убирается после; надпись — в FitLabel. */
 function CrossfadeCover({ cover }: { cover: Cover }) {
   const id = `${cover.cls}|${cover.label}`;
   const [layers, setLayers] = useState([{ id, cover, n: 0 }]);
@@ -118,42 +116,46 @@ export function PlacePreview({ draft, dict }: { draft: Draft; dict: Dict }) {
     <div className="pf-card-wrap">
       <article className="card" aria-label="Так карточку увидят студенты">
         <CrossfadeCover cover={cover} />
-        <div className="topchips">
-          <span className="gchip">
-            <Swap text={typeChip} />
-          </span>
-        </div>
         <div className="shade" />
-        <div className="info">
-          <div className="col" style={{ gap: 8 }}>
-            <h2 className="title pf-card-title">{draft.title.trim() || 'Задача для студента'}</h2>
-            <div className="row">
-              <span className="logo" aria-hidden="true">
-                {logoLetter(dict.companyName)}
-              </span>
-              <span className="pf-card-co">
-                <Dotted parts={where} />
-              </span>
-            </div>
-          </div>
-          <div className="match">
-            <span className="pct pf-pct-none" aria-label="Процент совпадения">
-              —<small>%</small>
+        {/* Как в ленте студента: надпись обложки вписана между плашкой и текстом и не наезжает на заголовок */}
+        <div className="card-face">
+          <div className="topchips">
+            <span className="gchip">
+              <Swap text={typeChip} />
             </span>
-            <span className="lbl">у каждого студента свой процент совпадения</span>
           </div>
-          {shown.length > 0 && (
-            <div className="skills">
-              {shown.map((s) => (
-                <span key={s.code} className={s.nice ? 'sk no pf-fade-in' : 'sk pf-req pf-fade-in'}>
-                  {dict.skillName.get(s.code) ?? s.code}
+          <FitLabel key={cover.label} className="card-cv pf-fade-in" label={cover.label} />
+          <div className="info">
+            <div className="col" style={{ gap: 8 }}>
+              <h2 className="title pf-card-title">{draft.title.trim() || 'Задача для студента'}</h2>
+              <div className="row">
+                <span className="logo" aria-hidden="true">
+                  {logoLetter(dict.companyName)}
                 </span>
-              ))}
-              {more > 0 && <span className="sk no">+{more}</span>}
+                <span className="pf-card-co">
+                  <Dotted parts={where} />
+                </span>
+              </div>
             </div>
-          )}
-          <div className="facts">
-            <Dotted parts={facts} />
+            <div className="match">
+              <span className="pct pf-pct-none" aria-label="Процент совпадения">
+                —<small>%</small>
+              </span>
+              <span className="lbl">у каждого студента свой процент совпадения</span>
+            </div>
+            {shown.length > 0 && (
+              <div className="skills">
+                {shown.map((s) => (
+                  <span key={s.code} className={s.nice ? 'sk no pf-fade-in' : 'sk pf-req pf-fade-in'}>
+                    {dict.skillName.get(s.code) ?? s.code}
+                  </span>
+                ))}
+                {more > 0 && <span className="sk no">+{more}</span>}
+              </div>
+            )}
+            <div className="facts">
+              <Dotted parts={facts} />
+            </div>
           </div>
         </div>
       </article>
