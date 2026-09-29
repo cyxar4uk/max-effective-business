@@ -136,3 +136,7 @@
 @media (min-width:1024px) and (prefers-color-scheme: dark){
   .st-nav a.on{background:var(--chip)}
 }
+
+/* заглушка списков */
+.list-skel .skeleton-line{border-radius:7px}
+.list-skel .list-skel-thumb{width:56px;height:56px;border-radius:14px;flex-shrink:0}

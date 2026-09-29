@@ -5,7 +5,22 @@ import { spring, useReduced } from '../../motion/springs';
 import { matchLevel } from './place';
 import './student.css';
 
-type IconName = 'check' | 'cross' | 'undo' | 'up' | 'cards' | 'heart' | 'user' | 'search' | 'lock' | 'doc' | 'refresh' | 'phone';
+type IconName =
+  | 'check'
+  | 'cross'
+  | 'undo'
+  | 'up'
+  | 'cards'
+  | 'heart'
+  | 'user'
+  | 'search'
+  | 'lock'
+  | 'doc'
+  | 'refresh'
+  | 'phone'
+  | 'chevron'
+  | 'info'
+  | 'swap';
 
 const PATHS: Record<IconName, ReactNode> = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
@@ -55,6 +70,19 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   phone: <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z" />,
+  chevron: <path d="M9 6l6 6-6 6" />,
+  info: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11v5.5M12 7.6v.1" />
+    </>
+  ),
+  swap: (
+    <>
+      <path d="M4 8h14l-3.5-3.5" />
+      <path d="M20 16H6l3.5 3.5" />
+    </>
+  ),
 };
 
 export function Icon({ name, size, style }: { name: IconName; size?: 'xs' | 'sm' | 'lg'; style?: CSSProperties }) {
@@ -105,6 +133,23 @@ export function Pct({ score, size }: { score: number; size?: number }) {
       {score}
       <small>%</small>
     </span>
+  );
+}
+
+/** Заглушка списка на время загрузки: строки с миниатюрой и двумя линиями текста. */
+export function ListSkeleton({ rows = 4, thumb = true }: { rows?: number; thumb?: boolean }) {
+  return (
+    <div className="surf list-skel" role="status" aria-busy="true" aria-label="Загрузка">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="li">
+          {thumb && <span className="skeleton-line list-skel-thumb" />}
+          <span className="col grow" style={{ gap: 8 }}>
+            <span className="skeleton-line" style={{ width: `${72 - (i % 3) * 12}%`, height: 14 }} />
+            <span className="skeleton-line" style={{ width: '44%', height: 12 }} />
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 

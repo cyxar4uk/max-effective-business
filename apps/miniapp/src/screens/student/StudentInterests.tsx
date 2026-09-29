@@ -1,10 +1,8 @@
-import { useNavigate } from 'react-router';
-import { EmptyState } from '../../components/EmptyState';
+import { InterestsList } from './InterestsList';
 import { RequireConsent, StudentShell } from './StudentShell';
 
-/** «Мои отклики» студента — заглушка: сам экран со статусами и контактами делает задача #16. */
+/** Вкладка «Отклики» `/student/interests`: приглашения, ожидание ответа и отказы — с контактом после приглашения. */
 export function StudentInterests() {
-  const navigate = useNavigate();
   return (
     <RequireConsent>
       <StudentShell>
@@ -12,12 +10,7 @@ export function StudentInterests() {
           <div className="top sp-top">
             <h1 className="d m0 feed-h1">Отклики</h1>
           </div>
-          <EmptyState
-            title="Скоро"
-            text="Здесь будут ваши отклики со статусами. О приглашении бот сразу напишет вам в чат — с контактом компании."
-            actionLabel="Смотреть места"
-            onAction={() => navigate('/student')}
-          />
+          <InterestsList />
         </main>
       </StudentShell>
     </RequireConsent>

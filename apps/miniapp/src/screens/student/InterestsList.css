@@ -1,4 +1,23 @@
-.interests{list-style:none;margin:0;padding:0}
-.interests .contact{background:var(--surf2)}
-.interests .contact .btn.sec{background:var(--surf)}
-.interests .contact-acts{margin-top:6px;flex-wrap:wrap}
+/* «Отклики» студента (макет c3 Interests): приглашения — карточками с акцентом, остальное — списком. */
+.ints{display:flex;flex-direction:column;gap:12px}
+.ints-list{list-style:none;margin:0;padding:0}
+.ints-list>li{border-bottom:1px solid var(--line)}
+.ints-list>li:last-child{border-bottom:0}
+.ints-list .li{border-bottom:0}
+.ints-ext{padding-top:0}
+.ints-text{gap:3px}
+.ints-title{font-weight:600;line-height:1.25}
+.ints-text .st{align-self:flex-start}
+.ints-text .st.tandem{margin-bottom:3px}
+.ints-text .st.demo{margin-top:3px}
+.ints-thumb-big{width:72px;height:72px;border-radius:18px}
+/* тонкий акцент приглашения: рамка поверх содержимого, чтобы её не перекрывали фоны строк */
+.ints-tandem{position:relative}
+.ints-tandem::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1.5px var(--em);pointer-events:none}
+.ints-head{padding:14px;gap:14px}
+.ints-contact{padding:12px 14px 14px}
+.ints-name{font-weight:600}
+.ints-phone{color:var(--ink2);user-select:all;-webkit-user-select:all}
+.ints-acts{margin-top:8px;flex-wrap:wrap}
+.ints-acts .btn{flex:1 1 auto}
+.ints-note{padding:0 4px}

@@ -69,11 +69,12 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
 
   return (
     <main className="tm">
-      <motion.div
-        className="tm-glow"
-        aria-hidden="true"
-        {...(play ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { ...fade, duration: 0.5 } } : { initial: false })}
-      />
+      <div className="tm-glow-clip" aria-hidden="true">
+        <motion.div
+          className="tm-glow"
+          {...(play ? { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { ...fade, duration: 0.5 } } : { initial: false })}
+        />
+      </div>
       <div className="tm-body">
         <div className="tm-pair" aria-hidden="true">
           <motion.span className="ava tm-ava tm-st" {...sphere(-1)}>
