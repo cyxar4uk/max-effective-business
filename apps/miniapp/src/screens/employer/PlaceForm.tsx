@@ -63,6 +63,9 @@ const STEP_VIEWS: ComponentType<StepProps>[] = [
   SlotsStep,
   DescriptionStep,
 ];
+/** Подпись под «Опубликовать»: бесплатно и без обязательств. На телефоне 390 px — не больше двух строк. */
+const PUBLISH_NOTE = 'Бесплатно. Бот разошлёт карточку студентам с совпадением от 60 %. Закрыть набор — в любой момент.';
+
 /** Блоки на всю ширину в десктопной форме; остальные — по два в ряд. */
 const WIDE = new Set([0, 1, 2, 7]);
 
@@ -338,7 +341,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
           <button type="button" className="btn pri" disabled={publishing} onClick={() => void publish()}>
             {publishing ? 'Публикуем…' : 'Опубликовать'}
           </button>
-          <span className="lbl pf-center">Бот разошлёт карточку студентам с совпадением от 60 %</span>
+          <span className="lbl pf-center">{PUBLISH_NOTE}</span>
         </aside>
         {phoneSheet}
       </main>
@@ -405,7 +408,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
           <button type="submit" className="btn pri" disabled={publishing}>
             {submitLabel}
           </button>
-          {step === REVIEW_STEP && <span className="lbl pf-center">Бот разошлёт карточку студентам с совпадением от 60 %</span>}
+          {step === REVIEW_STEP && <span className="lbl pf-center">{PUBLISH_NOTE}</span>}
         </div>
       </form>
       {phoneSheet}
