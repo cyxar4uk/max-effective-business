@@ -22,31 +22,21 @@
 .feed-deck{flex:1 0 auto;display:flex;flex-direction:column}
 .feed-deck .stack{flex:1 0 380px}
 .feed-aside{display:none}
-.feed-empty{flex:1 0 auto;justify-content:center;padding:24px 28px}
+.feed-deck.is-empty .stack{margin:0}
+.feed-empty{padding:24px 28px}
+.feed-aside-in{display:flex;flex-direction:column;gap:16px}
 .feed-orb{transform:scale(.6);margin:-50px 0}
 
 /* карточка колоды */
-.pc-top{touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none;transition:transform .25s ease;animation:pc-in .22s ease}
-.pc-top.dragging{transition:none;cursor:grabbing}
-.pc-top.exiting{transition:transform .26s ease-in,opacity .26s ease-in;opacity:0;pointer-events:none}
-@keyframes pc-in{from{transform:translateY(14px) scale(.94);opacity:.5}}
 .pc-where{font-size:14px;color:var(--ink2)}
 .pc-skills .sk{max-width:100%}
 .pc-sk-name{overflow:hidden;text-overflow:ellipsis}
 .pc-skel{position:absolute;inset:0;border-radius:28px;background:var(--surf);padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
 .pc-skel .skeleton-line{border-radius:10px}
-.stamp{position:absolute;top:72px;padding:6px 12px;border:3px solid;border-radius:12px;font:800 20px/1 var(--font-display);text-transform:uppercase;letter-spacing:.02em;pointer-events:none;background:rgba(0,0,0,.28)}
-.stamp.like{left:20px;color:#46d989;border-color:#46d989;transform:rotate(-12deg)}
-.stamp.nope{right:20px;color:#ff5c62;border-color:#ff5c62;transform:rotate(12deg)}
 .fab-l{display:inline-flex;align-items:center;gap:6px}
 .fab .kbd{display:none}
-.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);width:max-content;max-width:min(420px,calc(100% - 32px));padding:12px 16px;border-radius:16px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;box-shadow:var(--shadow);z-index:20;animation:toast-in .2s ease}
+.toast{position:fixed;left:0;right:0;margin:0 auto;top:calc(12px + env(safe-area-inset-top));width:max-content;max-width:min(420px,calc(100% - 32px));padding:12px 16px;border-radius:16px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;box-shadow:var(--shadow);z-index:20}
 .toast.error{background:linear-gradient(var(--neg-bg),var(--neg-bg)),var(--surf);color:var(--neg-ink)}
-@keyframes toast-in{from{opacity:0;transform:translate(-50%,-8px)}}
-@media (prefers-reduced-motion: reduce){
-  .pc-top,.pc-top.exiting{transition:none;animation:none}
-  .toast{animation:none}
-}
 
 /* подробности места: экран места и панель колоды */
 .sd{display:flex;flex-direction:column;gap:14px}
@@ -128,8 +118,8 @@
   .st-nav a{flex:none;flex-direction:row;gap:12px;height:44px;padding:0 12px;border-radius:12px;font-size:15px;color:var(--ink2)}
   .st-nav a.on{background:var(--bg);color:var(--ink)}
   .feed{flex:1 1 0;min-height:0;flex-direction:row}
-  .feed-main{flex:1 1 0;min-width:0;overflow-y:auto}
-  .feed-deck .stack{height:clamp(400px,calc(100dvh - 350px),500px)}
+  .feed-main{flex:1 1 0;min-width:0;overflow-x:hidden;overflow-y:auto}
+  .feed-deck .stack{height:clamp(420px,calc(100dvh - 310px),540px)}
   .feed-top{padding:26px 32px 12px}
   .feed-h1{font-size:30px}
   .feed-chips{flex-wrap:wrap;overflow:visible;padding:0 32px 14px}

@@ -1,5 +1,7 @@
 // Мелкие части экранов студента: иконки из макета, эквалайзер совпадения, обложка.
+import { motion } from 'motion/react';
 import type { CSSProperties, ReactNode } from 'react';
+import { spring, useReduced } from '../../motion/springs';
 import { matchLevel } from './place';
 import './student.css';
 
@@ -66,15 +68,33 @@ export function Icon({ name, size, style }: { name: IconName; size?: 'xs' | 'sm'
 /** Высоты полос — как в макете: «живой» эквалайзер, а не ровная шкала. */
 const BARS = [12, 20, 28, 16, 24, 28, 18, 26, 14, 22];
 
-/** Эквалайзер: 10 полос, закрашено round(score / 10). onSurf — на светлой поверхности, а не на обложке. */
-export function Eq({ score, onSurf, mini }: { score: number; onSurf?: boolean; mini?: boolean }) {
+/**
+ * Эквалайзер: 10 полос, закрашено round(score / 10). onSurf — на светлой поверхности, а не на обложке.
+ * grow — полосы вырастают с 0 со сдвигом 30 мс, когда становится true (карточка стала верхней); false — свёрнуты.
+ */
+export function Eq({ score, onSurf, mini, grow }: { score: number; onSurf?: boolean; mini?: boolean; grow?: boolean }) {
+  const reduced = useReduced();
   const filled = Math.round(Math.max(0, Math.min(100, score)) / 10);
   const cls = ['eq', matchLevel(score), onSurf && 'on-surf', mini && 'mini'].filter(Boolean).join(' ');
+  const animated = grow !== undefined && !reduced;
   return (
     <div className={cls} aria-hidden="true">
-      {BARS.map((h, i) => (
-        <i key={i} className={i < filled ? 'on' : undefined} style={{ height: mini ? Math.round(h * 0.57) : h }} />
-      ))}
+      {BARS.map((h, i) => {
+        const height = mini ? Math.round(h * 0.57) : h;
+        const on = i < filled ? 'on' : undefined;
+        return animated ? (
+          <motion.i
+            key={i}
+            className={on}
+            style={{ height, originY: 1 }}
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: grow ? 1 : 0 }}
+            transition={grow ? { ...spring, delay: i * 0.03 } : { duration: 0 }}
+          />
+        ) : (
+          <i key={i} className={on} style={{ height }} />
+        );
+      })}
     </div>
   );
 }

@@ -1,0 +1,18 @@
+/* Колода со свайпом. Карточка — .card из app.css (тёмная, как фото); движение — motion values, здесь только вид.
+   Цвета печатей — токены карточки (.card переопределяет --hi под тёмный фон). */
+.deck-card{--nope:#ff5c62;--scrim:rgba(0,0,0,.28);user-select:none;-webkit-user-select:none;will-change:transform}
+.deck-card.is-top{cursor:grab}
+.deck-card.is-top:active{cursor:grabbing}
+.deck-card.is-fly{pointer-events:none}
+.deck .stamp{position:absolute;top:72px;padding:6px 12px;border:3px solid;border-radius:12px;font:800 20px/1 var(--font-display);text-transform:uppercase;letter-spacing:.02em;pointer-events:none;background:var(--scrim)}
+.deck .stamp.like{left:20px;color:var(--hi);border-color:var(--hi);transform:rotate(-12deg)}
+.deck .stamp.nope{right:20px;color:var(--nope);border-color:var(--nope);transform:rotate(12deg)}
+.deck-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto}
+
+/* кнопки под колодой: обёртка растёт к стороне свайпа, кольцо проявляется */
+.fab-lean{position:relative;display:inline-flex;border-radius:50%}
+.fab .fab-lean > .c{margin-top:0}
+.fab.like .fab-lean{margin-top:-6px}
+.fab.sm .fab-lean{margin-top:8px}
+.fab-ring{position:absolute;inset:-5px;border-radius:50%;border:3px solid var(--hi);opacity:0;pointer-events:none}
+.fab.nope .fab-ring{border-color:var(--nope)}

@@ -1,19 +1,19 @@
+import { AnimatePresence, motion, useMotionValue } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { InterestAction, Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { ErrorState } from '../../components/ErrorState';
+import { DeckButton, SwipeDeck, type SwipeDeckHandle, type SwipeDir } from '../../components/SwipeDeck';
 import { haptic } from '../../max/bridge';
+import { fade, spring, useReduced } from '../../motion/springs';
+import { listItem } from '../../motion/variants';
 import { loadSkills, loadTags } from './dict';
-import { BackCard, SwipeCard, type Direction } from './PlaceCard';
+import { PlaceCardFace } from './PlaceCard';
 import { PlaceDetails } from './PlaceDetails';
 import { plural, skillNames, TAG_DOT, type SkillNames } from './place';
 import { Icon } from './ui';
-
-/** Длительность улёта карточки; в CSS — та же. */
-const EXIT_MS = 260;
-const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 function FeedLayout({ head, aside, children }: { head: ReactNode; aside?: ReactNode; children: ReactNode }) {
   return (
@@ -69,20 +69,21 @@ interface DeckProps {
 
 type Toast = { text: string; kind: 'ok' | 'error' };
 
+const STAMPS = { like: 'Интересно', nope: 'Не интересно' };
+
 /**
- * Колода: свайп или кнопки, «Вернуть» последнюю пропущенную, клавиши ← → Z на десктопе.
- * Решение уходит на сервер после улёта карточки; ошибка — карточка возвращается наверх с текстом сервера.
+ * Колода мест: свайп или кнопки, «Вернуть» последнюю пропущенную, клавиши ← → Z на десктопе.
+ * Решение уходит на сервер сразу при вылете; ошибка — карточка въезжает обратно с текстом сервера.
  */
 function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   const navigate = useNavigate();
+  const reduced = useReduced();
+  const deck = useRef<SwipeDeckHandle>(null);
+  const lean = useMotionValue(0);
   const [queue, setQueue] = useState(items);
   const [skipped, setSkipped] = useState<Internship[]>([]);
-  const [exit, setExit] = useState<{ id: number; dir: Direction } | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
-  // Карточка улетает: второе решение (двойное нажатие, повтор клавиши) до перерисовки не принимаем
-  const leaving = useRef(false);
   const top = queue[0];
-  const next = queue[1];
 
   useEffect(() => {
     if (!toast) return;
@@ -93,14 +94,13 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   const send = async (place: Internship, action: InterestAction) => {
     try {
       await api.interest(place.id, action);
-      if (action === 'skipped') {
-        setSkipped((s) => [...s.filter((p) => p.id !== place.id), place]);
-      } else {
+      if (action === 'interested') {
         haptic.notify('success');
         setToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
       }
     } catch (err) {
       haptic.notify('error');
+      setSkipped((s) => s.filter((p) => p.id !== place.id));
       setQueue((q) => [place, ...q.filter((p) => p.id !== place.id)]);
       setToast({
         kind: 'error',
@@ -109,25 +109,17 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
     }
   };
 
-  const decide = (dir: Direction) => {
-    if (!top || leaving.current) return;
-    leaving.current = true;
-    const place = top;
-    setExit({ id: place.id, dir });
-    window.setTimeout(
-      () => {
-        leaving.current = false;
-        setExit(null);
-        setQueue((q) => q.filter((p) => p.id !== place.id));
-        void send(place, dir === 1 ? 'interested' : 'skipped');
-      },
-      reducedMotion() ? 0 : EXIT_MS,
-    );
+  const onSwipe = (place: Internship, dir: SwipeDir) => {
+    setQueue((q) => q.filter((p) => p.id !== place.id));
+    if (dir === -1) setSkipped((s) => [...s.filter((p) => p.id !== place.id), place]);
+    void send(place, dir === 1 ? 'interested' : 'skipped');
   };
+
+  const decide = (dir: SwipeDir) => deck.current?.swipe(dir);
 
   const undo = () => {
     const last = skipped[skipped.length - 1];
-    if (!last || leaving.current) return;
+    if (!last) return;
     haptic.impact('light');
     setSkipped((s) => s.slice(0, -1));
     setQueue((q) => [last, ...q.filter((p) => p.id !== last.id)]);
@@ -158,91 +150,103 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   }, []);
 
   const aside = top ? (
-    <>
-      <span className="cap">О месте</span>
-      <PlaceDetails place={top} names={names} withHead />
-    </>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={top.id}
+        className="feed-aside-in"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={fade}
+      >
+        <span className="cap">О месте</span>
+        <PlaceDetails place={top} names={names} withHead />
+      </motion.div>
+    </AnimatePresence>
   ) : null;
+
+  const empty = (
+    <motion.div className="deck-empty" {...listItem(0, reduced, 0.1)}>
+      <div className="state feed-empty">
+        <div className="orb feed-orb" aria-hidden="true">
+          <i className="a" />
+          <i className="b" />
+        </div>
+        <h2 className="state-title d">
+          {items.length > 0 ? 'Вы посмотрели все места' : filtered ? 'По этим тегам мест нет' : 'Пока нет подходящих мест'}
+        </h2>
+        <p className="state-text">
+          Новые пришлём в бот, как только компания опубликует место под ваши навыки. Больше навыков — больше совпадений.
+        </p>
+        <button type="button" className="btn pri" onClick={() => navigate('/student/profile/edit?step=skills')}>
+          Добавить навыки
+        </button>
+        {filtered && (
+          <button type="button" className="btn ghost" onClick={onResetFilter}>
+            Сбросить фильтр
+          </button>
+        )}
+        {skipped.length > 0 && (
+          <button type="button" className="btn ghost" onClick={undo}>
+            Вернуть пропущенное
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
 
   return (
     <FeedLayout head={head(queue.length)} aside={aside}>
-      {top ? (
-        <div className="feed-deck">
-          <div className="stack">
-            {next && <BackCard key={`back-${next.id}`} place={next} />}
-            <SwipeCard
-              key={top.id}
-              place={top}
-              names={names}
-              exit={exit?.id === top.id ? exit.dir : null}
-              onSwipe={decide}
-            />
-          </div>
+      <div className={top ? 'feed-deck' : 'feed-deck is-empty'}>
+        <SwipeDeck
+          ref={deck}
+          items={queue}
+          getKey={(p) => p.id}
+          renderCard={(p, active) => <PlaceCardFace place={p} names={names} active={active} />}
+          cardLabel={(p) => `Место: ${p.title}`}
+          onSwipe={onSwipe}
+          stamps={STAMPS}
+          lean={lean}
+          empty={empty}
+        />
+        {top && (
           <div className="acts">
-            <button type="button" className="fab sm" onClick={undo} disabled={skipped.length === 0}>
-              <span className="c">
-                <Icon name="undo" size="sm" />
-              </span>
+            <DeckButton className="sm" icon={<Icon name="undo" size="sm" />} onClick={undo} disabled={skipped.length === 0}>
               <span className="fab-l">
                 Вернуть <span className="kbd">Z</span>
               </span>
-            </button>
-            <button type="button" className="fab nope" onClick={() => decide(-1)}>
-              <span className="c">
-                <Icon name="cross" size="lg" />
-              </span>
+            </DeckButton>
+            <DeckButton className="nope" side={-1} lean={lean} icon={<Icon name="cross" size="lg" />} onClick={() => decide(-1)}>
               <span className="fab-l">
                 Не интересно <span className="kbd">←</span>
               </span>
-            </button>
-            <button type="button" className="fab like" onClick={() => decide(1)}>
-              <span className="c">
-                <Icon name="check" size="lg" />
-              </span>
+            </DeckButton>
+            <DeckButton className="like" side={1} lean={lean} icon={<Icon name="check" size="lg" />} onClick={() => decide(1)}>
               <span className="fab-l">
                 Интересно <span className="kbd">→</span>
               </span>
-            </button>
-            <button type="button" className="fab sm" onClick={() => navigate(`/internships/${top.id}`)}>
-              <span className="c">
-                <Icon name="up" size="sm" />
-              </span>
+            </DeckButton>
+            <DeckButton className="sm" icon={<Icon name="up" size="sm" />} onClick={() => navigate(`/internships/${top.id}`)}>
               Подробнее
-            </button>
+            </DeckButton>
           </div>
-        </div>
-      ) : (
-        <div className="state feed-empty">
-          <div className="orb feed-orb" aria-hidden="true">
-            <i className="a" />
-            <i className="b" />
-          </div>
-          <h2 className="state-title d">
-            {items.length > 0 ? 'Вы посмотрели все места' : filtered ? 'По этим тегам мест нет' : 'Пока нет подходящих мест'}
-          </h2>
-          <p className="state-text">
-            Новые пришлём в бот, как только компания опубликует место под ваши навыки. Больше навыков — больше совпадений.
-          </p>
-          <button type="button" className="btn pri" onClick={() => navigate('/student/profile/edit?step=skills')}>
-            Добавить навыки
-          </button>
-          {filtered && (
-            <button type="button" className="btn ghost" onClick={onResetFilter}>
-              Сбросить фильтр
-            </button>
-          )}
-          {skipped.length > 0 && (
-            <button type="button" className="btn ghost" onClick={undo}>
-              Вернуть пропущенное
-            </button>
-          )}
-        </div>
-      )}
-      {toast && (
-        <div className={`toast ${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>
-          {toast.text}
-        </div>
-      )}
+        )}
+      </div>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key={toast.text}
+            className={`toast ${toast.kind}`}
+            role={toast.kind === 'error' ? 'alert' : 'status'}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            transition={reduced ? fade : spring}
+          >
+            {toast.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </FeedLayout>
   );
 }
