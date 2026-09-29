@@ -45,6 +45,8 @@ describe.skipIf(!url)('загрузка демо-данных', () => {
     expect(await count('SELECT count(*) AS n FROM employers WHERE is_demo')).toBe(DEMO_EMPLOYERS.length);
     expect(await count(`SELECT count(*) AS n FROM internships WHERE is_demo AND source = 'demo'`)).toBe(DEMO_INTERNSHIPS.length);
     expect(await count('SELECT count(*) AS n FROM student_profiles WHERE is_demo')).toBe(DEMO_STUDENTS.length);
+    // Теги для фильтра ленты: у мест с навыками задач малого бизнеса они есть
+    expect(await count(`SELECT count(*) AS n FROM internships WHERE source = 'demo' AND tags && '{marketplaces}'`)).toBeGreaterThan(0);
     expect(result.interests).toBeGreaterThan(0);
     expect(await count('SELECT count(*) AS n FROM interests WHERE is_demo')).toBe(result.interests);
     expect(await count(`SELECT count(DISTINCT status) AS n FROM interests`)).toBe(3);

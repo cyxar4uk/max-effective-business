@@ -181,6 +181,36 @@ describe('normalizeCity', () => {
     expect(normalizeCity(' Нижний   Новгород ')).toBe('нижний новгород');
     expect(normalizeCity(null)).toBe('');
   });
+
+  it('приставка «г.» / «город», хвост «Россия», дефис с пробелами, точка в конце', () => {
+    expect(normalizeCity('г. Москва')).toBe('москва');
+    expect(normalizeCity('г Москва')).toBe('москва');
+    expect(normalizeCity('город Казань')).toBe('казань');
+    expect(normalizeCity('Москва, Россия')).toBe('москва');
+    expect(normalizeCity('Санкт - Петербург')).toBe('санкт-петербург');
+    expect(normalizeCity('Москва.')).toBe('москва');
+  });
+
+  it('сокращения и латиница для городов пилота', () => {
+    for (const c of ['Мск', 'МСК', 'Moscow', 'moskva']) expect(normalizeCity(c), c).toBe('москва');
+    for (const c of ['СПб', 'Питер', 'Петербург', 'С-Петербург', 'Санкт Петербург', 'Saint Petersburg', 'St. Petersburg']) {
+      expect(normalizeCity(c), c).toBe('санкт-петербург');
+    }
+    expect(normalizeCity('Kazan')).toBe('казань');
+  });
+
+  it('не склеивает разные города: «Гатчина» — не «Атчина», «Городец» остаётся «Городцом»', () => {
+    expect(normalizeCity('Гатчина')).toBe('гатчина');
+    expect(normalizeCity('Городец')).toBe('городец');
+    expect(normalizeCity('Москва')).not.toBe(normalizeCity('Московский'));
+  });
+
+  it('фильтр города: «г. Москва» в анкете проходит на офисное место в Москве', () => {
+    const r = matchStudentToInternship(student({ city: 'г. Москва', skills: ['a'] }), internship({ requiredSkills: ['a'], format: 'office', city: 'Москва' }));
+    expect(r.passesFilters).toBe(true);
+    const spb = matchStudentToInternship(student({ city: 'СПб', skills: ['a'] }), internship({ requiredSkills: ['a'], format: 'hybrid', city: 'Санкт-Петербург' }));
+    expect(spb.passesFilters).toBe(true);
+  });
 });
 
 describe('shouldNotify', () => {
