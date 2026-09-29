@@ -1,3 +1,4 @@
+import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
@@ -7,6 +8,8 @@ import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
+import { useReduced } from '../../motion/springs';
+import { listItem } from '../../motion/variants';
 import { loadSkills } from './dict';
 import { FORMAT_LABEL, FORMATS, groupCover, MONTHS } from './place';
 import { Icon } from './ui';
@@ -99,6 +102,7 @@ interface ProfileFormProps {
 function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const reduced = useReduced();
   const [params] = useSearchParams();
   const { me, setMe } = useMe();
   const step = params.get('step') === 'skills' ? 2 : 1;
@@ -409,11 +413,11 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
             <p className="state-text pf-none">Ничего не нашли. Попробуйте другое слово или группу «Все».</p>
           )
         ) : (
-          groups.map((g) => (
-            <section key={g.name} className="pf-sgroup" aria-label={g.name}>
+          groups.map((g, i) => (
+            <motion.section key={g.name} className="pf-sgroup" aria-label={g.name} {...listItem(i, reduced)}>
               {!group && <span className="cap">{g.name}</span>}
               <div className="bubbles">{g.skills.map((s) => bubble({ ...s, color: g.color }))}</div>
-            </section>
+            </motion.section>
           ))
         )}
       </div>

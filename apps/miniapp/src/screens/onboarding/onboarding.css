@@ -14,3 +14,5 @@
   .ob-sheet{border-radius:30px;padding-bottom:24px}
   .ob-sheet .grab{display:none}
 }
+.ob-step{display:flex;flex-direction:column;gap:14px}
+.ob-step .btn{width:100%}
