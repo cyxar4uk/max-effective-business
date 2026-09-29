@@ -93,6 +93,8 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Чётность переключает анимацию покачивания полей с ошибкой, чтобы она повторялась при каждой попытке
+  const [attempt, setAttempt] = useState(0);
 
   const set = (name: FieldName) => (value: string) => {
     setForm({ ...form, [name]: value });
@@ -114,6 +116,7 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
     if (!body.contactName) found.contactName = 'Укажите, к кому обращаться студенту';
     if (Object.keys(found).length) {
       setErrors(found);
+      setAttempt((n) => n + 1);
       haptic.notify('error');
       return;
     }
@@ -138,14 +141,15 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
       }
       setErrors(apiErr.fields);
       setFormError(apiErr.message);
+      setAttempt((n) => n + 1);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <main className="screen">
-      <form className="co" noValidate onSubmit={(e) => void submit(e)}>
+    <main className="screen emp">
+      <form className={attempt % 2 ? 'co sh-b' : 'co sh-a'} noValidate onSubmit={(e) => void submit(e)}>
         <header className="co-head">
           <h1 className="pf-q">Профиль компании</h1>
           <p className="lead">Три поля. Название и город студенты увидят на карточке места.</p>
@@ -182,9 +186,9 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
             autoComplete="name"
           />
         </div>
-        <p className="lbl m0">Имя контактного лица студент увидит только после вашего приглашения.</p>
+        <p className="lbl m0">Имя контактного лица и ваш номер, если вы им поделились, студент получит только после вашего приглашения.</p>
         {formError && (
-          <p className="pf-alert" role="alert">
+          <p key={attempt} className="pf-alert" role="alert">
             {formError}
           </p>
         )}

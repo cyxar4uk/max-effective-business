@@ -1,7 +1,7 @@
 // Новое место: пошагово на телефоне (шаг — запись в истории, «Назад» MAX ведёт на прошлый шаг),
 // одной страницей с живым превью на десктопе. Черновик — в localStorage, после публикации очищается.
 import { useEffect, useMemo, useState, type ComponentType, type FormEvent } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useNavigationType, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { EmployerProfile, Items, Skills, Tag } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
@@ -47,6 +47,7 @@ import {
   type StepProps,
 } from './formSteps';
 import { PlacePreview } from './PlacePreview';
+import type { PublishedState } from './PlacePublished';
 import { SavedMark } from './ui';
 import { useDesktop } from './useDesktop';
 import './employer.css';
@@ -92,6 +93,11 @@ function formBaseIndex(step: number, editing: boolean): number {
   return Math.max(0, idx - step);
 }
 
+const PUBLISHED_STATE: PublishedState = { justPublished: true };
+
+/** Откуда въезжает шаг: «Дальше» — справа, «Назад» — слева; первый показ — без сдвига. */
+type Enter = 'none' | 'fwd' | 'back';
+
 const toApiError = (err: unknown): ApiError =>
   err instanceof ApiError ? err : new ApiError(0, 'INTERNAL', 'Что-то пошло не так. Повторите попытку.');
 
@@ -136,6 +142,7 @@ interface BodyProps {
 function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
   const desktop = useDesktop();
   const navigate = useNavigate();
+  const navType = useNavigationType();
   const [params] = useSearchParams();
 
   const dict = useMemo<Dict>(
@@ -164,6 +171,12 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishedId, setPublishedId] = useState<number | null>(null);
+  // Неудачная попытка идти дальше: чётность переключает анимацию покачивания, чтобы она повторилась
+  const [attempt, setAttempt] = useState(0);
+  // Шаг сменился — запоминаем направление: «Назад» (MAX или браузер) — это POP в истории
+  const [shown, setShown] = useState<{ step: number; enter: Enter }>({ step, enter: 'none' });
+  if (shown.step !== step) setShown({ step, enter: navType === 'POP' ? 'back' : 'fwd' });
+  const shake = attempt % 2 ? 'sh-b' : 'sh-a';
 
   // Новый шаг — с начала экрана
   useEffect(() => {
@@ -173,7 +186,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
   // После публикации ушли назад к первой записи формы — заменяем её экраном «Место опубликовано»
   useEffect(() => {
     if (publishedId !== null && historyIndex() <= baseIdx) {
-      navigate(`/employer/internships/${publishedId}/published`, { replace: true });
+      navigate(`/employer/internships/${publishedId}/published`, { replace: true, state: PUBLISHED_STATE });
     }
   }, [publishedId, baseIdx, navigate, params]);
 
@@ -201,6 +214,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     const found = validateStep(step, draft, dict.defaultCity);
     if (Object.keys(found).length) {
       setErrors((prev) => ({ ...prev, ...found }));
+      setAttempt((n) => n + 1);
       haptic.notify('error');
       return;
     }
@@ -216,7 +230,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
       setPublishedId(id);
       navigate(back);
     } else {
-      navigate(`/employer/internships/${id}/published`, { replace: true });
+      navigate(`/employer/internships/${id}/published`, { replace: true, state: PUBLISHED_STATE });
     }
   };
 
@@ -226,6 +240,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     const bad = firstErrorStep(found);
     if (bad !== null) {
       setErrors(found);
+      setAttempt((n) => n + 1);
       haptic.notify('error');
       goToStep(bad);
       return;
@@ -235,7 +250,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     try {
       const place = await api.createInternship(toInput(draft, dict.defaultCity));
       draftStorage.clear(userId);
-      haptic.notify('success');
+      // Тактильный отклик «успех» — на экране «Место опубликовано», вместе с галочкой
       finish(place.id);
     } catch (err) {
       const e = toApiError(err);
@@ -243,6 +258,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
       const { byField, other } = splitServerFields(e.fields);
       const k = firstErrorStep(byField);
       setErrors(byField);
+      setAttempt((n) => n + 1);
       if (other.length || k === null) setPublishError([e.message, ...other].join('. '));
       if (k !== null) goToStep(k);
     } finally {
@@ -262,7 +278,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
 
   if (desktop) {
     return (
-      <main className="pf-desk">
+      <main className="pf-desk emp">
         <div className="pf-desk-main">
           <header className="pf-desk-head">
             <span className="lbl pf-saved-row">
@@ -276,7 +292,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
             </span>
             <h1 className="h1">Опишите задачу — карточка собирается справа</h1>
           </header>
-          <div className="pf-blocks">
+          <div className={`pf-blocks ${shake}`}>
             {STEP_VIEWS.map((View, i) => (
               <section
                 key={i}
@@ -296,7 +312,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
           <span className="cap">Так увидят студенты</span>
           <PlacePreview draft={draft} dict={dict} />
           {publishError && (
-            <p className="pf-alert" role="alert">
+            <p key={attempt} className="pf-alert" role="alert">
               {publishError}
             </p>
           )}
@@ -329,7 +345,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
   };
 
   return (
-    <main className="screen">
+    <main className="screen emp">
       <form className="pf-form" noValidate onSubmit={onSubmit}>
         <div
           className="pf-prog"
@@ -348,19 +364,21 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
           {saved && <SavedMark />}
         </div>
 
-        {View && meta ? (
-          <section className="pf-body" key={step}>
-            <h1 className="pf-q">{meta.question}</h1>
-            {meta.sub && <p className="lead pf-sub">{meta.sub}</p>}
-            <View {...stepProps} compact={false} />
-          </section>
-        ) : (
-          <Review draft={draft} dict={dict} errors={errors} onEdit={goToStep} />
-        )}
+        <div key={step} className={`pf-step ${shown.enter} ${shake}`}>
+          {View && meta ? (
+            <section className="pf-body">
+              <h1 className="pf-q">{meta.question}</h1>
+              {meta.sub && <p className="lead pf-sub">{meta.sub}</p>}
+              <View {...stepProps} compact={false} />
+            </section>
+          ) : (
+            <Review draft={draft} dict={dict} errors={errors} onEdit={goToStep} />
+          )}
+        </div>
 
         <div className="pf-foot">
           {step === REVIEW_STEP && publishError && (
-            <p className="pf-alert" role="alert">
+            <p key={attempt} className="pf-alert" role="alert">
               {publishError}
             </p>
           )}

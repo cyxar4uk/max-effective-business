@@ -4,8 +4,9 @@
 /* шапка шага */
 .pf-form{flex-grow:1;display:flex;flex-direction:column;width:100%;max-width:640px;margin:0 auto}
 .pf-prog{display:flex;gap:4px;padding:12px 0 0}
-.pf-prog i{flex:1;height:3px;border-radius:2px;background:var(--line2)}
-.pf-prog i.on{background:var(--ink)}
+.pf-prog i{position:relative;overflow:hidden;flex:1;height:3px;border-radius:2px;background:var(--line2)}
+.pf-prog i::after{content:"";position:absolute;inset:0;background:var(--ink);transform:scaleX(0);transform-origin:left center;transition:transform 260ms var(--pf-ease)}
+.pf-prog i.on::after{transform:none}
 .pf-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0 0}
 .pf-saved{display:inline-flex;align-items:center;gap:4px}
 .pf-saved .ic{width:14px;height:14px}
@@ -49,13 +50,6 @@
 .chip{cursor:pointer}
 .chip:disabled{opacity:.45;cursor:default}
 .chip.nice{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line2);color:var(--ink)}
-.tg{background:var(--ink3)}
-.tg.tg-marketplaces{background:#ff7a45}
-.tg.tg-website{background:#b15cff}
-.tg.tg-one_c{background:#ffd84d}
-.tg.tg-social_ads{background:#ff4d6d}
-.tg.tg-spreadsheets{background:#3d7bff}
-.tg.tg-sales{background:#2ee59d}
 .pf-sk{padding:0 4px 0 14px;gap:0;max-width:100%}
 .pf-sk button{border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer;height:100%;display:inline-flex;align-items:center}
 .pf-sk-name{overflow:hidden;text-overflow:ellipsis}
@@ -95,18 +89,18 @@
 
 /* превью карточки — как в ленте студента */
 .pf-card-wrap{position:relative;height:460px;flex-shrink:0}
-.pf-card-wrap .cv-label{white-space:pre-line}
-.pf-card-wrap .cv-label.long{font-size:34px}
-.pf-cv-plain{background:radial-gradient(60% 50% at 25% 25%,#4f7dff 0,rgba(79,125,255,0) 72%),radial-gradient(55% 50% at 85% 45%,#ffa51f 0,rgba(255,165,31,0) 72%),#14151c}
 .pf-card-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .pf-card-co{font-size:14px;color:var(--ink2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pf-pct-none{color:rgba(255,255,255,.5)}
-.sk.pf-req{background:rgba(255,255,255,.16);color:#fff}
+/* внутри .card токены переопределены под тёмную карточку (app.css) */
+.pf-pct-none{color:var(--ink3)}
+.sk.pf-req{box-shadow:inset 0 0 0 1px var(--ink2);color:var(--ink)}
 
 /* место опубликовано */
 .pf-done{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:40px 0 24px;max-width:480px;margin:0 auto}
 .pf-done-ic{width:72px;height:72px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink)}
-.pf-note{margin:6px 0 0;padding:14px 16px;border-radius:18px;background:var(--warn-bg);color:var(--warn-ink);font-size:14px;text-align:left}
+.pf-note{display:flex;align-items:flex-start;gap:12px;margin:6px 0 0;padding:14px 16px;border-radius:18px;background:var(--warn-bg);color:var(--ink2);font-size:14px;text-align:left}
+.pf-note .ic{color:var(--warn-ink)}
+.pf-note b{color:var(--ink);font-weight:600;font-size:15px}
 
 /* профиль компании */
 .co{flex-grow:1;display:flex;flex-direction:column;gap:14px;width:100%;max-width:560px;margin:0 auto;padding-top:28px}
@@ -131,3 +125,58 @@
 .pf-blk .pf-input,.pf-blk .pf-area{background:var(--bg)}
 .pf-desk-side{position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;gap:14px}
 .pf-desk-side .pf-card-wrap{height:520px}
+
+/* ---------- движение ----------
+   Только transform и opacity. «Уменьшить движение» в системе — одни проявления 150 мс, без сдвигов и перелётов. */
+.emp{--pf-ease:cubic-bezier(.22,.61,.36,1);--pf-spring:cubic-bezier(.34,1.56,.64,1);overflow-x:clip}
+@keyframes pf-fade{from{opacity:0}}
+@keyframes pf-fade-out{to{opacity:0}}
+@keyframes pf-from-r{from{opacity:0;transform:translateX(24px)}}
+@keyframes pf-from-l{from{opacity:0;transform:translateX(-24px)}}
+/* два одинаковых покачивания: смена имени перезапускает анимацию при повторной ошибке */
+@keyframes pf-shake-a{0%,100%{transform:none}12.5%,62.5%{transform:translateX(-4px)}37.5%,87.5%{transform:translateX(4px)}}
+@keyframes pf-shake-b{0%,100%{transform:none}12.5%,62.5%{transform:translateX(-4px)}37.5%,87.5%{transform:translateX(4px)}}
+@keyframes pf-pop{from{opacity:0;transform:scale(.6)}}
+@keyframes pf-rise{from{opacity:0;transform:translateY(12px)}}
+
+/* шаг формы въезжает: «Дальше» — справа, «Назад» — слева */
+.pf-step{flex-grow:1;display:flex;flex-direction:column}
+.pf-step.fwd{animation:pf-from-r 260ms var(--pf-ease)}
+.pf-step.back{animation:pf-from-l 260ms var(--pf-ease)}
+
+/* ошибка: поле покачивается, текст проявляется */
+.pf-err,.pf-alert{animation:pf-fade 150ms ease-out}
+.sh-a [aria-invalid="true"]{animation:pf-shake-a 240ms ease-in-out}
+.sh-b [aria-invalid="true"]{animation:pf-shake-b 240ms ease-in-out}
+.sh-a .pf-err{animation:pf-fade 150ms ease-out,pf-shake-a 240ms ease-in-out}
+.sh-b .pf-err{animation:pf-fade 150ms ease-out,pf-shake-b 240ms ease-in-out}
+
+/* нажатие */
+.emp :is(.btn,.chip,.pf-opt,.ibtn,.seg button){transition:transform 100ms ease-out}
+.emp :is(.btn,.chip,.pf-opt,.ibtn,.seg button):active:not(:disabled){transform:scale(.97)}
+
+/* живое превью: обложка и выбранные значения сменяются перекрёстным проявлением */
+.pf-fade-in{animation:pf-fade 150ms ease-out}
+.pf-fade-out{animation:pf-fade-out 150ms ease-out forwards}
+.pf-swap{display:inline-grid}
+.pf-swap > *{grid-area:1/1}
+
+/* место опубликовано: галочка вспрыгивает, текст поднимается */
+.pf-fresh .pf-done-ic{animation:pf-pop 400ms var(--pf-spring) backwards}
+.pf-fresh .pf-rise{animation:pf-rise 320ms var(--pf-ease) backwards}
+.pf-fresh .pf-done > .pf-rise:nth-child(2){animation-delay:60ms}
+.pf-fresh .pf-done > .pf-rise:nth-child(3){animation-delay:120ms}
+.pf-fresh .pf-done > .pf-rise:nth-child(4){animation-delay:180ms}
+.pf-fresh .actions.pf-rise{animation-delay:240ms}
+
+@media (prefers-reduced-motion: reduce){
+  .emp :is(.btn,.chip,.pf-opt,.ibtn,.seg button){transition:none}
+  .emp :is(.btn,.chip,.pf-opt,.ibtn,.seg button):active:not(:disabled){transform:none}
+  .pf-step.fwd,.pf-step.back{animation:pf-fade 150ms ease-out}
+  .sh-a [aria-invalid="true"],.sh-b [aria-invalid="true"]{animation:none}
+  .sh-a .pf-err,.sh-b .pf-err{animation:pf-fade 150ms ease-out}
+  .pf-prog i::after{transform:none;opacity:0;transition:opacity 150ms ease-out}
+  .pf-prog i.on::after{opacity:1}
+  .pf-fresh .pf-done-ic,.pf-fresh .pf-rise{animation:pf-fade 150ms ease-out backwards}
+  .pf-fresh .pf-done > .pf-rise:nth-child(n),.pf-fresh .actions.pf-rise{animation-delay:0s}
+}

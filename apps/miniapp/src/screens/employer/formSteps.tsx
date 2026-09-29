@@ -84,7 +84,7 @@ export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
                 disabled={!on && full}
                 onClick={() => toggleTag(tag)}
               >
-                <i className={`dot tg tg-${tag.code}`} aria-hidden="true" />
+                <i className="dot" style={{ background: `var(--tag-${tag.code}, var(--lo))` }} aria-hidden="true" />
                 {tag.name}
               </button>
             );
