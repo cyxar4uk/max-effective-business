@@ -1,6 +1,6 @@
 // Содержимое восьми шагов формы места. Одни и те же блоки идут и пошагово (телефон), и одной страницей (десктоп).
 import { useLayoutEffect, useRef, useState } from 'react';
-import type { InternshipType, SkillCode, Tag, WorkFormat } from '../../api/types';
+import type { InternshipType, SkillCode, Tag, TagCode, WorkFormat } from '../../api/types';
 import { haptic } from '../../max/bridge';
 import { tagColor } from '../student/place';
 import { cityOf, LIMITS, slotsText, type Dict, type Draft, type Errors } from './draft';
@@ -16,7 +16,51 @@ export interface StepProps {
   compact: boolean;
 }
 
-// ---------- 1. Задача и теги ----------
+// ---------- 1. Задача и направления (теги) ----------
+
+/** Готовые задачи по направлению: коды — из /api/tags. Нажатие подставляет текст и включает направление. */
+const TASK_TEMPLATES = {
+  marketplaces: ['Обновить 50 карточек на Wildberries: описания и инфографика', 'Посчитать юнит-экономику по артикулам в Google Таблицах'],
+  social_ads: ['Вести соцсети кофейни месяц: 12 постов и сторис', 'Запустить таргетированную рекламу ВКонтакте на 2 недели'],
+  one_c: ['Навести порядок в справочниках 1С', 'Настроить в 1С отчёт по продажам'],
+  spreadsheets: ['Собрать отчёт по продажам за квартал в Excel', 'Сделать дашборд продаж в Google Таблицах'],
+  website: ['Обновить сайт на Tilda: цены, фото, контакты', 'Настроить SEO для 10 страниц сайта'],
+  sales: ['Обзвонить базу клиентов и обновить CRM', 'Разместить товары на Авито и отвечать покупателям'],
+} satisfies Record<TagCode, readonly [string, string]>;
+type TemplateTag = keyof typeof TASK_TEMPLATES;
+const hasTemplates = (tag: TagCode): tag is TemplateTag => Object.hasOwn(TASK_TEMPLATES, tag);
+/** Направление не выбрано — первые шаблоны трёх направлений. */
+const GENERAL_TEMPLATES: readonly TemplateTag[] = ['marketplaces', 'social_ads', 'one_c'];
+
+interface TaskTemplate {
+  tag: TemplateTag;
+  text: string;
+}
+
+/** По два шаблона на каждое выбранное направление; без направления — три общих. */
+function templatesFor(tags: readonly TagCode[]): TaskTemplate[] {
+  const chosen = tags.filter(hasTemplates);
+  return chosen.length
+    ? chosen.flatMap((tag) => TASK_TEMPLATES[tag].map((text) => ({ tag, text })))
+    : GENERAL_TEMPLATES.map((tag) => ({ tag, text: TASK_TEMPLATES[tag][0] }));
+}
+
+/**
+ * Включить направление: его навыки идут в обязательные, если их ещё нет, иначе — в желательные.
+ * Дальше работодатель правит сам.
+ */
+function withTag(draft: Draft, tag: Tag, dict: Dict): Pick<Draft, 'tags' | 'requiredSkills' | 'niceSkills'> {
+  const skills = tag.skills.filter((s) => dict.skillName.has(s));
+  let { requiredSkills, niceSkills } = draft;
+  if (requiredSkills.length === 0) {
+    requiredSkills = skills.slice(0, LIMITS.skills);
+    niceSkills = niceSkills.filter((s) => !requiredSkills.includes(s));
+  } else {
+    const add = skills.filter((s) => !requiredSkills.includes(s) && !niceSkills.includes(s));
+    niceSkills = [...niceSkills, ...add].slice(0, LIMITS.skills);
+  }
+  return { tags: [...draft.tags, tag.code], requiredSkills, niceSkills };
+}
 
 /**
  * Задача — одна строка по смыслу, но длинная видна целиком: поле переносит слова и растёт по высоте.
@@ -71,23 +115,18 @@ function TitleField({ className, value, ariaLabel, invalid, onChange }: {
 export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
   const full = draft.tags.length >= LIMITS.tags;
 
-  // Тег подставляет навыки: в обязательные, если их ещё нет, иначе — в желательные. Дальше работодатель правит сам.
   const toggleTag = (tag: Tag) => {
     haptic.selection();
-    if (draft.tags.includes(tag.code)) {
-      update({ tags: draft.tags.filter((c) => c !== tag.code) });
-      return;
-    }
-    const skills = tag.skills.filter((s) => dict.skillName.has(s));
-    let { requiredSkills, niceSkills } = draft;
-    if (requiredSkills.length === 0) {
-      requiredSkills = skills.slice(0, LIMITS.skills);
-      niceSkills = niceSkills.filter((s) => !requiredSkills.includes(s));
-    } else {
-      const add = skills.filter((s) => !requiredSkills.includes(s) && !niceSkills.includes(s));
-      niceSkills = [...niceSkills, ...add].slice(0, LIMITS.skills);
-    }
-    update({ tags: [...draft.tags, tag.code], requiredSkills, niceSkills });
+    if (draft.tags.includes(tag.code)) update({ tags: draft.tags.filter((c) => c !== tag.code) });
+    else update(withTag(draft, tag, dict));
+  };
+
+  // Шаблон — одним обновлением: текст задачи и, если есть место, его направление с навыками
+  const applyTemplate = ({ tag: code, text }: TaskTemplate) => {
+    haptic.selection();
+    const tag = dict.tags.find((t) => t.code === code);
+    const addTag = tag !== undefined && !draft.tags.includes(code) && !full;
+    update({ title: text, ...(addTag ? withTag(draft, tag, dict) : {}) });
   };
 
   return (
@@ -140,8 +179,22 @@ export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
 
       {!compact && (
         <div className="surf pf-hint">
-          <span className="pf-hint-t">Не знаете, как сформулировать?</span>
-          <span className="lbl">«Навести порядок в 1С», «Вести соцсети кофейни», «Собрать отчёт по продажам за квартал»</span>
+          <span className="pf-hint-t" id="pf-tpl-l">
+            Готовые задачи — нажмите, чтобы подставить
+          </span>
+          <div className="pf-tpls" role="group" aria-labelledby="pf-tpl-l">
+            {templatesFor(draft.tags).map((t) => (
+              <button
+                key={t.text}
+                type="button"
+                className={draft.title.trim() === t.text ? 'pf-tpl on' : 'pf-tpl'}
+                onClick={() => applyTemplate(t)}
+              >
+                <i className="dot" style={{ background: tagColor(t.tag) }} aria-hidden="true" />
+                {t.text}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </>
