@@ -130,8 +130,20 @@ export function openCodeReader(fileSelect = true): Promise<string> {
   return app.openCodeReader(fileSelect);
 }
 
-export function shareMaxContent(params: ShareParams): void {
-  maxApp()?.shareMaxContent(params);
+/**
+ * Поделиться внутри MAX. Вызывать прямо из обработчика нажатия, без await перед вызовом: MAX открывает экран
+ * шеринга только после клика пользователя. Вернёт false вне MAX — тогда предложите скопировать ссылку.
+ * Отказ клиента (пользователь закрыл экран шеринга) молча игнорируем.
+ */
+export function shareMaxContent(params: ShareParams): boolean {
+  const app = maxApp();
+  if (!app) return false;
+  try {
+    void Promise.resolve(app.shareMaxContent(params)).catch(() => undefined);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Диплинк MAX (https://max.ru/…). Вне MAX — обычный переход. */
