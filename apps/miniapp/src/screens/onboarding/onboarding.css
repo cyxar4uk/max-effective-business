@@ -1,0 +1,16 @@
+/* «Тандем» · онбординг: шторка согласия и номера поверх сферы-логотипа. Цвета — токены. */
+.ob{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.ob-orb{position:absolute;top:70px;left:0;right:0;display:flex;justify-content:center;opacity:.8}
+.ob-dim{position:absolute;inset:0;background:rgba(12,13,17,.45)}
+.ob-sheet{position:relative;width:100%;max-width:520px;margin:0 auto;padding-bottom:calc(30px + env(safe-area-inset-bottom))}
+.ob-sheet .btn{width:100%}
+.ob-sheet .btn:disabled{opacity:.45;cursor:default}
+.ob-h{font-size:24px;line-height:1.15}
+.ob-text{color:var(--ink2)}
+.ob-list{background:var(--surf2)}
+.ob-error{margin:0;padding:10px 12px;border-radius:12px;background:var(--neg-bg);color:var(--neg-ink);font-size:14px}
+@media (min-width:600px){
+  .ob{justify-content:center;padding:24px}
+  .ob-sheet{border-radius:30px;padding-bottom:24px}
+  .ob-sheet .grab{display:none}
+}

@@ -1,0 +1,140 @@
+/* «Тандем» · экраны студента: каркас с навигацией, колода, подробности места, анкета, профиль.
+   Цвета — только токены из tokens.css; обложки и карточка колоды тёмные в обеих темах, как в макете. */
+
+.cv-1c{background:radial-gradient(60% 50% at 25% 25%,#ffd84d 0,rgba(255,216,77,0) 72%),radial-gradient(55% 50% at 85% 45%,#ff8a1c 0,rgba(255,138,28,0) 72%),radial-gradient(70% 55% at 45% 75%,#fff09a 0,rgba(255,240,154,0) 70%),#3a2203}
+.cv-label{overflow-wrap:break-word;hyphens:manual}
+.chip,.fab,.bub{cursor:pointer}
+.btn:disabled,.fab:disabled,.chip:disabled{opacity:.45;cursor:default}
+.bub .cover{border-radius:50%}
+
+/* каркас раздела: контент + навигация (снизу; на десктопе — колонка слева) */
+.st-shell{height:100vh;height:100dvh;display:flex;flex-direction:column}
+.st-main{flex:1 1 0;min-height:0;overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column}
+.st-nav{flex-shrink:0;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+
+/* лента */
+.feed{flex:1 0 auto;display:flex;flex-direction:column}
+.feed-main{flex:1 0 auto;display:flex;flex-direction:column}
+.feed-h1{font-size:22px}
+.feed-chips{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding:0 16px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.feed-chips::-webkit-scrollbar{display:none}
+.feed-deck{flex:1 0 auto;display:flex;flex-direction:column}
+.feed-deck .stack{flex:1 0 380px}
+.feed-aside{display:none}
+.feed-empty{flex:1 0 auto;justify-content:center;padding:24px 28px}
+.feed-orb{transform:scale(.6);margin:-50px 0}
+
+/* карточка колоды */
+.pc-top{touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none;transition:transform .25s ease;animation:pc-in .22s ease}
+.pc-top.dragging{transition:none;cursor:grabbing}
+.pc-top.exiting{transition:transform .26s ease-in,opacity .26s ease-in;opacity:0;pointer-events:none}
+@keyframes pc-in{from{transform:translateY(14px) scale(.94);opacity:.5}}
+.pc-where{font-size:14px;color:var(--ink2)}
+.pc-skills .sk{max-width:100%}
+.pc-sk-name{overflow:hidden;text-overflow:ellipsis}
+.pc-skel{position:absolute;inset:0;border-radius:28px;background:var(--surf);padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
+.pc-skel .skeleton-line{border-radius:10px}
+.stamp{position:absolute;top:72px;padding:6px 12px;border:3px solid;border-radius:12px;font:800 20px/1 var(--font-display);text-transform:uppercase;letter-spacing:.02em;pointer-events:none;background:rgba(0,0,0,.28)}
+.stamp.like{left:20px;color:#46d989;border-color:#46d989;transform:rotate(-12deg)}
+.stamp.nope{right:20px;color:#ff5c62;border-color:#ff5c62;transform:rotate(12deg)}
+.fab-l{display:inline-flex;align-items:center;gap:6px}
+.fab .kbd{display:none}
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top));transform:translateX(-50%);width:max-content;max-width:min(420px,calc(100% - 32px));padding:12px 16px;border-radius:16px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;box-shadow:var(--shadow);z-index:20;animation:toast-in .2s ease}
+.toast.error{background:var(--neg-bg);color:var(--neg-ink)}
+@keyframes toast-in{from{opacity:0;transform:translate(-50%,-8px)}}
+@media (prefers-reduced-motion: reduce){
+  .pc-top,.pc-top.exiting{transition:none;animation:none}
+  .toast{animation:none}
+}
+
+/* подробности места: экран места и панель колоды */
+.sd{display:flex;flex-direction:column;gap:14px}
+.sd-title{font-size:22px;line-height:1.15}
+.sd-where{color:var(--ink2)}
+.sd-match{padding:16px;gap:12px}
+.sd-formula{display:block}
+.sd-skill{gap:10px}
+.sd-mark{width:26px;padding:0;justify-content:center;flex-shrink:0}
+.sd-miss{color:var(--ink3)}
+.sd-link{font:500 14px/1.3 var(--font);text-decoration:none;color:var(--wait-ink);background:none;border:0;padding:0;cursor:pointer;white-space:nowrap}
+.sd-source{align-self:flex-start}
+.sd-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sd-tile{padding:12px 14px;gap:2px}
+.sd-tile-v{font-weight:600}
+.sd-desc{color:var(--ink2);white-space:pre-line}
+.sd-logo{width:40px;height:40px;border-radius:12px;font-size:16px}
+
+/* экран места */
+.pd{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;width:100%;max-width:720px;margin:0 auto}
+.pd-cover{position:relative;height:250px;flex-shrink:0;border-radius:0 0 30px 30px;overflow:hidden;color:#fff}
+.pd-body{flex:1;display:flex;flex-direction:column;gap:14px;padding:18px 16px 16px}
+.pd-title{font-size:26px;line-height:1.12}
+.pd-bar{position:sticky;bottom:0;display:flex;flex-direction:column;gap:10px;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
+.pd-acts{gap:12px}
+.pd-acts .btn{flex:1}
+.fab .c.pd-nope{width:54px;height:54px}
+.pd-status{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.pd-note{text-align:center}
+.pd-error{color:var(--neg-ink);font-size:14px}
+
+/* анкета */
+.pf{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;width:100%;max-width:640px;margin:0 auto}
+.pf-prog{display:flex;gap:4px;padding:12px 16px 0}
+.pf-prog i{flex:1;height:3px;border-radius:2px;background:var(--line2)}
+.pf-prog i.on{background:var(--ink)}
+.pf-head{padding:22px 16px 12px;display:flex;flex-direction:column;gap:8px}
+.pf-h1{font-size:28px;line-height:1.1}
+.pf-back{height:32px;padding:0 4px}
+.pf-body{flex:1;display:flex;flex-direction:column;gap:16px;padding:0 16px}
+.pf-group{gap:8px}
+.pf-tools{padding:0 16px 12px;display:flex;flex-direction:column;gap:10px}
+.pf-skills{flex:1;display:flex;flex-direction:column;gap:18px;padding:4px 0 16px}
+.pf-sgroup{display:flex;flex-direction:column;gap:10px}
+.pf-sgroup .cap{padding:0 16px}
+.pf-none{margin:24px auto;text-align:center;padding:0 16px}
+.pf-foot{position:sticky;bottom:0;display:flex;flex-direction:column;gap:8px;padding:12px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 72%,transparent)}
+.pf-foot .btn{width:100%}
+.pf-skills-err{text-align:center}
+.pf-banner{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:16px;background:var(--neg-bg);color:var(--neg-ink);font-size:14px}
+.field{display:flex;flex-direction:column;gap:3px;padding:11px 16px;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field label{font-size:12.5px;color:var(--ink3)}
+.field input{width:100%;border:0;outline:0;background:transparent;font:500 16px/1.3 var(--font);color:var(--ink);padding:0}
+.field input::placeholder{color:var(--ink3);font-weight:400}
+.field:focus-within{background:var(--chip)}
+.field.err label{color:var(--neg-ink)}
+.field-err{font-size:12.5px;color:var(--neg-ink)}
+.search input[type=search]::-webkit-search-cancel-button{display:none}
+
+/* профиль */
+.sp{display:flex;flex-direction:column;gap:14px;width:100%;max-width:640px;margin:0 auto;padding:0 16px 24px}
+.sp-top{padding:16px 0 4px}
+.sp-row{justify-content:space-between}
+.sp-v{font-weight:600;text-align:right}
+.sp-link{width:100%;background:none;border:0;border-bottom:1px solid var(--line);font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+
+/* планшет: колода фиксированного размера, подробности — под ней */
+@media (min-width:600px){
+  .feed-deck{flex:none;width:360px;max-width:calc(100% - 32px);align-self:center}
+  .feed-deck .stack{flex:none;height:500px;margin:0}
+  .feed-aside{display:flex;flex-direction:column;gap:16px;width:100%;max-width:560px;margin:8px auto 0;padding:0 16px 24px}
+}
+
+/* десктоп: навигация слева, колода по центру, подробности справа */
+@media (min-width:1024px){
+  .st-shell{flex-direction:row}
+  .st-nav{order:-1;flex-direction:column;gap:4px;width:220px;padding:24px 14px;border-top:0;border-right:1px solid var(--line)}
+  .st-nav a{flex:none;flex-direction:row;gap:12px;height:44px;padding:0 12px;border-radius:12px;font-size:15px;color:var(--ink2)}
+  .st-nav a.on{background:var(--bg);color:var(--ink)}
+  .feed{flex:1 1 0;min-height:0;flex-direction:row}
+  .feed-main{flex:1 1 0;min-width:0;overflow-y:auto}
+  .feed-top{padding:26px 32px 12px}
+  .feed-h1{font-size:30px}
+  .feed-chips{flex-wrap:wrap;overflow:visible;padding:0 32px 14px}
+  .feed-aside{width:400px;flex-shrink:0;max-width:none;margin:0;padding:26px 24px;border-left:1px solid var(--line);overflow-y:auto}
+  .fab .kbd{display:inline-flex}
+  .acts{gap:28px;padding:18px 0 26px}
+}
+@media (min-width:1024px) and (prefers-color-scheme: dark){
+  .st-nav a.on{background:var(--chip)}
+}
