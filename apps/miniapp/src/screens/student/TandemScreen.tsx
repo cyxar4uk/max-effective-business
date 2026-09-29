@@ -5,7 +5,6 @@ import { api } from '../../api/client';
 import type { Interest } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { useMe } from '../../app/me';
-import { CopyButton } from '../../components/CopyButton';
 import { DemoBadge } from '../../components/DemoBadge';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
@@ -15,8 +14,9 @@ import { fade, meet, pop, spring, useReduced } from '../../motion/springs';
 import { listItem } from '../../motion/variants';
 import { companyInitial, TYPE_LABEL } from './place';
 import { RequireConsent } from './StudentShell';
-import { formatPhone, INVITE_TO, inviteSeen, markInviteSeen, nextStepsFor, type TandemState } from './tandem';
+import { formatPhone, INVITE_TO, inviteSeen, markInviteSeen, nextStepsFor, tandemPath, type TandemState } from './tandem';
 import './tandem.css';
+import { NoPhoneNote, PhoneActions } from './TandemContact';
 import { Icon } from './ui';
 
 /** Позиция в истории: BrowserRouter хранит её в history.state.idx. */
@@ -112,19 +112,11 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
                   <span ref={phoneRef} className="num tm-phone">
                     {formatPhone(contact.phone)}
                   </span>
-                ) : me.hasPhone ? (
-                  <span className="lbl">Номер компания не указала — ваш номер у неё уже есть, ждите звонка</span>
                 ) : (
-                  <span className="lbl">
-                    Номера нет ни у компании, ни у вас —{' '}
-                    <button type="button" className="tm-link" onClick={() => navigate(`/consent?next=/student/tandem/${place.id}`)}>
-                      поделитесь номером
-                    </button>
-                    , чтобы компания могла связаться
-                  </span>
+                  <NoPhoneNote back={tandemPath(place.id)} />
                 )}
               </div>
-              {contact.phone && <CopyButton text={contact.phone} target={phoneRef} label="Скопировать номер" />}
+              {contact.phone && <PhoneActions phone={contact.phone} target={phoneRef} className="tm-ph" />}
             </div>
           ) : (
             <div className="li">
@@ -144,8 +136,12 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
           </ol>
           <span className="lbl">Бот продублирует чек-лист в чат. Ночью, с 22:00 до 9:00, сообщение придёт утром.</span>
         </motion.section>
+        <motion.p className="m0 lbl tm-safe" {...item(2)}>
+          «Тандем» бесплатен для студентов. Если компания просит заплатить, оформить карту по ссылке или назвать код из
+          СМС — это мошенники, откажитесь.
+        </motion.p>
       </div>
-      <motion.div className="tm-acts" {...item(2)}>
+      <motion.div className="tm-acts" {...item(3)}>
         <button type="button" className="btn pri" onClick={() => navigate('/student', { replace: true })}>
           Смотреть другие места
         </button>

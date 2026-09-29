@@ -24,9 +24,9 @@
 .tm-acts{position:sticky;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;padding:20px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 78%,transparent)}
 .tm-acts .btn{width:100%}
 .tm-contact{flex-wrap:wrap}
-/* имя и подсказка — рядом с кружком при любой длине подсказки; кнопка «Скопировать номер» уходит на свою строку */
+/* имя и подсказка — рядом с кружком при любой длине подсказки; «Позвонить» и «Скопировать номер» — своей строкой */
 .tm-contact > .col{flex-basis:0}
-.tm-contact .btn{flex:1 0 100%}
-@media (min-width:480px){.tm-contact{flex-wrap:nowrap}.tm-contact .btn{flex:none}}
-/* «поделитесь номером» внутри подсказки, если номера нет ни у компании, ни у студента */
-.tm-link{border:0;background:none;padding:0;font:inherit;color:var(--wait-ink);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.tm-ph{flex:1 0 100%;flex-wrap:wrap}
+.tm-ph .btn{flex:1 1 auto}
+/* правило безопасности под «Что дальше» */
+.tm-safe{padding:0 4px}
