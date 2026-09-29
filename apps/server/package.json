@@ -14,7 +14,9 @@
     "dev:contact": "tsx --env-file-if-exists=../../.env scripts/sign-contact.ts",
     "seed": "node dist/seed/run.js",
     "seed:demo": "tsx --env-file-if-exists=../../.env src/seed/run.ts",
-    "import:snapshot": "tsx scripts/trudvsem-snapshot.ts"
+    "import:snapshot": "tsx scripts/trudvsem-snapshot.ts",
+    "metrics": "node dist/metrics/run.js",
+    "metrics:dev": "tsx --env-file-if-exists=../../.env src/metrics/run.ts"
   },
   "type": "module",
   "dependencies": {
