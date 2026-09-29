@@ -10,7 +10,9 @@ import type { Internship } from '../../api/types';
 export async function loadOwnPlaces(tags: string[]): Promise<Internship[]> {
   try {
     const { items } = await api.employerInternships();
-    const open = items.filter((p) => p.status === 'open' && (tags.length === 0 || p.tags.some((t) => tags.includes(t))));
+    const open = items.filter(
+      (p) => p.status === 'open' && (tags.length === 0 || p.tags.some((t) => tags.includes(t))),
+    );
     // Полная карточка — ради match и myInterest: их отдаёт только GET /api/internships/:id
     const full = await Promise.all(open.map((p) => api.internship(p.id).catch(() => null)));
     return full.filter((p): p is Internship => p !== null && (p.myInterest ?? null) === null);

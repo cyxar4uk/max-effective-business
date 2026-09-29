@@ -1,5 +1,13 @@
 import { animate, motion, useMotionValue, useTransform, type MotionValue, type PanInfo } from 'motion/react';
-import { useEffect, useImperativeHandle, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { haptic } from '../max/bridge';
 import { clamp, fade, flick, project, spring, useReduced } from '../motion/springs';
 import './SwipeDeck.css';
@@ -48,7 +56,19 @@ interface DeckCardProps {
  * fly — улетает по траектории броска на ±1.5 ширины экрана, получая скорость жеста.
  * Все анимации — пружины на motion values: прерываются и продолжаются с текущего значения.
  */
-function DeckCard({ role, dir, velocity, progress, lean, stamps, label, reduced, onDecide, onGone, children }: DeckCardProps) {
+function DeckCard({
+  role,
+  dir,
+  velocity,
+  progress,
+  lean,
+  stamps,
+  label,
+  reduced,
+  onDecide,
+  onGone,
+  children,
+}: DeckCardProps) {
   const el = useRef<HTMLElement>(null);
   const enterFrom = role === 'top' && dir && !reduced ? dir * 1.5 * window.innerWidth : 0;
   const x = useMotionValue(enterFrom);
@@ -232,7 +252,18 @@ type Flying<T> = { item: T; key: string | number; dir: SwipeDir; velocity: Veloc
  * Решение отдаётся родителю сразу при вылете: следующая карточка доступна, пока предыдущая ещё летит.
  * Вернуть карточку — снова положить её первой в items: она въедет с той стороны, куда улетела.
  */
-export function SwipeDeck<T>({ items, getKey, renderCard, onSwipe, cardLabel, stamps, lean, empty, className, ref }: SwipeDeckProps<T>) {
+export function SwipeDeck<T>({
+  items,
+  getKey,
+  renderCard,
+  onSwipe,
+  cardLabel,
+  stamps,
+  lean,
+  empty,
+  className,
+  ref,
+}: SwipeDeckProps<T>) {
   const reduced = useReduced();
   const progress = useMotionValue(0);
   const [flying, setFlying] = useState<Flying<T>[]>([]);

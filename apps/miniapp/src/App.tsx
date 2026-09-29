@@ -1,5 +1,6 @@
 import { BrowserRouter, Route } from 'react-router';
 import { BackButtonSync } from './app/BackButtonSync';
+import { LastRoleSync } from './app/lastRole';
 import { MeProvider } from './app/MeProvider';
 import { StartParamRedirect } from './app/StartParamRedirect';
 import { AnimatedRoutes } from './motion/AnimatedRoutes';
@@ -20,6 +21,7 @@ export function App() {
       <BackButtonSync />
       <MeProvider>
         <StartParamRedirect />
+        <LastRoleSync />
         <AnimatedRoutes>
           <Route path="/" element={<Home />} />
           <Route path="/consent" element={<ConsentScreen />} />

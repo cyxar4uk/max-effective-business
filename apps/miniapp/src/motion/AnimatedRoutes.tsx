@@ -11,7 +11,8 @@ const TABS = new Set(['/student', '/student/interests', '/student/profile']);
 /** Позиция в истории: BrowserRouter хранит её в history.state.idx. */
 const historyIndex = (): number => (window.history.state as { idx?: number } | null)?.idx ?? 0;
 
-function modeFor(from: string, to: string, back: boolean, reduced: boolean): ScreenMode {
+function modeFor(from: string, to: string, back: boolean, replace: boolean, reduced: boolean): ScreenMode {
+  if (replace && from === '/') return 'instant';
   if (reduced || to.startsWith('/consent')) return 'fade';
   if (TABS.has(from) && TABS.has(to)) return 'tab';
   return back ? 'back' : 'forward';
@@ -26,12 +27,18 @@ export function AnimatedRoutes({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navType = useNavigationType();
   const reduced = useReduced();
-  const [nav, setNav] = useState(() => ({ key: location.key, path: location.pathname, idx: historyIndex(), mode: 'fade' as ScreenMode }));
+  const [nav, setNav] = useState(() => ({
+    key: location.key,
+    path: location.pathname,
+    idx: historyIndex(),
+    mode: 'fade' as ScreenMode,
+  }));
 
   if (nav.key !== location.key) {
     const idx = historyIndex();
     const back = navType === 'POP' && idx < nav.idx;
-    setNav({ key: location.key, path: location.pathname, idx, mode: modeFor(nav.path, location.pathname, back, reduced) });
+    const mode = modeFor(nav.path, location.pathname, back, navType === 'REPLACE', reduced);
+    setNav({ key: location.key, path: location.pathname, idx, mode });
   }
 
   return (
