@@ -31,7 +31,7 @@ export function AnimatedRoutes({ children }: { children: ReactNode }) {
     key: location.key,
     path: location.pathname,
     idx: historyIndex(),
-    mode: 'fade' as ScreenMode,
+    mode: 'instant' as ScreenMode,
   }));
 
   if (nav.key !== location.key) {
@@ -43,7 +43,9 @@ export function AnimatedRoutes({ children }: { children: ReactNode }) {
 
   return (
     <div className="routes">
-      <AnimatePresence initial={false} custom={nav.mode}>
+      {/* Первый экран появляется без перехода через режим instant, а не initial={false}: тот запретил бы
+          начальные анимации всем motion-элементам первого экрана, даже появившимся после загрузки данных */}
+      <AnimatePresence custom={nav.mode}>
         <motion.div
           key={location.pathname}
           className="route"
