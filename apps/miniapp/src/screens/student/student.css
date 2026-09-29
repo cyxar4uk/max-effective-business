@@ -29,6 +29,11 @@
 
 /* карточка колоды */
 .pc-where{font-size:14px;color:var(--ink2)}
+.pc-chips{gap:6px;min-width:0;flex-wrap:wrap}
+.gchip.own{background:var(--st)}
+.pc-own{padding-left:10px;border-left:3px solid var(--st);font-size:13px;line-height:1.35;color:var(--ink2)}
+.bot-hint{position:fixed;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));margin:0 auto;width:calc(100% - 24px);max-width:480px;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:18px;background:var(--surf);color:var(--ink);font-size:14px;line-height:1.35;box-shadow:var(--shadow);z-index:20}
+.bot-hint .btn{flex-shrink:0}
 .pc-skills .sk{max-width:100%}
 .pc-sk-name{overflow:hidden;text-overflow:ellipsis}
 .pc-skel{position:absolute;inset:0;border-radius:28px;background:var(--surf);padding:20px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
@@ -125,6 +130,7 @@
   .feed-chips{flex-wrap:wrap;overflow:visible;padding:0 32px 14px}
   .feed-aside{width:400px;flex-shrink:0;max-width:none;margin:0;padding:26px 24px;border-left:1px solid var(--line);overflow-y:auto}
   .fab .kbd{display:inline-flex}
+  .bot-hint{bottom:24px;left:220px}
   .acts{gap:28px;padding:18px 0 26px}
 }
 @media (min-width:1024px) and (prefers-color-scheme: dark){

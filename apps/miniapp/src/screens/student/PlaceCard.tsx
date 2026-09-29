@@ -23,7 +23,10 @@ export function PlaceCardFace({ place, names, active }: { place: Internship; nam
     <>
       <Cover cls={cover.cls} label={cover.label} />
       <div className="topchips">
-        <span className="gchip">{typeChip(place)}</span>
+        <span className="row pc-chips">
+          <span className="gchip">{typeChip(place)}</span>
+          {place.isOwner && <span className="gchip own">Ваше место</span>}
+        </span>
         {place.isDemo && <span className="gchip demo">тестовые данные</span>}
       </div>
       <div className="shade" />
@@ -37,6 +40,9 @@ export function PlaceCardFace({ place, names, active }: { place: Internship; nam
             </span>
           </div>
         </div>
+        {place.isOwner && (
+          <p className="m0 pc-own">Откликнитесь, чтобы проверить путь студента: потом пригласите себя в роли компании</p>
+        )}
         {match && (
           <div className="match">
             <Pct score={match.score} />

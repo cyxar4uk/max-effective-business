@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { api, ApiError } from '../api/client';
 import type { InterestAction, InterestStatus } from '../api/types';
 import { useLoad } from '../api/useLoad';
@@ -30,11 +30,13 @@ export function InternshipScreen() {
   const id = Number(useParams().id);
   const valid = Number.isInteger(id) && id > 0;
   const navigate = useNavigate();
+  // Своё место из колоды студента («Ваше место») — смотрим глазами студента, а не списком кандидатов
+  const asStudent = (useLocation().state as { asStudent?: boolean } | null)?.asStudent === true;
   const [state, retry] = useLoad(
     () => (valid ? Promise.all([api.internship(id), loadSkills()]) : notFound()),
     [id],
   );
-  const isOwner = state.status === 'ok' && state.data[0].isOwner === true;
+  const isOwner = state.status === 'ok' && state.data[0].isOwner === true && !asStudent;
   // Отклик, отправленный с этого экрана: поверх того, что пришло с сервера
   const [sent, setSent] = useState<{ id: number; status: InterestStatus } | null>(null);
   const [busy, setBusy] = useState(false);

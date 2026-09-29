@@ -4,12 +4,15 @@ import { useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { InterestAction, Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
+import { ABOUT } from '../../app/about';
+import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
 import { DeckButton, SwipeDeck, type SwipeDeckHandle, type SwipeDir } from '../../components/SwipeDeck';
-import { haptic } from '../../max/bridge';
+import { haptic, openMaxLink } from '../../max/bridge';
 import { fade, spring, useReduced } from '../../motion/springs';
 import { listItem } from '../../motion/variants';
 import { loadSkills, loadTags } from './dict';
+import { loadOwnPlaces, withOwnFirst } from './ownPlaces';
 import { PlaceCardFace } from './PlaceCard';
 import { PlaceDetails } from './PlaceDetails';
 import { plural, skillNames, TAG_DOT, type SkillNames } from './place';
@@ -71,6 +74,23 @@ type Toast = { text: string; kind: 'ok' | 'error' };
 
 const STAMPS = { like: 'Интересно', nope: 'Не интересно' };
 
+/** Подсказка про бота — после первого успешного «Интересно», не чаще раза за сессию. */
+const BOT_HINT_KEY = 'tandem.botHintShown';
+let botHintShown = false;
+function takeBotHint(): boolean {
+  if (botHintShown) return false;
+  botHintShown = true;
+  try {
+    if (sessionStorage.getItem(BOT_HINT_KEY)) return false;
+    sessionStorage.setItem(BOT_HINT_KEY, '1');
+  } catch {
+    // Хранилище недоступно — хватит флага в памяти
+  }
+  return true;
+}
+
+const openBot = () => openMaxLink(`https://max.ru/${ABOUT.botNick}?start=`);
+
 /**
  * Колода мест: свайп или кнопки, «Вернуть» последнюю пропущенную, клавиши ← → Z на десктопе.
  * Решение уходит на сервер сразу при вылете; ошибка — карточка въезжает обратно с текстом сервера.
@@ -83,6 +103,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   const [queue, setQueue] = useState(items);
   const [skipped, setSkipped] = useState<Internship[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [botHint, setBotHint] = useState(false);
   const top = queue[0];
 
   useEffect(() => {
@@ -91,12 +112,19 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
     return () => window.clearTimeout(t);
   }, [toast]);
 
+  useEffect(() => {
+    if (!botHint) return;
+    const t = window.setTimeout(() => setBotHint(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [botHint]);
+
   const send = async (place: Internship, action: InterestAction) => {
     try {
       await api.interest(place.id, action);
       if (action === 'interested') {
         haptic.notify('success');
-        setToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
+        if (takeBotHint()) setBotHint(true);
+        else setToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
       }
     } catch (err) {
       haptic.notify('error');
@@ -226,7 +254,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
                 Интересно <span className="kbd">→</span>
               </span>
             </DeckButton>
-            <DeckButton className="sm" icon={<Icon name="up" size="sm" />} onClick={() => navigate(`/internships/${top.id}`)}>
+            <DeckButton className="sm" icon={<Icon name="up" size="sm" />} onClick={() => navigate(`/internships/${top.id}`, { state: { asStudent: true } })}>
               Подробнее
             </DeckButton>
           </div>
@@ -247,18 +275,49 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {botHint && (
+          <motion.div
+            className="bot-hint"
+            role="status"
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
+            transition={reduced ? fade : spring}
+          >
+            <span className="grow">
+              Отклик отправлен. Когда компания ответит, бот напишет в чат. Не нажимали «Начать»?
+            </span>
+            <button
+              type="button"
+              className="btn sm sec"
+              onClick={() => {
+                setBotHint(false);
+                openBot();
+              }}
+            >
+              Открыть бота
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </FeedLayout>
   );
 }
 
 /** Лента студента «Для вас»: фильтр тегами и колода мест. */
 export function StudentFeed() {
+  const { me } = useMe();
   const [tags, setTags] = useState<string[]>([]);
   const [tagsState] = useLoad(loadTags, []);
   const [state, retry] = useLoad(async () => {
-    const [feed, skills] = await Promise.all([api.feed(tags), loadSkills()]);
-    return { items: feed.items, names: skillNames(skills) };
-  }, [tags.join(',')]);
+    const [feed, skills, own] = await Promise.all([
+      api.feed(tags),
+      loadSkills(),
+      me.roles.employer ? loadOwnPlaces(tags) : Promise.resolve([]),
+    ]);
+    return { items: withOwnFirst(own, feed.items), names: skillNames(skills) };
+  }, [tags.join(','), me.roles.employer]);
 
   const toggle = (code: string) => {
     haptic.selection();
