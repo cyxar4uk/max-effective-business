@@ -150,3 +150,36 @@ describe('planDemoInterests', () => {
     expect(planDemoInterests(DEMO_INTERNSHIPS, DEMO_STUDENTS, DEMO_INVITE_KEYS)).toEqual(interests);
   });
 });
+
+describe('демо-места: тип и оплата (#74)', () => {
+  // МРОТ 2026 — 27 093 ₽ за полный месяц; у тестовых мест 20 часов в неделю, то есть половина ставки
+  const MROT_2026 = 27_093;
+  const HALF_TIME = 20 / 40;
+
+  it('у каждого места есть тип и оплата: сумма у оплачиваемых, у остальных — «без оплаты»', () => {
+    for (const i of DEMO_INTERNSHIPS) {
+      expect(['practice', 'internship', 'part_time'], i.key).toContain(i.type);
+      expect(typeof i.paid, i.key).toBe('boolean');
+      if (i.paid) expect(i.salary, i.key).toBeGreaterThan(0);
+      else expect(i.salary, i.key).toBeNull();
+    }
+  });
+
+  it('оплата не ниже МРОТ за отработанную долю ставки, и часы в описании это подтверждают', () => {
+    for (const i of DEMO_INTERNSHIPS.filter((x) => x.paid)) {
+      expect(i.description, i.key).toMatch(/20 часов в неделю/);
+      expect(i.salary!, i.key).toBeGreaterThanOrEqual(Math.ceil(MROT_2026 * HALF_TIME));
+    }
+  });
+
+  it('смесь: практики без оплаты, оплачиваемые стажировки и одна-две подработки', () => {
+    const count = (f: (i: (typeof DEMO_INTERNSHIPS)[number]) => boolean) => DEMO_INTERNSHIPS.filter(f).length;
+    expect(count((i) => i.type === 'practice' && !i.paid)).toBeGreaterThanOrEqual(5);
+    expect(count((i) => i.type === 'internship' && i.paid)).toBeGreaterThanOrEqual(10);
+    const partTime = count((i) => i.type === 'part_time');
+    expect(partTime).toBeGreaterThanOrEqual(1);
+    expect(partTime).toBeLessThanOrEqual(2);
+    // Место для типовой задачи малого бизнеса, которое проверяющий видит первым, — оплачиваемое
+    expect(DEMO_INTERNSHIPS.find((i) => i.key === 'b1')?.paid).toBe(true);
+  });
+});

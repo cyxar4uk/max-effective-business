@@ -62,17 +62,18 @@ export async function seedDemo(ds: DataSource): Promise<DemoSeedResult> {
     for (const i of DEMO_INTERNSHIPS) {
       const rows: { id: number }[] = await m.query(
         `INSERT INTO internships (employer_id, title, description, required_skills, nice_skills, format, city,
-                                  starts_on, ends_on, slots, source, source_id, is_demo, tags)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'demo', $11, true, $12)
+                                  starts_on, ends_on, slots, source, source_id, is_demo, tags, type, paid, salary)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'demo', $11, true, $12, $13, $14, $15)
          ON CONFLICT (source, source_id) DO UPDATE SET
            employer_id = EXCLUDED.employer_id, title = EXCLUDED.title, description = EXCLUDED.description,
            required_skills = EXCLUDED.required_skills, nice_skills = EXCLUDED.nice_skills, format = EXCLUDED.format,
            city = EXCLUDED.city, starts_on = EXCLUDED.starts_on, ends_on = EXCLUDED.ends_on, slots = EXCLUDED.slots,
-           tags = EXCLUDED.tags, is_demo = true, updated_at = now()
+           tags = EXCLUDED.tags, type = EXCLUDED.type, paid = EXCLUDED.paid, salary = EXCLUDED.salary,
+           is_demo = true, updated_at = now()
          RETURNING id`,
         [
           employerIds.get(i.employer)!, i.title, i.description, i.requiredSkills, i.niceSkills, i.format, i.city,
-          i.startsOn, i.endsOn, i.slots, demoSourceId(i.key), tagsForSkills(i.requiredSkills),
+          i.startsOn, i.endsOn, i.slots, demoSourceId(i.key), tagsForSkills(i.requiredSkills), i.type, i.paid, i.salary,
         ],
       );
       internshipIds.set(i.key, rows[0]!.id);
