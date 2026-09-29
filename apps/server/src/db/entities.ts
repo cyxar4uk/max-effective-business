@@ -106,6 +106,8 @@ export class Interest {
   @Column({ name: 'match_score', type: 'smallint' }) matchScore!: number;
   @Column({ type: 'jsonb' }) match!: MatchBreakdown;
   @Column({ name: 'is_demo', type: 'boolean', default: false }) isDemo!: boolean;
+  // Первое «Интересно»; null — студент только пропускал место
+  @Column({ name: 'interested_at', type: 'timestamptz', nullable: true }) interestedAt!: Date | null;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt!: Date;
 }

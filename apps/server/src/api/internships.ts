@@ -83,7 +83,8 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
   r.get('/internships/:id/candidates', async (req, res) => {
     const { internship } = await ownInternship(ds, currentUser(req).id, parse(idParam, req.params.id));
     const rows: CandidateRow[] = await ds.query(
-      `SELECT i.status, i.match, i.is_demo, u.id AS student_id, u.first_name, u.last_name, u.phone,
+      `SELECT i.status, i.match, i.is_demo, COALESCE(i.interested_at, i.created_at) AS interested_at,
+              u.id AS student_id, u.first_name, u.last_name, u.phone,
               sp.university, sp.course, sp.direction, sp.city
        FROM interests i
        JOIN users u ON u.id = i.student_user_id
@@ -114,7 +115,8 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
         events.emit('interest.invited', { interestId: result.interestId, internshipId: internship.id, studentUserId: studentId });
       }
       const [row] = (await ds.query(
-        `SELECT i.status, i.match, i.is_demo, u.id AS student_id, u.first_name, u.last_name, u.phone,
+        `SELECT i.status, i.match, i.is_demo, COALESCE(i.interested_at, i.created_at) AS interested_at,
+                u.id AS student_id, u.first_name, u.last_name, u.phone,
                 sp.university, sp.course, sp.direction, sp.city
          FROM interests i JOIN users u ON u.id = i.student_user_id
          LEFT JOIN student_profiles sp ON sp.user_id = u.id
@@ -196,8 +198,9 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
       if (!interest) {
         if (closed) throw new ApiError('CONFLICT', 'Стажировка закрыта');
         const inserted: { id: number }[] = await m.query(
-          `INSERT INTO interests (student_user_id, internship_id, status, match_score, match)
-           VALUES ($1, $2, $3, $4, $5) ON CONFLICT (student_user_id, internship_id) DO NOTHING RETURNING id`,
+          `INSERT INTO interests (student_user_id, internship_id, status, match_score, match, interested_at)
+           VALUES ($1, $2, $3, $4, $5, CASE WHEN $3 = 'interested' THEN now() END)
+           ON CONFLICT (student_user_id, internship_id) DO NOTHING RETURNING id`,
           [user.id, internship.id, action, match.score, JSON.stringify(match)],
         );
         if (inserted[0]) return { interestId: inserted[0].id, changed: true };
@@ -208,7 +211,13 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
       if (!t.ok) throw new ApiError('CONFLICT', t.message);
       if (t.changed) {
         if (closed) throw new ApiError('CONFLICT', 'Стажировка закрыта');
-        await m.update(Interest, { id: interest!.id }, { status: t.next, matchScore: match.score, match });
+        await m.update(Interest, { id: interest!.id }, {
+          status: t.next,
+          matchScore: match.score,
+          match,
+          // Время первого «Интересно» не сдвигаем при повторных переключениях
+          ...(t.next === 'interested' ? { interestedAt: () => 'COALESCE(interested_at, now())' } : {}),
+        });
       }
       return { interestId: interest!.id, changed: t.changed };
     });
@@ -276,6 +285,7 @@ interface CandidateRow {
   status: InterestStatus;
   match: unknown;
   is_demo: boolean;
+  interested_at: Date;
   student_id: number;
   first_name: string | null;
   last_name: string | null;
@@ -300,6 +310,8 @@ function candidateView(row: CandidateRow) {
     status: row.status,
     match: row.match,
     phone: invited ? row.phone : null,
+    // Первое «Интересно»; у откликов из демо-данных и до 29.09 — время создания отклика
+    interestedAt: row.interested_at.toISOString(),
     isDemo: row.is_demo,
   };
 }
