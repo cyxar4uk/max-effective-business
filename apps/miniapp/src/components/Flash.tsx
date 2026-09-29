@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react';
-
-const EVENT = 'tandem:flash';
-
-/** Подтверждение успеха, которое переживает переход: «Анкета сохранена» видно уже на экране, куда вернулись. */
-export function flash(text: string): void {
-  window.dispatchEvent(new CustomEvent<string>(EVENT, { detail: text }));
-}
+import { FLASH_EVENT as EVENT } from './flashMessage';
 
 /** Плашка подтверждения сверху экрана; одна на приложение (App.tsx), живёт 2,6 с. */
 export function FlashHost() {

@@ -22,6 +22,8 @@ if ('fonts' in document) {
   for (const font of ['500 1em Onest', '600 1em Onest', '700 1em Onest', '600 1em Unbounded', '700 1em Unbounded', '800 1em Unbounded']) {
     document.fonts.load(font, 'Тандем 0').catch(() => {});
   }
+  // ₽ в оплате и стрелки в подсказках — из дополнительных наборов (fonts.css): без них текст перестраивается позже
+  document.fonts.load('400 1em Onest', '₽→').catch(() => {});
 }
 
 createRoot(document.getElementById('root')!).render(

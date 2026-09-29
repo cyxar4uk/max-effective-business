@@ -9,6 +9,8 @@
   --st: #3d6fff; --em: #ff9f1a; --em-ink: #a85300; --on-em: #2a1600; --hi: #16a35a; --md: #3d6fff; --lo: #8a909b; --nope: #e2383f;
   --shadow: 0 18px 40px rgba(12, 13, 17, .16);
   /* плашка «тестовые данные» (DemoBadge): жёлтая в обеих темах, как в макете; на обложке — плотнее */
+  /* фокус с клавиатуры; счётчик на иконке (белый текст ≥ 4.5:1); «Ваше место» на всегда тёмной карточке */
+  --focus: #1d4fd6; --count-bg: #d42a31; --own-bg: #2450e0;
   --demo-bg: #ffe7a3; --demo-ink: #5a3d00; --demo-cover-bg: #ffd76a; --demo-cover-ink: #3a2a00;
   /* теги мест: точка у чипа фильтра ленты (--tag-<код тега>, «_» → «-»); одинаковые в обеих темах */
   --tag-marketplaces: #ff7a45; --tag-spreadsheets: #3d7bff; --tag-website: #b15cff; --tag-one-c: #ffb020; --tag-social-ads: #ff4d6d; --tag-sales: #14b8a6;
@@ -24,6 +26,7 @@
     --neg-bg: rgba(255, 92, 98, .16); --neg-ink: #ff8a8f; --grab: rgba(255, 255, 255, .28);
     --st: #4f7dff; --em: #ffa51f; --em-ink: #ffc46b; --hi: #46d989; --md: #6fa0ff; --lo: #9aa0aa; --nope: #ff5c62;
     --shadow: 0 24px 60px rgba(0, 0, 0, .4);
+    --focus: #a9c4ff;
   }
 }
 

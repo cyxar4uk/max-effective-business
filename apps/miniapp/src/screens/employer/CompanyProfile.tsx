@@ -6,7 +6,7 @@ import type { EmployerProfile } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
-import { flash } from '../../components/Flash';
+import { flash } from '../../components/flashMessage';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
 import type { Errors } from './draft';

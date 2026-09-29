@@ -5,7 +5,7 @@ import { api, ApiError } from '../../api/client';
 import type { Skills, StudentProfile, WorkFormat } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { useMe } from '../../app/me';
-import { flash } from '../../components/Flash';
+import { flash } from '../../components/flashMessage';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
