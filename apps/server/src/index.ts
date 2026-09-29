@@ -9,9 +9,12 @@ import { registerTrudvsemImport } from './import/index.js';
 import { createLogger } from './logger.js';
 import { matcher } from './matching/index.js';
 import { registerDemoResponder, seedDemo, seedSkills, TASK_TAGS } from './seed/index.js';
+import { trustRussianRootCa } from './tls/russianRootCa.js';
 
 const config = loadConfig();
 const log = createLogger(config.LOG_LEVEL);
+// MAX Bot API — на сертификате Минцифры: без этого корня бот не достучится до MAX (см. src/tls/russianRootCa.ts)
+if (!trustRussianRootCa()) log.warn('Node.js старше 24.5: корень Минцифры не добавлен, запросы к MAX Bot API будут падать на TLS');
 
 const ds = createDataSource(config.DATABASE_URL);
 await ds.initialize();

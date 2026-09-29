@@ -3,11 +3,17 @@
 # или, если nginx поднимается через compose соседнего проекта, в его compose:
 #   services: { nginx: { networks: [default, meb-edge] } }
 #   networks: { meb-edge: { external: true } }
-# Заменить app.example.ru на наш поддомен, проверить `nginx -t` и перезагрузить: nginx -s reload.
-# Сертификат — как у остальных сайтов этого nginx (certbot/acme в контейнере или смонтированные файлы).
+# Заменить app.example.ru на наш поддомен. Порядок (MAX принимает вебхук только на 443 с доверенным сертификатом):
+#   1. блок как есть (только 80) → docker exec <nginx> nginx -t && docker exec <nginx> nginx -s reload;
+#   2. сертификат тем же способом, что у соседних сайтов этого nginx, обычно
+#      certbot certonly --webroot -w /var/www/certbot -d <поддомен> (путь webroot — как у соседей, ниже тот же);
+#   3. раскомментировать строки listen 443 и ssl_* с путями к сертификату → nginx -t → nginx -s reload.
 
 server {
     listen 80;
+    # listen 443 ssl;
+    # ssl_certificate     /etc/letsencrypt/live/app.example.ru/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/app.example.ru/privkey.pem;
     server_name app.example.ru;
 
     access_log /var/log/nginx/max-effective-business.access.log;
@@ -17,6 +23,12 @@ server {
     # при старте и не запустится, пока наш сервер лежит, — вместе со всеми соседними сайтами.
     resolver 127.0.0.11 valid=10s ipv6=off;
     set $meb_server http://meb-server:3000;
+    set $meb_miniapp http://meb-miniapp:80;
+
+    # Проверка Let's Encrypt для выпуска сертификата
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
 
     # API мини-приложения и вебхук бота → наш сервер
     location ~ ^/(api|bot)/ {
@@ -27,8 +39,11 @@ server {
         proxy_read_timeout 30s;
     }
 
-    # Мини-приложение (статика Ильи): когда появится контейнер miniapp, сюда его алиас в сети meb-edge.
+    # Мини-приложение → контейнер meb-miniapp
     location / {
-        return 503;
+        proxy_pass $meb_miniapp;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }

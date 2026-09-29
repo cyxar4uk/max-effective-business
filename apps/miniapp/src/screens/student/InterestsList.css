@@ -1,0 +1,4 @@
+.interests{list-style:none;margin:0;padding:0}
+.interests .contact{background:var(--surf2)}
+.interests .contact .btn.sec{background:var(--surf)}
+.interests .contact-acts{margin-top:6px;flex-wrap:wrap}

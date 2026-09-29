@@ -300,6 +300,7 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
       "status": "interested",
       "match": { "score": 50, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": [], "niceMissing": [] },
       "phone": null,
+      "interestedAt": "2026-09-29T08:15:00.000Z",
       "isDemo": true
     }
   ]
@@ -307,6 +308,10 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 ```
 
 **`lastName` и `phone` заполнены только в статусе `invited`**, в остальных — `null`.
+
+`interestedAt` — когда студент впервые нажал «Интересно»; повторные «Пропустить» → «Интересно» его не сдвигают.
+Метрика «от публикации до первого отклика» — самый ранний `interestedAt` минус `createdAt` места. У откликов из
+демо-данных и созданных до 29.09 — время создания отклика.
 
 ### Приглашение и отказ
 

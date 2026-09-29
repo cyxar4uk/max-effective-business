@@ -1,0 +1,29 @@
+name: miniapp
+
+# Мини-приложение: типы, линтер и сборка на каждом изменении. Образ собирается в workflow compose.
+on:
+  push:
+    branches: [main]
+    paths: ['apps/miniapp/**', '.github/workflows/miniapp.yml']
+  pull_request:
+    paths: ['apps/miniapp/**', '.github/workflows/miniapp.yml']
+
+defaults:
+  run:
+    working-directory: apps/miniapp
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.21.0
+          cache: npm
+          cache-dependency-path: apps/miniapp/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build

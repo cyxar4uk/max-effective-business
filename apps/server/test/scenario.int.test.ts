@@ -227,6 +227,19 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect((await as(OTHER_EMPLOYER).patch(`/api/internships/${internshipId}`, { status: 'closed' })).status).toBe(404);
   });
 
+  it('время отклика — первое «Интересно»: переключение «пропустить → интересно» его не сдвигает', async () => {
+    const candidates = () => as(EMPLOYER).get(`/api/internships/${internshipId}/candidates`);
+    const first = (await candidates()).body.items[0].interestedAt as string;
+    const [row] = await ds.query('SELECT interested_at FROM interests WHERE internship_id = $1', [internshipId]);
+    expect(first).toBe(new Date(row.interested_at).toISOString());
+
+    await as(STUDENT).post(`/api/internships/${internshipId}/interest`, { action: 'skipped' }).expect(200);
+    expect((await candidates()).body.items).toEqual([]);
+    await new Promise((r) => setTimeout(r, 20));
+    await as(STUDENT).post(`/api/internships/${internshipId}/interest`, { action: 'interested' }).expect(200);
+    expect((await candidates()).body.items[0]).toMatchObject({ status: 'interested', interestedAt: first });
+  });
+
   it('приглашение раскрывает контакты обоим, повтор идемпотентен', async () => {
     const res = await as(EMPLOYER).post(`/api/internships/${internshipId}/candidates/${studentUserId}/invite`);
     expect(res.body).toMatchObject({ status: 'invited', phone: '+79990001122', lastName: 'Тестов' });
