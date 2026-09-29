@@ -1,3 +1,4 @@
+import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
@@ -6,12 +7,13 @@ import { useMe } from '../../app/me';
 import { DemoBadge } from '../../components/DemoBadge';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
-import { Skeleton } from '../../components/Skeleton';
+import { useReduced } from '../../motion/springs';
+import { listItem } from '../../motion/variants';
 import { loadSkills } from './dict';
 import { FORMAT_LABEL, MONTHS, nameOf, skillNames } from './place';
 import { ProfileFormScreen } from './ProfileForm';
 import { RequireConsent, StudentShell } from './StudentShell';
-import { Icon } from './ui';
+import { Icon, ListSkeleton } from './ui';
 
 function Row({ k, v }: { k: string; v: string }) {
   return (
@@ -27,9 +29,24 @@ function monthLabel(value: string | null | undefined): string | null {
   return m ? `${MONTHS[Number(m[2]) - 1] ?? ''} ${m[1]}` : null;
 }
 
-/** Профиль студента `/student/profile`: анкета, переход к редактированию, смена роли. */
+/** Строка-переход в профиле: иконка, подпись, пояснение и шеврон. */
+function LinkRow({ icon, title, text, onClick }: { icon: 'phone' | 'swap' | 'info'; title: string; text?: string; onClick: () => void }) {
+  return (
+    <button type="button" className="li sp-link" onClick={onClick}>
+      <Icon name={icon} size="sm" />
+      <span className="col grow">
+        <span>{title}</span>
+        {text && <span className="lbl">{text}</span>}
+      </span>
+      <Icon name="chevron" size="sm" style={{ color: 'var(--ink3)' }} />
+    </button>
+  );
+}
+
+/** Профиль студента `/student/profile`: анкета, переход к редактированию, роль работодателя, «О сервисе». */
 export function StudentProfileScreen() {
   const navigate = useNavigate();
+  const reduced = useReduced();
   const { me } = useMe();
   const [state, retry] = useLoad(async () => {
     const profile = api.studentProfile().catch((err: unknown) => {
@@ -43,7 +60,7 @@ export function StudentProfileScreen() {
   const name = [me.firstName, me.lastName].filter(Boolean).join(' ');
 
   let body: ReactNode;
-  if (state.status === 'loading') body = <Skeleton lines={4} height={56} />;
+  if (state.status === 'loading') body = <ListSkeleton rows={5} thumb={false} />;
   else if (state.status === 'error') body = <ErrorState error={state.error} onRetry={retry} />;
   else if (!state.data.profile)
     body = (
@@ -60,7 +77,7 @@ export function StudentProfileScreen() {
     body = (
       <>
         <DemoBadge isDemo={p.isDemo === true} />
-        <div className="surf">
+        <motion.div className="surf" {...listItem(0, reduced)}>
           <Row k="Вуз" v={p.university} />
           {p.faculty && <Row k="Факультет" v={p.faculty} />}
           <Row k="Направление" v={p.direction} />
@@ -68,8 +85,8 @@ export function StudentProfileScreen() {
           <Row k="Город" v={p.city} />
           <Row k="Формат" v={p.formats.map((f) => FORMAT_LABEL[f]).join(', ')} />
           {month && <Row k="Месяц практики" v={month} />}
-        </div>
-        <div className="col" style={{ gap: 8 }}>
+        </motion.div>
+        <motion.div className="col" style={{ gap: 8 }} {...listItem(1, reduced)}>
           <span className="cap">Навыки · {p.skills.length}</span>
           <div className="skills">
             {p.skills.map((c) => (
@@ -78,15 +95,15 @@ export function StudentProfileScreen() {
               </span>
             ))}
           </div>
-        </div>
-        <div className="actions">
+        </motion.div>
+        <motion.div className="actions" {...listItem(2, reduced)}>
           <button type="button" className="btn pri" onClick={() => navigate('/student/profile/edit')}>
             Изменить анкету
           </button>
           <button type="button" className="btn sec" onClick={() => navigate('/student/profile/edit?step=skills')}>
             Добавить навыки
           </button>
-        </div>
+        </motion.div>
       </>
     );
   }
@@ -102,21 +119,23 @@ export function StudentProfileScreen() {
             </div>
           </div>
           {body}
-          <div className="surf">
+          <motion.div className="surf" {...listItem(3, reduced)}>
             {!me.hasPhone && (
-              <button type="button" className="li sp-link" onClick={() => navigate('/consent?next=/student/profile')}>
-                <Icon name="phone" size="sm" />
-                <span className="col grow">
-                  <span>Поделиться номером</span>
-                  <span className="lbl">Компания увидит его только после приглашения</span>
-                </span>
-              </button>
+              <LinkRow
+                icon="phone"
+                title="Поделиться номером"
+                text="Компания увидит его только после приглашения"
+                onClick={() => navigate('/consent?next=/student/profile')}
+              />
             )}
-            <button type="button" className="li sp-link" onClick={() => navigate('/employer')}>
-              <Icon name="doc" size="sm" />
-              <span className="grow">Перейти в роль работодателя</span>
-            </button>
-          </div>
+            <LinkRow
+              icon="swap"
+              title="Перейти в роль работодателя"
+              text={me.roles.employer ? 'Ваши места и кандидаты' : 'Опубликуйте место и получите откликнувшихся студентов'}
+              onClick={() => navigate('/employer')}
+            />
+            <LinkRow icon="info" title="О сервисе" text="Документы, реквизиты и поддержка" onClick={() => navigate('/about')} />
+          </motion.div>
         </main>
       </StudentShell>
     </RequireConsent>
