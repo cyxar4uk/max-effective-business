@@ -4,17 +4,39 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../../api/client';
 import type { Interest, Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
-import { CopyButton } from '../../components/CopyButton';
+import { ABOUT } from '../../app/about';
 import { DemoBadge } from '../../components/DemoBadge';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
-import { openLink } from '../../max/bridge';
+import { openLink, openMaxLink } from '../../max/bridge';
 import { useReduced } from '../../motion/springs';
 import { listItem } from '../../motion/variants';
 import { coverOf } from './place';
 import { formatPhone, tandemPath, takeFreshInvite, type TandemState } from './tandem';
+import { NoPhoneNote, PhoneActions } from './TandemContact';
 import { Icon, ListSkeleton } from './ui';
 import './InterestsList.css';
+
+const openBot = () => openMaxLink(`https://max.ru/${ABOUT.botNick}?start=`);
+
+/**
+ * Где ждать ответа — при любом числе откликов. Бот может не суметь написать тому, кто не нажал «Начать»,
+ * а на iPhone у приложения MAX нет уведомлений: статус здесь — главный канал, а не запасной.
+ */
+function WaitNote() {
+  return (
+    <section className="surf ints-wait" aria-label="Где ждать ответа">
+      <p className="m0 ints-wait-t">Статус отклика обновляется здесь — загляните, даже если уведомления не было</p>
+      <p className="m0 lbl">
+        Чтобы бот смог написать, нажмите «Начать» в чате с ним. На iPhone нет уведомлений? Добавьте веб-версию MAX на
+        экран «Домой» через Safari и разрешите уведомления.
+      </p>
+      <button type="button" className="btn sm sec ints-bot" onClick={openBot}>
+        Открыть чат с ботом
+      </button>
+    </section>
+  );
+}
 
 type Shown = Exclude<Interest['status'], 'skipped'>;
 type ShownInterest = Interest & { status: Shown };
@@ -72,20 +94,14 @@ function TandemItem({ interest, index }: { interest: ShownInterest; index: numbe
             <span className="cap">Контакт работодателя</span>
             <span className="ints-name">{contact.name}</span>
             {contact.phone ? (
-              <span ref={phoneRef} className="num ints-phone">
-                {formatPhone(contact.phone)}
-              </span>
+              <>
+                <span ref={phoneRef} className="num ints-phone">
+                  {formatPhone(contact.phone)}
+                </span>
+                <PhoneActions phone={contact.phone} target={phoneRef} className="ints-acts" />
+              </>
             ) : (
-              <span className="lbl">Телефон не указан</span>
-            )}
-            {contact.phone && (
-              <div className="row ints-acts">
-                <a className="btn sm pri" href={`tel:${contact.phone}`}>
-                  Позвонить
-                </a>
-                {/* tel: в MAX может не открыться — номер можно скопировать всегда */}
-                <CopyButton text={contact.phone} target={phoneRef} label="Скопировать номер" />
-              </div>
+              <NoPhoneNote back="/student/interests" />
             )}
           </div>
         </div>
@@ -148,12 +164,15 @@ export function InterestsList() {
   const items = state.data.items.filter((i): i is ShownInterest => i.status !== 'skipped');
   if (items.length === 0) {
     return (
-      <EmptyState
-        title="Откликов пока нет"
-        text="Нажмите «Интересно» на подходящем месте — отклик появится здесь, а ответ компании придёт в чат с ботом."
-        actionLabel="К местам"
-        onAction={() => navigate('/student')}
-      />
+      <div className="ints">
+        <EmptyState
+          title="Откликов пока нет"
+          text="Нажмите «Интересно» на подходящем месте — отклик появится здесь, а ответ компании — здесь и в чате с ботом."
+          actionLabel="К местам"
+          onAction={() => navigate('/student')}
+        />
+        <WaitNote />
+      </div>
     );
   }
 
@@ -171,6 +190,7 @@ export function InterestsList() {
           ))}
         </ul>
       )}
+      <WaitNote />
       <p className="m0 lbl ints-note">
         Пропущенные места сюда не попадают. Пропустили случайно — нажмите «Вернуть» в колоде сразу после свайпа.
       </p>

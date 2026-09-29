@@ -82,7 +82,7 @@ export function placeFormat(place: Pick<Internship, 'format' | 'city' | 'company
   return where.charAt(0).toUpperCase() + where.slice(1);
 }
 
-/** Шаг навыков анкеты с уже отмеченным навыком — ссылка «Есть? Добавить в анкету». */
+/** Шаг навыков анкеты с уже отмеченным навыком — ссылка «Умею — добавить». */
 export const addSkillHref = (code: string) => `/student/profile/edit?step=skills&add=${encodeURIComponent(code)}`;
 
 export function plural(n: number, forms: [string, string, string]): string {
@@ -128,17 +128,27 @@ export function placeDates(place: Pick<Internship, 'startsOn' | 'endsOn'>): stri
 
 const rub = new Intl.NumberFormat('ru-RU');
 
-/** Оплата для плитки: сумма, «оплачивается», «без оплаты»; null — не указано. */
+/** Оплата для QR-плаката: сумма, «оплачивается», «без оплаты»; null — не указано. */
 export function placePay(place: Pick<Internship, 'paid' | 'salary'>): string | null {
   if (place.paid === true) return place.salary ? `${rub.format(place.salary)} ₽ в месяц` : 'Оплачивается';
   if (place.paid === false) return 'Без оплаты';
   return null;
 }
 
-/** Строка фактов под карточкой: сумма · сроки · места. */
+/** Плитка «Оплата» в подробностях места — есть всегда: для студента оплата решает первой. */
+export function placePayTile(place: Pick<Internship, 'paid' | 'salary'>): string {
+  if (place.paid === true && place.salary) return `${rub.format(place.salary)} ₽ в месяц, до вычета НДФЛ`;
+  return placePay(place) ?? 'Не указана';
+}
+
+/**
+ * Строка фактов под карточкой: оплата · сроки · места. Оплата первой: сумма или «оплата не указана».
+ * «Оплачивается» без суммы и «без оплаты» не дублируем — это уже написано в чипе типа (typeChip).
+ */
 export function placeFacts(place: Internship): string {
   const parts: string[] = [];
   if (place.paid === true && place.salary) parts.push(`${rub.format(place.salary)} ₽ в месяц`);
+  else if (typeof place.paid !== 'boolean') parts.push('оплата не указана');
   const dates = placeDates(place);
   if (dates) parts.push(dates);
   if (place.slots > 0) parts.push(`${place.slots} ${plural(place.slots, ['место', 'места', 'мест'])}`);

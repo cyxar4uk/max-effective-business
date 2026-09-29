@@ -8,7 +8,7 @@ import {
   nameOf,
   placeDates,
   placeFormat,
-  placePay,
+  placePayTile,
   placeWhere,
   TYPE_LABEL,
   type SkillNames,
@@ -22,7 +22,7 @@ function SkillRow({ code, ok, names }: { code: string; ok: boolean; names: Skill
       <span className={ok ? 'grow' : 'grow sd-miss'}>{nameOf(names, code)}</span>
       {!ok && (
         <Link className="sd-link" to={addSkillHref(code)}>
-          Есть? Добавить
+          Умею — добавить
         </Link>
       )}
     </div>
@@ -84,9 +84,9 @@ function PlainSkills({ place, names }: { place: Internship; names: SkillNames })
   );
 }
 
-function Tile({ k, v }: { k: string; v: string }) {
+function Tile({ k, v, wide }: { k: string; v: string; wide?: boolean }) {
   return (
-    <div className="surf sd-tile">
+    <div className={wide ? 'surf sd-tile sd-tile-wide' : 'surf sd-tile'}>
       <span className="lbl">{k}</span>
       <span className="sd-tile-v">{v}</span>
     </div>
@@ -100,10 +100,12 @@ interface PlaceDetailsProps {
   withHead?: boolean;
 }
 
-/** Подробности места: совпадение, условия плитками, описание, контакт. Экран места и панель колоды на десктопе. */
+/**
+ * Подробности места: условия плитками (оплата первой — студент решает по деньгам и графику), совпадение, описание,
+ * контакт. Экран места и панель колоды на десктопе.
+ */
 export function PlaceDetails({ place, names, withHead }: PlaceDetailsProps) {
   const dates = placeDates(place);
-  const pay = placePay(place);
   const description = place.description?.trim();
 
   return (
@@ -116,14 +118,14 @@ export function PlaceDetails({ place, names, withHead }: PlaceDetailsProps) {
           </span>
         </div>
       )}
-      {place.match ? <MatchBreakdown match={place.match} names={names} /> : <PlainSkills place={place} names={names} />}
       <div className="sd-tiles">
-        <Tile k="Тип" v={TYPE_LABEL[place.type] ?? '—'} />
-        <Tile k="Формат" v={placeFormat(place)} />
+        <Tile k="Оплата" v={placePayTile(place)} wide />
         {dates && <Tile k="Сроки" v={dates} />}
-        {pay && <Tile k="Оплата" v={pay} />}
+        <Tile k="Формат" v={placeFormat(place)} />
+        <Tile k="Тип" v={TYPE_LABEL[place.type] ?? '—'} />
         {place.slots > 0 && <Tile k="Мест" v={String(place.slots)} />}
       </div>
+      {place.match ? <MatchBreakdown match={place.match} names={names} /> : <PlainSkills place={place} names={names} />}
       {description && (
         <div className="col" style={{ gap: 6 }}>
           <span className="cap">Что делать</span>

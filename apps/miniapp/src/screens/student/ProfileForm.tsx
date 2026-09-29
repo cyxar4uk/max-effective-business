@@ -97,7 +97,7 @@ interface ProfileFormProps {
   mode: 'new' | 'edit';
   initial: StudentProfile | null;
   skills: Skills;
-  /** Навык, который надо сразу отметить («Есть? Добавить в анкету»). */
+  /** Навык, который надо сразу отметить («Умею — добавить» в подробностях места). */
   addSkill: string | null;
 }
 
@@ -293,6 +293,12 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
         <div className="sf-head">
           <span className="lbl">Анкета · 1 из 2 · около 2 минут</span>
           <h1 className="d m0 sf-h1">{mode === 'edit' ? 'Анкета' : 'Расскажите о себе'}</h1>
+          {mode === 'new' && (
+            <p className="m0 sf-why">
+              Заполните один раз — бот сам пришлёт места, где нужны ваши навыки. Компания увидит анкету, только если вы
+              откликнетесь.
+            </p>
+          )}
         </div>
         <div className="sf-body">
           {banner}
@@ -411,8 +417,9 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
           </button>
         </div>
         <h1 className="d m0 sf-h1">Что вы умеете?</h1>
-        <p className="m0" style={{ color: 'var(--ink2)' }}>
-          Минимум {MIN_SKILLS}, максимум {MAX_SKILLS}. По ним считаем совпадение.
+        <p className="m0 sf-why">
+          Отмечайте то, что уже делали сами: в учёбе, проекте или на подработке. Компания увидит отметки и спросит о них
+          на созвоне. От {MIN_SKILLS} до {MAX_SKILLS} навыков.
         </p>
       </div>
       <div className="sf-tools">

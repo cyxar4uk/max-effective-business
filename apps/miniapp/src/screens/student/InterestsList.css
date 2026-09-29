@@ -21,3 +21,7 @@
 .ints-acts{margin-top:8px;flex-wrap:wrap}
 .ints-acts .btn{flex:1 1 auto}
 .ints-note{padding:0 4px}
+/* где ждать ответа: статус здесь, «Начать» в боте, iPhone */
+.ints-wait{padding:14px 16px;gap:6px}
+.ints-wait-t{font-weight:600;font-size:14px;line-height:1.35}
+.ints-bot{align-self:flex-start;margin-top:6px}
