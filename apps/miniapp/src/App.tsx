@@ -1,7 +1,8 @@
-import { BrowserRouter, Route, Routes } from 'react-router';
+import { BrowserRouter, Route } from 'react-router';
 import { BackButtonSync } from './app/BackButtonSync';
 import { MeProvider } from './app/MeProvider';
 import { StartParamRedirect } from './app/StartParamRedirect';
+import { AnimatedRoutes } from './motion/AnimatedRoutes';
 import { CandidatesScreen } from './screens/CandidatesScreen';
 import { EmployerHome } from './screens/EmployerHome';
 import { Home } from './screens/Home';
@@ -18,7 +19,7 @@ export function App() {
       <BackButtonSync />
       <MeProvider>
         <StartParamRedirect />
-        <Routes>
+        <AnimatedRoutes>
           <Route path="/" element={<Home />} />
           <Route path="/consent" element={<ConsentScreen />} />
           <Route path="/student" element={<StudentHome />} />
@@ -29,7 +30,7 @@ export function App() {
           <Route path="/internships/:id" element={<InternshipScreen />} />
           <Route path="/employer/internships/:id/candidates" element={<CandidatesScreen />} />
           <Route path="*" element={<NotFound />} />
-        </Routes>
+        </AnimatedRoutes>
       </MeProvider>
     </BrowserRouter>
   );
