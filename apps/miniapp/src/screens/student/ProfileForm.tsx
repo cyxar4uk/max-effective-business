@@ -1,9 +1,10 @@
 import { motion } from 'motion/react';
-import { useMemo, useState } from 'react';
+import { startTransition, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { Skills, StudentProfile, WorkFormat } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
+import { takePlace } from '../../app/afterProfile';
 import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
@@ -153,8 +154,16 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
     else navigate({ search: '' }, { replace: true });
   };
 
-  /** После сохранения: из редактирования — туда, откуда пришли; новая анкета — к колоде. */
+  /**
+   * После сохранения: из редактирования — туда, откуда пришли; новая анкета — к месту, ради которого её заполняли
+   * (QR на ярмарке, ссылка друга), иначе к колоде.
+   */
   const leave = () => {
+    const place = mode === 'new' ? takePlace() : null;
+    if (place !== null) {
+      navigate(`/internships/${place}`, { replace: true, state: { asStudent: true } });
+      return;
+    }
     const back = (cameFromStep1 ? 1 : 0) + (mode === 'edit' ? 1 : 0);
     if (back > 0 && historyIndex() >= back) navigate(-back);
     else navigate(mode === 'edit' ? '/student/profile' : '/student', { replace: true });
@@ -183,8 +192,12 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
         practiceMonth: draft.practiceMonth,
       });
       haptic.notify('success');
-      if (!me.roles.student) setMe({ ...me, roles: { ...me.roles, student: true } });
-      leave();
+      // Одним переходом с адресом (роутер меняет его в startTransition): иначе уходящий экран анкеты успеет
+      // показать колоду, и экран не уйдёт (motion не дождётся её анимаций)
+      startTransition(() => {
+        if (!me.roles.student) setMe({ ...me, roles: { ...me.roles, student: true } });
+        leave();
+      });
     } catch (err) {
       haptic.notify('error');
       const apiErr = err instanceof ApiError ? err : null;

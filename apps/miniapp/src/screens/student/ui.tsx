@@ -20,7 +20,9 @@ type IconName =
   | 'phone'
   | 'chevron'
   | 'info'
-  | 'swap';
+  | 'swap'
+  | 'qr'
+  | 'share';
 
 const PATHS: Record<IconName, ReactNode> = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
@@ -81,6 +83,20 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M4 8h14l-3.5-3.5" />
       <path d="M20 16H6l3.5 3.5" />
+    </>
+  ),
+  qr: (
+    <>
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2" />
+    </>
+  ),
+  share: (
+    <>
+      <path d="M12 3v12M7.5 7.5L12 3l4.5 4.5" />
+      <path d="M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
     </>
   ),
 };

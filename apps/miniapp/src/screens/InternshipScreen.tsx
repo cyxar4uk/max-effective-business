@@ -6,7 +6,12 @@ import { useLoad } from '../api/useLoad';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
-import { haptic } from '../max/bridge';
+import { rememberPlace } from '../app/afterProfile';
+import { copyText } from '../app/clipboard';
+import { placeLink, placeLinkText, placeShareText } from '../app/placeLink';
+import { Toast } from '../components/Toast';
+import { useToast } from '../components/useToast';
+import { haptic, shareMaxContent } from '../max/bridge';
 import { loadSkills } from './student/dict';
 import { companyInitial, coverOf, placeWhere, skillNames, TYPE_LABEL } from './student/place';
 import { PlaceDetails } from './student/PlaceDetails';
@@ -42,6 +47,7 @@ export function InternshipScreen() {
   const [sent, setSent] = useState<{ id: number; status: InterestStatus } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useToast();
 
   useEffect(() => {
     if (isOwner) navigate(`/employer/internships/${id}/candidates`, { replace: true });
@@ -97,12 +103,35 @@ export function InternshipScreen() {
     }
   };
 
+  /** Поделиться местом в MAX; вне MAX — скопировать ссылку. Вызов — прямо из нажатия: так требует MAX. */
+  const share = () => {
+    const link = placeLink(place.id);
+    if (shareMaxContent({ text: placeShareText(place), link })) {
+      haptic.impact('light');
+      return;
+    }
+    void copyText(link).then((ok) => {
+      haptic.notify(ok ? 'success' : 'warning');
+      setToast(
+        ok
+          ? { kind: 'ok', text: 'Ссылка на место скопирована — отправьте её другу' }
+          : { kind: 'error', text: `Не получилось скопировать. Ссылка: ${placeLinkText(place.id)}` },
+      );
+    });
+  };
+
+  /** Без анкеты: онбординг и анкета, потом — обратно на это место (QR на ярмарке, ссылка друга). */
+  const fillProfile = () => {
+    rememberPlace(place.id);
+    navigate('/student');
+  };
+
   let bar: ReactNode;
   if (!isStudent) {
     bar = (
       <>
-        <p className="m0 lbl pd-note">Заполните анкету — покажем, насколько место вам подходит.</p>
-        <button type="button" className="btn pri" onClick={() => navigate('/student')}>
+        <p className="m0 lbl pd-note">Заполните анкету — покажем, насколько место вам подходит, и вернём сюда.</p>
+        <button type="button" className="btn pri" onClick={fillProfile}>
           Заполнить анкету
         </button>
       </>
@@ -160,9 +189,14 @@ export function InternshipScreen() {
     <main className="pd">
       <div className="pd-cover">
         <Cover cls={cover.cls} label={cover.label} labelBottom />
-        <div className="topchips">
+        <div className="topchips pd-top">
           <span className="gchip">{TYPE_LABEL[place.type] ?? 'Место'}</span>
-          {place.isDemo && <span className="gchip demo">тестовые данные</span>}
+          <span className="row pd-top-r">
+            {place.isDemo && <span className="gchip demo">тестовые данные</span>}
+            <button type="button" className="pd-share" aria-label="Поделиться местом" title="Поделиться местом" onClick={share}>
+              <Icon name="share" size="sm" />
+            </button>
+          </span>
         </div>
       </div>
       <div className="pd-body">
@@ -185,6 +219,7 @@ export function InternshipScreen() {
         )}
         {bar}
       </div>
+      <Toast toast={toast} />
     </main>
   );
 }

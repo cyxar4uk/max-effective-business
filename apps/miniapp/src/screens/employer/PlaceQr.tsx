@@ -7,7 +7,7 @@ import { api } from '../../api/client';
 import type { Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { copyText, selectText } from '../../app/clipboard';
-import { placeLink, placeLinkText } from '../../app/placeLink';
+import { placeLink, placeLinkText, placeShareText } from '../../app/placeLink';
 import { CopyButton } from '../../components/CopyButton';
 import { ErrorState } from '../../components/ErrorState';
 import { QrCode } from '../../components/QrCode';
@@ -41,8 +41,6 @@ function metaLine(place: Internship): string {
   const pay = placePay(place);
   return [place.company.name, lowerFirst(TYPE_TITLE[place.type] ?? 'Место'), pay && lowerFirst(pay)].filter(Boolean).join(' · ');
 }
-
-const shareText = (place: Internship) => `Место: ${place.title} — ${place.company.name}`;
 
 export function PlaceQr() {
   const id = Number(useParams().id);
@@ -111,7 +109,7 @@ function Poster({ place }: { place: Internship }) {
 
   const share = () => {
     // Вызов — прямо из нажатия: MAX открывает экран шеринга только после клика пользователя
-    if (shareMaxContent({ text: shareText(place), link })) {
+    if (shareMaxContent({ text: placeShareText(place), link })) {
       haptic.impact('light');
       return;
     }

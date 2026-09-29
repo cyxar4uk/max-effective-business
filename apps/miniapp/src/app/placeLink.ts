@@ -14,6 +14,10 @@ export const placeLink = (id: number): string => `https://max.ru/${ABOUT.botNick
 /** Ссылка без протокола — подпись под QR-кодом. */
 export const placeLinkText = (id: number): string => placeLink(id).replace(/^https:\/\//, '');
 
+/** Текст для «Поделиться»: «Место: Настроить карточки на Wildberries — ООО «Вектор»». */
+export const placeShareText = (place: { title: string; company: { name: string } }): string =>
+  `Место: ${place.title} — ${place.company.name}`;
+
 /** id места из параметра запуска `internship_<id>`; иначе null. */
 export function placeIdFromParam(param: string | null | undefined): number | null {
   const m = /^internship_(\d{1,10})$/.exec(param ?? '');
@@ -46,4 +50,20 @@ export function placeIdFromCode(raw: string): number | null {
   const nick = url.pathname.replace(/^\/+|\/+$/g, '');
   if (nick.toLowerCase() !== ABOUT.botNick.toLowerCase()) return null;
   return placeIdFromParam(url.searchParams.get('startapp') ?? url.searchParams.get('start'));
+}
+
+/**
+ * id места из результата сканера. Bridge по документации возвращает строку; если клиент вернёт объект,
+ * проверяем его строковые поля — не завязываясь на их названия.
+ */
+export function placeIdFromScan(value: unknown): number | null {
+  if (typeof value === 'string') return placeIdFromCode(value);
+  if (value && typeof value === 'object') {
+    for (const v of Object.values(value)) {
+      if (typeof v !== 'string') continue;
+      const id = placeIdFromCode(v);
+      if (id !== null) return id;
+    }
+  }
+  return null;
 }
