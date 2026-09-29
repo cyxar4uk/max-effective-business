@@ -8,8 +8,9 @@ import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
 import { flash } from '../../components/flashMessage';
 import { Skeleton } from '../../components/Skeleton';
-import { haptic } from '../../max/bridge';
+import { haptic, insideMax, requestContact, type MaxContact } from '../../max/bridge';
 import type { Errors } from './draft';
+import { CheckIcon, ChevronIcon, PhoneIcon } from './icons';
 import './employer.css';
 
 /** Экран согласия и телефона — задача #14; после него пользователь вернётся сюда. */
@@ -77,6 +78,74 @@ function TextField({ id, label, value, error, onChange, ...rest }: TextFieldProp
         <span id={`${id}-err`} className="pf-err" role="alert">
           {error}
         </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Номер компании — как строка «Поделиться номером» в профиле студента: тот же requestContact, номер с подписью MAX
+ * уходит в POST /api/me/phone. Без перехода на экран онбординга: несохранённые поля формы не теряются.
+ * Номер уже есть — показываем это. Кнопку не блокируем: окно MAX можно закрыть без ответа, и запрос повиснет.
+ */
+function PhoneRow() {
+  const { me, setMe } = useMe();
+  const [asking, setAsking] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const share = async () => {
+    setAsking(true);
+    setNote(null);
+    let contact: MaxContact;
+    try {
+      contact = await requestContact();
+    } catch {
+      // Отказ в окне MAX или приложение открыто не в MAX — номер не обязателен
+      setAsking(false);
+      setNote(insideMax ? 'Номер не получен. Поделиться им можно в любой момент.' : 'Поделиться номером можно в приложении MAX.');
+      return;
+    }
+    try {
+      setMe(await api.phone(contact));
+      haptic.notify('success');
+    } catch (err) {
+      haptic.notify('error');
+      setNote(err instanceof ApiError ? err.message : 'Не получилось сохранить номер. Повторите попытку.');
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  if (me.hasPhone) {
+    return (
+      <div className="surf">
+        <div className="li co-phone">
+          <PhoneIcon />
+          <span className="col grow">
+            <span>Номер телефона добавлен</span>
+            <span className="lbl">Студент увидит его только после приглашения</span>
+          </span>
+          <span className="co-phone-ok" aria-hidden="true">
+            <CheckIcon className="ic xs" />
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="surf">
+      <button type="button" className="li co-phone" onClick={() => void share()}>
+        <PhoneIcon />
+        <span className="col grow">
+          <span>{asking ? 'Ждём номер от MAX…' : 'Поделиться номером'}</span>
+          <span className="lbl">Студент увидит его только после приглашения. Без номера он не сможет вам позвонить.</span>
+        </span>
+        <ChevronIcon />
+      </button>
+      {note && (
+        <p className="lbl co-phone-note" role="status">
+          {note}
+        </p>
       )}
     </div>
   );
@@ -190,6 +259,7 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
             autoComplete="name"
           />
         </div>
+        <PhoneRow />
         <p className="lbl m0">Имя контактного лица и ваш номер, если вы им поделились, студент получит только после вашего приглашения.</p>
         {formError && (
           <p key={attempt} className="pf-alert" role="alert">

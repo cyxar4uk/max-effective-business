@@ -120,6 +120,15 @@ export function BuildingIcon({ className = 'ic sm' }: { className?: string }) {
   );
 }
 
+/** Телефонная трубка — строка «Поделиться номером» в профиле компании (как в профиле студента). */
+export function PhoneIcon({ className = 'ic sm' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z" />
+    </svg>
+  );
+}
+
 /** QR-код: три «глаза» и модули — кнопка «QR для стенда». */
 export function QrIcon({ className = 'ic sm' }: { className?: string }) {
   return (

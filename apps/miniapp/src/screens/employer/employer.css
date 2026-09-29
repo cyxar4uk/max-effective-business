@@ -153,6 +153,13 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-field input::placeholder{color:var(--ink3);font-weight:400}
 .pf-field.bad label{color:var(--neg-ink)}
 .pf-field .pf-err{font-size:12.5px}
+/* строка «Поделиться номером» — как в профиле студента (sp-link в student.css) */
+.co-phone{width:100%;background:none;border:0;font:inherit;color:var(--ink);text-align:left}
+button.co-phone{cursor:pointer}
+.co-phone > .ic{flex-shrink:0}
+.co-phone > .ic:last-child{color:var(--ink3)}
+.co-phone-ok{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink)}
+.co-phone-note{margin:0;padding:0 14px 12px}
 
 /* десктоп: форма одной страницей и живое превью справа */
 /* фон на всю ширину окна, содержимое — не шире 1168 px по центру */
