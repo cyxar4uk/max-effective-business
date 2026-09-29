@@ -1,39 +1,50 @@
 # Живая проверка в MAX (задачи #20 и #23)
 
-Порядок на день деплоя. Нужно: доступ к серверу Ильи (#13), поддомен, токен и ник бота от Артёма.
+Порядок на день деплоя. Нужно: доступ к VPS (#13: пользователь `deploy`, IP — от Ильи), A-запись
+`tandem.anyway-community.ru` на этот IP, почта для Let's Encrypt, deploy key в репозитории (добавляет Илья —
+[docs/deploy.md](../../docs/deploy.md), «Доступ к репозиторию на сервере»), токен бота (у Артёма).
 
-## 1. Деплой (#20), ~15 минут
+## 1. Деплой (#20), ~20 минут
 
-По [docs/deploy.md](../../docs/deploy.md), раздел «Если на сервере уже есть nginx или Caddy».
+Отдельный VPS в VK Cloud (2 ГБ, Ubuntu 24.04), чужого прокси нет — свой Caddy из `compose.prod.yaml`
+([docs/deploy.md](../../docs/deploy.md), «Первый запуск на сервере»).
 
 ```bash
-# на сервере, один раз
-docker network create meb-edge
-git clone https://github.com/cyxar4uk/max-effective-business.git /opt/max-effective-business
+ssh deploy@<IP>
+docker compose version                           # v2.24+
+getent hosts tandem.anyway-community.ru          # должен быть IP этого сервера, иначе сертификат не выпустится
+# 2 ГБ мало для сборки сервера и мини-приложения разом: своп, если `swapon --show` пуст
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+# deploy key и клон в /opt/max-effective-business — docs/deploy.md, «Доступ к репозиторию на сервере»
 cd /opt/max-effective-business && cp .env.example .env && chmod 600 .env
-#   MAX_BOT_TOKEN, POSTGRES_PASSWORD (openssl rand -hex 24), MAX_WEBHOOK_SECRET (openssl rand -hex 32),
-#   DOMAIN=<поддомен>, SEED_DEMO=true
-docker compose -f compose.yaml -f compose.proxy.yaml up -d --build
-```
-
-Прокси Ильи: блок из `deploy/nginx.conf.example` (nginx на хосте), `deploy/nginx-docker.conf.example` (nginx в Docker,
-плюс `docker network connect meb-edge <контейнер>`) или `deploy/Caddyfile.snippet`.
-
-```bash
-node scripts/smoke.mjs https://<поддомен> --no-auth     # health и 401 без подписи
+sed -i -e "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 24)/" \
+  -e "s/^MAX_WEBHOOK_SECRET=.*/MAX_WEBHOOK_SECRET=$(openssl rand -hex 32)/" \
+  -e "s/^DOMAIN=.*/DOMAIN=tandem.anyway-community.ru/" -e "s/^SEED_DEMO=.*/SEED_DEMO=true/" .env
+nano .env                                        # MAX_BOT_TOKEN и ACME_EMAIL — вписать руками
+docker compose -f compose.yaml -f compose.prod.yaml up -d --build
 scripts/max-webhook.sh subscribe && scripts/max-webhook.sh list
 ```
 
-business.max.ru → «Чат-боты» → бот → ⋮ → «Настройки» → URL мини-приложения `https://<поддомен>`.
+С ноутбука:
 
-Готово, когда: `/api/health` отвечает по HTTPS, бот отвечает на `/start`.
+```bash
+node scripts/smoke.mjs https://tandem.anyway-community.ru --no-auth     # мини-приложение, health и 401 без подписи
+DEPLOY_HOST=deploy@<IP> scripts/deploy.sh                               # следующие выкатки из main
+```
+
+business.max.ru → «Чат-боты» → бот → ⋮ → «Настройки» → URL мини-приложения `https://tandem.anyway-community.ru`.
+
+Готово, когда: `https://tandem.anyway-community.ru/` открывает мини-приложение, `/api/health` отвечает по HTTPS, бот
+отвечает на `/start`. Веб-версия MAX открывает мини-приложение во фрейме, поэтому
+`curl -sI https://tandem.anyway-community.ru/ | grep -iE 'x-frame-options|frame-ancestors'` должен быть пуст.
 
 ## 2. Проверка на телефоне (#23)
 
 В одном окне — логи сервера:
 
 ```bash
-docker compose -f compose.yaml -f compose.proxy.yaml logs -f server | grep --line-buffered -E 'initData|contactScheme|Уведомлен|webhook|"level":(40|50)'
+docker compose -f compose.yaml -f compose.prod.yaml logs -f meb-server | grep --line-buffered -E 'initData|contactScheme|Уведомлен|webhook|"level":(40|50)'
 ```
 
 | Шаг | Что смотреть | Что записать в `docs/05_max_platform.md` |

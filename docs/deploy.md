@@ -1,23 +1,18 @@
 # Деплой
 
-Владелец — Андрей. Прод — один VPS с Docker: Caddy (HTTPS) → `server` (API + вебхук бота) и `miniapp` (статика) →
+Владелец — Андрей. Прод — один VPS с Docker: Caddy (HTTPS) → `meb-server` (API + вебхук бота) и `meb-miniapp` (статика) →
 PostgreSQL. Сертификат Let's Encrypt Caddy выпускает и продлевает сам.
 
 ```
-MAX ──HTTPS:443──> Caddy ─┬─ /api/*, /bot/* ──> server:3000 ──> db:5432
-                          └─ всё остальное ───> miniapp:80
+MAX ──HTTPS:443──> Caddy ─┬─ /api/*, /bot/* ──> meb-server:3000 ──> db:5432
+                          └─ всё остальное ───> meb-miniapp:80
 ```
-
-**Сейчас контейнера `miniapp` нет:** `apps/miniapp` ещё не в репозитории (см. `compose.yaml`). Пока он не подключён,
-на `/` свой Caddy отвечает 502, nginx из примера для Docker — 503, а примеры для прокси на хосте — ошибкой
-соединения с `127.0.0.1:8080`. API и вебхук при этом работают. URL мини-приложения в настройках бота прописываем
-после подключения `miniapp`.
 
 Почему так:
 - MAX принимает вебхук только по HTTPS на **порту 443** с сертификатом доверенного УЦ (самоподписанный не подходит)
   и только с `https://`-адресом мини-приложения ([подписки](https://dev.max.ru/docs-api/methods/POST/subscriptions)).
 - Один домен для мини-приложения и API — не нужен CORS между доменами, один сертификат.
-- Наружу открыты только 80 и 443. Сервер и БД в сеть не публикуются.
+- Наружу открыты только 80 и 443. Сервер, мини-приложение и БД в сеть не публикуются.
 
 ## Что нужно
 
@@ -28,11 +23,10 @@ MAX ──HTTPS:443──> Caddy ─┬─ /api/*, /bot/* ──> server:3000 �
 ## Первый запуск на сервере
 
 ```bash
-# 1. Docker
+# 1. Docker; при 2 ГБ памяти и меньше — ещё своп на 2 ГБ, иначе сборка образов может не уместиться
 curl -fsSL https://get.docker.com | sh
 
-# 2. Репозиторий (приватный — нужен deploy key или токен с правом чтения)
-git clone https://github.com/cyxar4uk/max-effective-business.git /opt/max-effective-business
+# 2. Репозиторий — клон по SSH с deploy key, см. «Доступ к репозиторию на сервере» ниже
 cd /opt/max-effective-business
 
 # 3. Переменные
@@ -46,44 +40,85 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build
 curl -s https://<DOMAIN>/api/health     # {"status":"ok","db":"ok"}
 ```
 
+## Доступ к репозиторию на сервере
+
+Репозиторий приватный, а `scripts/deploy.sh` делает `git fetch` по SSH без терминала — пароль или токен там не
+ввести. Один раз, на сервере под пользователем деплоя (он в группе `docker`):
+
+```bash
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/meb_deploy -C meb-deploy
+cat ~/.ssh/meb_deploy.pub
+# владелец репозитория добавляет ключ: GitHub → репозиторий → Settings → Deploy keys, без права записи
+sudo install -d -o "$USER" /opt/max-effective-business
+GIT_SSH_COMMAND='ssh -i ~/.ssh/meb_deploy -o IdentitiesOnly=yes' \
+  git clone git@github.com:cyxar4uk/max-effective-business.git /opt/max-effective-business
+git -C /opt/max-effective-business config core.sshCommand 'ssh -i ~/.ssh/meb_deploy -o IdentitiesOnly=yes'
+```
+
+Ключ даёт доступ только к этому репозиторию и только на чтение. Пока его не добавили — запасной путь без ключей на
+сервере: зайти `ssh -A <user>@<host>`, клонировать `git@github.com:…` своим ключом через ssh-agent и выкатывать с
+`DEPLOY_FORWARD_AGENT=1 scripts/deploy.sh`. Пока открыта сессия, root сервера может пользоваться вашим агентом —
+годится только для сервера своей команды.
+
 ## Если на сервере уже есть nginx или Caddy
 
 Например, на машине уже живёт другое мини-приложение и порты 80/443 заняты его прокси. Тогда свой Caddy не
 поднимаем, а встаём за существующий прокси:
 
 1. Поддомен (например, `career.<домен>`) с A-записью на этот сервер; в `.env` — `DOMAIN=<поддомен>`,
-   `SERVER_PORT` — свободный локальный порт (по умолчанию 3000).
+   `SERVER_PORT` и `MINIAPP_PORT` — свободные локальные порты (по умолчанию 3000 и 8080; на сервере с другим
+   мини-приложением 8080 часто занят; проверить — `ss -ltn`), те же порты — в блоке прокси.
 2. Запуск:
    ```bash
    docker network create meb-edge        # один раз: общая сеть с прокси, живёт независимо от обоих стеков
    docker compose -f compose.yaml -f compose.proxy.yaml up -d --build
    ```
-   Сервер слушает `127.0.0.1:$SERVER_PORT` и сеть `meb-edge` (алиас `meb-server`); БД — только в своей сети.
+   Сервер слушает `127.0.0.1:$SERVER_PORT`, мини-приложение — `127.0.0.1:$MINIAPP_PORT`; оба есть в сети `meb-edge`
+   (имена `meb-server` и `meb-miniapp`); БД — только в своей сети.
 3. В существующий прокси добавить блок для поддомена — смотря где прокси:
 
-   | Прокси | Как ходит к серверу | Пример |
+   | Прокси | Куда ходит: `/api/*` и `/bot/*` · остальное | Пример |
    |---|---|---|
-   | nginx на хосте | `127.0.0.1:$SERVER_PORT` | [deploy/nginx.conf.example](../deploy/nginx.conf.example), сертификат — `certbot --nginx -d <поддомен>` |
-   | nginx в контейнере | подключить контейнер к `meb-edge`, `meb-server:3000` | [deploy/nginx-docker.conf.example](../deploy/nginx-docker.conf.example) |
-   | Caddy (хост или контейнер) | `127.0.0.1:$SERVER_PORT` или `meb-server:3000` | [deploy/Caddyfile.snippet](../deploy/Caddyfile.snippet), сертификат выпустит сам |
+   | nginx на хосте | `127.0.0.1:$SERVER_PORT` · `127.0.0.1:$MINIAPP_PORT` | [deploy/nginx.conf.example](../deploy/nginx.conf.example), сертификат — `certbot --nginx -d <поддомен>` |
+   | nginx в контейнере | подключить контейнер к `meb-edge`; `meb-server:3000` · `meb-miniapp:80` | [deploy/nginx-docker.conf.example](../deploy/nginx-docker.conf.example) |
+   | Caddy (хост или контейнер) | как у nginx на хосте или в контейнере | [deploy/Caddyfile.snippet](../deploy/Caddyfile.snippet), сертификат выпустит сам |
 
-   В примерах для прокси на хосте стоит `127.0.0.1:3000` — поменять на свой `SERVER_PORT`; внутри сети `meb-edge`
-   порт всегда 3000 (`meb-server:3000`). Мини-приложение в примерах — `127.0.0.1:8080` (хост) или заглушка 503
-   (nginx в Docker); адрес уточним, когда появится его контейнер.
+   В примерах для прокси на хосте стоят `127.0.0.1:3000` и `127.0.0.1:8080` — поменять на свои `SERVER_PORT` и
+   `MINIAPP_PORT`; внутри сети `meb-edge` порты всегда 3000 и 80.
 
    Подключить контейнер прокси к сети: `docker network connect meb-edge <контейнер>`. Если прокси поднимается
    через compose соседнего проекта — лучше прописать сеть там (`networks: [default, meb-edge]` у сервиса и
    `meb-edge: { external: true }`), иначе подключение пропадёт при пересоздании контейнера.
-   **Важно для nginx в контейнере:** адрес `meb-server` должен разрешаться при каждом запросе (`resolver 127.0.0.11`
-   и переменная в `proxy_pass`, как в примере). Иначе nginx не запустится, пока наш сервер лежит, — вместе с
-   соседними сайтами.
+   **Не перехватить соседей:** Docker ищет имя сразу во всех сетях контейнера, а Compose регистрирует в них имена
+   сервисов. Поэтому наши сервисы называются `meb-server` и `meb-miniapp`, а не `server` и `miniapp`. Проверка: до и
+   после `docker network connect` имя бэкенда соседей из их конфига прокси разрешается в тот же адрес —
+   `docker exec <контейнер> getent hosts <имя>`.
+   **Важно для nginx в контейнере:** адреса `meb-server` и `meb-miniapp` должны разрешаться при каждом запросе
+   (`resolver 127.0.0.11` и переменные в `proxy_pass`, как в примере). Иначе nginx не запустится, пока наши
+   контейнеры лежат, — вместе с соседними сайтами.
 4. Проверка: `node scripts/smoke.mjs https://<поддомен> --no-auth`.
 5. Выкатка новых версий: `DEPLOY_MODE=proxy DEPLOY_HOST=… scripts/deploy.sh` (сеть `meb-edge` скрипт создаст сам).
 
 Соседнее приложение не затрагивается: у нас свои контейнеры, сеть и тома Docker, из общего — только прокси.
 
-Что узнать у владельца сервера заранее: SSH-доступ, какой прокси (nginx или Caddy, в Docker или на хосте),
-свободная память (нужно ~500 МБ), установлен ли Docker Compose v2.24+.
+Что узнать у владельца сервера заранее: SSH-доступ (пользователь в группе `docker`), какой прокси (nginx или Caddy,
+в Docker или на хосте), свободная память (нужно ~500 МБ), установлен ли Docker Compose v2.24+. Владельца
+репозитория — добавить deploy key (см. выше).
+
+## Сервер уже выкачен, мини-приложение добавилось позже
+
+Порядок на сервере с чужим прокси, если сначала выкатили только сервер (до `apps/miniapp` в `main`):
+
+1. Свободный порт под мини-приложение: `ss -ltn`; в `.env` на сервере — `MINIAPP_PORT=<порт>` (по умолчанию 8080,
+   на сервере с другим мини-приложением он часто занят).
+2. Выкатить: `DEPLOY_MODE=proxy DEPLOY_HOST=… scripts/deploy.sh`, проверить `docker compose -f compose.yaml
+   -f compose.proxy.yaml ps` — `meb-miniapp` в статусе healthy.
+3. В прокси соседа `location /` (или `handle` у Caddy) — на `127.0.0.1:$MINIAPP_PORT` (прокси на хосте) или
+   `meb-miniapp:80` (прокси в Docker), как в обновлённых примерах из `deploy/`. Проверить и применить через
+   `nginx -t` + reload или `caddy validate` + `caddy reload`.
+4. `node scripts/smoke.mjs https://<поддомен> --no-auth` — теперь проверяет и мини-приложение; открыть
+   `https://<поддомен>/` в браузере и убедиться, что это наше приложение, а не соседнее.
+5. Прописать URL мини-приложения в настройках бота (ниже).
 
 ## Подключить к MAX
 
@@ -114,7 +149,7 @@ DEPLOY_MODE=proxy DEPLOY_HOST=deploy@<ip> scripts/deploy.sh   # за чужим 
 ```bash
 O=compose.prod.yaml     # свой Caddy; за чужим прокси — O=compose.proxy.yaml
 docker compose -f compose.yaml -f $O ps
-docker compose -f compose.yaml -f $O logs --tail 100 server
+docker compose -f compose.yaml -f $O logs --tail 100 meb-server
 docker compose -f compose.yaml -f $O logs --tail 100 caddy     # только со своим Caddy: проблемы с сертификатом
 docker network inspect meb-edge --format '{{range .Containers}}{{.Name}} {{end}}'   # за прокси в Docker: кто в общей сети
 ```

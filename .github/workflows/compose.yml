@@ -35,7 +35,10 @@ jobs:
       - name: Smoke
         env:
           MAX_BOT_TOKEN: ci-token
-        run: node scripts/smoke.mjs http://localhost:3000 | tee -a "$GITHUB_STEP_SUMMARY"
+        # Без адреса — как у жюри: сервер на :3000, мини-приложение на :8080. Шаги идут под bash -e без pipefail:
+        # без проверки PIPESTATUS провал smoke съедает tee
+        run: |
+          node scripts/smoke.mjs | tee -a "$GITHUB_STEP_SUMMARY"; test "${PIPESTATUS[0]}" -eq 0
 
       - name: Повторный запуск без потери данных
         run: |
@@ -73,27 +76,28 @@ jobs:
           # HTTP → HTTPS
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost/api/health)" = 308
           # API и подпись MAX через Caddy
-          NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/smoke.mjs https://localhost | tee -a "$GITHUB_STEP_SUMMARY"
+          NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/smoke.mjs https://localhost | tee -a "$GITHUB_STEP_SUMMARY"; test "${PIPESTATUS[0]}" -eq 0
           # /bot/* доходит до сервера (ответ в формате API, а не 502 от Caddy). Без секрета — 401,
           # пока модуль бота не подключён — 404 от сервера
           body=$(curl -sk -w ' %{http_code}' -X POST https://localhost/bot/webhook -H 'Content-Type: application/json' -d '{}')
           echo "вебхук без секрета: $body"
           echo "$body" | grep -qE '"code":"(UNAUTHORIZED|NOT_FOUND)".* (401|404)$'
-          # Сервер и БД наружу не опубликованы
+          # Сервер, мини-приложение и БД наружу не опубликованы
           if curl -s --max-time 3 http://localhost:3000/api/health; then echo "сервер опубликован наружу"; exit 1; fi
+          if curl -s --max-time 3 -o /dev/null http://localhost:8080/; then echo "мини-приложение опубликовано наружу"; exit 1; fi
           if (exec 3<>/dev/tcp/127.0.0.1/5432) 2>/dev/null; then echo "БД опубликована наружу"; exit 1; fi
           # В журнале Caddy нет заголовков запросов (там initData)
           curl -sk -o /dev/null https://localhost/api/me -H 'X-Max-Init-Data: secret-marker-123'
           sleep 1
           if docker compose -f compose.yaml -f compose.prod.yaml logs caddy | grep -q secret-marker-123; then echo "заголовки в журнале Caddy"; exit 1; fi
           # Журнал ошибок Caddy (сервер недоступен, как при выкатке) — тоже без заголовков
-          docker compose -f compose.yaml -f compose.prod.yaml stop server
+          docker compose -f compose.yaml -f compose.prod.yaml stop meb-server
           curl -sk -o /dev/null https://localhost/api/me -H 'X-Max-Init-Data: secret-marker-down'
           curl -sk -o /dev/null -X POST https://localhost/bot/webhook -H 'X-Max-Bot-Api-Secret: secret-marker-down'
           sleep 1
           docker compose -f compose.yaml -f compose.prod.yaml logs caddy | grep -q 'http.log.error' || { echo "ошибки прокси не залогированы — проверка не сработала"; exit 1; }
           if docker compose -f compose.yaml -f compose.prod.yaml logs caddy | grep -q secret-marker-down; then echo "заголовки в журнале ошибок Caddy"; exit 1; fi
-          docker compose -f compose.yaml -f compose.prod.yaml start server
+          docker compose -f compose.yaml -f compose.prod.yaml start meb-server
 
       - name: Логи при ошибке
         if: failure()
@@ -102,7 +106,7 @@ jobs:
       - run: docker compose -f compose.yaml -f compose.prod.yaml down -v
         if: always()
 
-  # Вариант за чужим прокси: наш сервер на 127.0.0.1, перед ним nginx по примеру из deploy/nginx.conf.example
+  # Вариант за чужим прокси: сервер и мини-приложение на 127.0.0.1, перед ними nginx по примерам из deploy/
   behind-proxy:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -116,9 +120,10 @@ jobs:
         run: |
           docker network create meb-edge
           docker compose -f compose.yaml -f compose.proxy.yaml up -d --build --wait --wait-timeout 300
-      - name: Сервер только на 127.0.0.1
+      - name: Сервер и мини-приложение только на 127.0.0.1
         run: |
-          docker compose -f compose.yaml -f compose.proxy.yaml ps server --format '{{.Ports}}' | tee /dev/stderr | grep -q '127.0.0.1:3000->3000'
+          docker compose -f compose.yaml -f compose.proxy.yaml ps meb-server --format '{{.Ports}}' | tee /dev/stderr | grep -q '127.0.0.1:3000->3000'
+          docker compose -f compose.yaml -f compose.proxy.yaml ps meb-miniapp --format '{{.Ports}}' | tee /dev/stderr | grep -q '127.0.0.1:8080->80'
           if docker compose -f compose.yaml -f compose.proxy.yaml ps --format '{{.Ports}}' | grep -qE '0\.0\.0\.0:|\[::\]:'; then echo "порт открыт наружу"; exit 1; fi
       - name: nginx из примера перед сервером
         env:
@@ -128,7 +133,7 @@ jobs:
           docker run -d --name nginx --network host -v /tmp/site.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.29-alpine
           sleep 2
           docker exec nginx nginx -t
-          node scripts/smoke.mjs http://localhost | tee -a "$GITHUB_STEP_SUMMARY"
+          node scripts/smoke.mjs http://localhost | tee -a "$GITHUB_STEP_SUMMARY"; test "${PIPESTATUS[0]}" -eq 0
       - name: nginx в контейнере через сеть meb-edge
         env:
           MAX_BOT_TOKEN: ci-token
@@ -137,19 +142,25 @@ jobs:
           docker run -d --name nginx-docker --network meb-edge -p 127.0.0.1:8081:8081 -v /tmp/docker-site.conf:/etc/nginx/conf.d/default.conf:ro nginx:1.29-alpine
           sleep 2
           docker exec nginx-docker nginx -t
-          node scripts/smoke.mjs http://localhost:8081 | tee -a "$GITHUB_STEP_SUMMARY"
-          # БД в общей сети не видна
+          node scripts/smoke.mjs http://localhost:8081 | tee -a "$GITHUB_STEP_SUMMARY"; test "${PIPESTATUS[0]}" -eq 0
+          # БД в общей сети не видна; обычных имён сервисов там нет — иначе перехватим запросы соседей с такими же
           if docker exec nginx-docker getent hosts db; then echo "БД видна из сети прокси"; exit 1; fi
-      - name: nginx в контейнере переживает остановку нашего сервера
+          if docker exec nginx-docker getent hosts server; then echo "имя server видно в общей сети"; exit 1; fi
+          if docker exec nginx-docker getent hosts miniapp; then echo "имя miniapp видно в общей сети"; exit 1; fi
+          docker exec nginx-docker getent hosts meb-server
+          docker exec nginx-docker getent hosts meb-miniapp
+      - name: nginx в контейнере переживает остановку наших контейнеров
         run: |
-          docker compose -f compose.yaml -f compose.proxy.yaml stop server
+          docker compose -f compose.yaml -f compose.proxy.yaml stop meb-server meb-miniapp
           docker restart nginx-docker
           sleep 2
           test "$(docker inspect -f '{{.State.Running}}' nginx-docker)" = true
           code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/health); echo "без сервера: $code"; test "$code" = 502
-          docker compose -f compose.yaml -f compose.proxy.yaml start server
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/); echo "без мини-приложения: $code"; test "$code" = 502
+          docker compose -f compose.yaml -f compose.proxy.yaml start meb-server meb-miniapp
           sleep 5
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/health)" = 200
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/)" = 200
       - name: Логи при ошибке
         if: failure()
         run: |

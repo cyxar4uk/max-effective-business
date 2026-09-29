@@ -12,7 +12,7 @@ flowchart TB
 
   subgraph VPS["Наш сервер · Docker Compose"]
     caddy["прокси · HTTPS :443<br/>свой Caddy или nginx/Caddy сервера"]
-    miniapp["miniapp<br/>React, статика<br/>(подключается)"]
+    miniapp["miniapp<br/>React, статика за nginx"]
     subgraph server["server · один процесс Node.js"]
       direction TB
       auth["auth<br/>подпись initData"]
@@ -42,7 +42,7 @@ flowchart TB
 |---|---|---|
 | Клиент MAX | открывает бота и мини-приложение, подписывает данные запуска | → Caddy по HTTPS |
 | Прокси | TLS-сертификат, маршрутизация по пути: свой Caddy (`compose.prod.yaml`) или уже работающий на сервере nginx/Caddy (`compose.proxy.yaml`) | `/api/*`, `/bot/*` → server; остальное → miniapp |
-| miniapp | экраны студента и работодателя; в `compose.yaml` подключается вместе с `apps/miniapp` | → `/api` с заголовком `X-Max-Init-Data` |
+| miniapp | экраны студента и работодателя; статика за nginx, контейнер `meb-miniapp` | → `/api` с заголовком `X-Max-Init-Data` |
 | server · auth | проверяет подпись MAX на каждом запросе, находит пользователя | → db |
 | server · api | профили, стажировки, лента, отклики, кандидаты; права и статусы | → matching, → db, публикует события |
 | server · matching | чистые функции: фильтры и процент с расшифровкой | без БД и сети |

@@ -2,25 +2,32 @@
 #   docker network create meb-edge     # один раз; scripts/deploy.sh в режиме proxy делает это сам
 #   docker compose -f compose.yaml -f compose.proxy.yaml up -d --build
 # TLS и домен — на существующем прокси. Как прокси достучится до сервера:
-#   - прокси на хосте      → 127.0.0.1:${SERVER_PORT} (deploy/nginx.conf.example, deploy/Caddyfile.snippet);
-#   - прокси в контейнере  → подключить его к сети meb-edge и ходить на meb-server:3000
+#   - прокси на хосте      → 127.0.0.1:${SERVER_PORT} и 127.0.0.1:${MINIAPP_PORT}
+#     (deploy/nginx.conf.example, deploy/Caddyfile.snippet);
+#   - прокси в контейнере  → подключить его к сети meb-edge и ходить на meb-server:3000 и meb-miniapp:80
 #     (deploy/nginx-docker.conf.example). Подробно — docs/deploy.md.
 
 services:
-  server:
+  meb-server:
     # Только локальный интерфейс хоста: снаружи сервер доступен лишь через прокси
     ports: !override
       - "127.0.0.1:${SERVER_PORT:-3000}:3000"
     networks:
       default: {}
-      # Общая с прокси сеть. БД в неё не входит. Уникальный алиас — чтобы не пересечься с сервисами соседей
-      edge:
-        aliases: [meb-server]
+      # Общая с прокси сеть; адрес в ней — имя сервиса meb-server (уникальное, см. compose.yaml). БД в неё не входит
+      edge: {}
     environment:
       TRUST_PROXY: 1
       MINIAPP_URL: https://${DOMAIN:?Задайте DOMAIN в .env}
       MAX_WEBHOOK_SECRET: ${MAX_WEBHOOK_SECRET:?Задайте MAX_WEBHOOK_SECRET в .env}
       SEED_DEMO: ${SEED_DEMO:-true}
+
+  meb-miniapp:
+    ports: !override
+      - "127.0.0.1:${MINIAPP_PORT:-8080}:80"
+    networks:
+      default: {}
+      edge: {}
 
 networks:
   # Создаётся отдельно и живёт независимо от обоих стеков: остановка одного не ломает другой

@@ -27,7 +27,7 @@ TODO: шаги от входа в бота до результата.
 
 | Компонент | Что делает | Технологии | Где |
 |---|---|---|---|
-| Мини-приложение | экраны студента и работодателя внутри MAX | React, TypeScript, Vite, MAX UI, MAX Bridge | `apps/miniapp/` (в `compose.yaml` подключается вместе с ним) |
+| Мини-приложение | экраны студента и работодателя внутри MAX | React, TypeScript, Vite, MAX UI, MAX Bridge | `apps/miniapp/`, контейнер `meb-miniapp` — статика за nginx |
 | Сервер | API мини-приложения и бот в одном процессе | Node.js 24, TypeScript, Express 5, TypeORM | `apps/server/` |
 | БД | пользователи, анкеты, места, отклики, уведомления, справочники | PostgreSQL 18 | том `db-data` |
 | Прокси (прод) | HTTPS, маршрутизация: свой Caddy (`compose.prod.yaml`) или уже работающий на сервере nginx/Caddy (`compose.proxy.yaml`) | Caddy 2 / nginx | `deploy/` |
@@ -110,24 +110,26 @@ docker compose up --build
 `POSTGRES_PASSWORD`: API, подпись данных запуска для smoke-проверки и тестовые данные работают, бот только не
 отправит сообщений. Проверка в самом MAX — через нашего развёрнутого бота, токен для этого не нужен.
 
-Поднимаются `db` и `server`; при старте сервер применяет миграции, загружает справочники и (при `SEED_DEMO=true`)
-тестовые данные. Проверка: `curl http://localhost:3000/api/health` → `{"status":"ok","db":"ok"}` или полная
-smoke-проверка `MAX_BOT_TOKEN=<токен из .env> node scripts/smoke.mjs` (нужен Node.js 20+ на хосте; создаёт служебного
-пользователя «Smoke»).
+Поднимаются `db`, `meb-server` и `meb-miniapp`; при старте сервер применяет миграции, загружает справочники и (при
+`SEED_DEMO=true`) тестовые данные. Мини-приложение отдаётся на `http://localhost:8080`, но сценарий целиком проходится
+только внутри MAX: API принимает запросы лишь с подписью данных запуска. Проверка:
+`curl http://localhost:3000/api/health` → `{"status":"ok","db":"ok"}` или полная smoke-проверка
+`node --env-file=.env scripts/smoke.mjs` (мини-приложение и API; токен и порты берутся из `.env`; нужен Node.js 20.6+
+на хосте; создаёт служебного пользователя «Smoke»).
 
 **Бот локально на `/start` не отвечает:** входящие сообщения MAX доставляет только на вебхук по HTTPS на 443 при
 заданном `MAX_WEBHOOK_SECRET`, то есть на развёрнутом сервере ([docs/deploy.md](docs/deploy.md)). Локально бот только
 ставит уведомления в очередь и пытается их отправить.
 
-Сборка и запуск с нуля (без скачивания базовых образов) замеряются в CI на каждом изменении — workflow `compose`:
-**28–34 с** на последних прогонах при лимите 5 минут.
+Сборка и запуск с нуля всего стека — БД, сервер и мини-приложение (без скачивания базовых образов) — замеряются в CI
+на каждом изменении, workflow `compose`: **38 с** при лимите 5 минут.
 
 ## Параметры окружения
 
 - Docker Engine 24+ и Docker Compose v2.24+ (используется `!reset` в `compose.prod.yaml`).
 - ОС: любая с Docker. Сборка образа проверяется в CI на Ubuntu 24.04. TODO: прогон на чистой машине.
-- Свободный порт 3000 (меняется через `SERVER_PORT`).
-- Для smoke-проверки — Node.js 20+ на хосте (необязательно).
+- Свободные порты 3000 и 8080 (меняются через `SERVER_PORT` и `MINIAPP_PORT`).
+- Для smoke-проверки — Node.js 20.6+ на хосте (необязательно).
 - Для прода — сервер с публичным IP, домен и открытые 80/443, см. [docs/deploy.md](docs/deploy.md).
 
 ## Переменные окружения
@@ -141,6 +143,7 @@ smoke-проверка `MAX_BOT_TOKEN=<токен из .env> node scripts/smoke.
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | доступ к БД | `app` / `app` / случайный |
 | `SEED_DEMO` | загрузить тестовые данные при старте | `true` |
 | `SERVER_PORT` | порт сервера на хосте | `3000` |
+| `MINIAPP_PORT` | порт мини-приложения на хосте | `8080` |
 | `INIT_DATA_MAX_AGE_SEC` | срок жизни данных запуска мини-приложения, с | `86400` |
 | `RATE_LIMIT_PER_MIN` | лимит запросов к API с одного IP в минуту | `120` |
 | `MATCH_NOTIFY_THRESHOLD` | порог совпадения для уведомления студента, % | `60` |
@@ -153,7 +156,8 @@ smoke-проверка `MAX_BOT_TOKEN=<токен из .env> node scripts/smoke.
 
 | Порт | Кто | Где открыт |
 |---|---|---|
-| 3000 | `server`: API `/api/*`, вебхук `/bot/webhook` (только при заданном `MAX_WEBHOOK_SECRET`) | локально — на хосте (`SERVER_PORT`); в проде со своим Caddy — только внутри сети Docker; за чужим прокси — `127.0.0.1:SERVER_PORT` и сеть `meb-edge` |
+| 3000 | `meb-server`: API `/api/*`, вебхук `/bot/webhook` (только при заданном `MAX_WEBHOOK_SECRET`) | локально — на хосте (`SERVER_PORT`); в проде со своим Caddy — только внутри сети Docker; за чужим прокси — `127.0.0.1:SERVER_PORT` и сеть `meb-edge` |
+| 8080 → 80 | `meb-miniapp`: статика мини-приложения (nginx) | локально — на хосте (`MINIAPP_PORT`); в проде со своим Caddy — только внутри сети Docker; за чужим прокси — `127.0.0.1:MINIAPP_PORT` и сеть `meb-edge` |
 | 5432 | `db` | только внутри сети Docker |
 | 80, 443 | прокси | только прод: свой Caddy (`compose.prod.yaml`) или уже работающий на сервере nginx/Caddy |
 
@@ -161,6 +165,8 @@ smoke-проверка `MAX_BOT_TOKEN=<токен из .env> node scripts/smoke.
 
 - Сервер: [apps/server/package.json](apps/server/package.json), версии зафиксированы в
   [apps/server/package-lock.json](apps/server/package-lock.json), в образе ставятся через `npm ci`.
+- Мини-приложение: `apps/miniapp/package.json`, версии зафиксированы в `apps/miniapp/package-lock.json`, в образе
+  ставятся через `npm ci`; статику раздаёт nginx с фиксированной версией образа (`apps/miniapp/Dockerfile`).
 - Образы Docker с фиксированными версиями: `node:24.21.0-alpine3.24`, `postgres:18.6-alpine3.24`, `caddy:2.11.4-alpine`.
 
 ## Внешние сервисы и интеграции

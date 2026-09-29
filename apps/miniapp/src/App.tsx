@@ -3,6 +3,7 @@ import { BackButtonSync } from './app/BackButtonSync';
 import { MeProvider } from './app/MeProvider';
 import { StartParamRedirect } from './app/StartParamRedirect';
 import { AnimatedRoutes } from './motion/AnimatedRoutes';
+import { AboutScreen } from './screens/AboutScreen';
 import { CandidatesScreen } from './screens/CandidatesScreen';
 import { EmployerHome } from './screens/EmployerHome';
 import { Home } from './screens/Home';
@@ -29,6 +30,7 @@ export function App() {
           <Route path="/employer" element={<EmployerHome />} />
           <Route path="/internships/:id" element={<InternshipScreen />} />
           <Route path="/employer/internships/:id/candidates" element={<CandidatesScreen />} />
+          <Route path="/about" element={<AboutScreen />} />
           <Route path="*" element={<NotFound />} />
         </AnimatedRoutes>
       </MeProvider>
