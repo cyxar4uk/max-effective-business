@@ -26,6 +26,10 @@ export function Home() {
         <button type="button" className="btn sec" onClick={() => go('/student')}>
           Я студент
         </button>
+        {/* Требование модерации MAX: ссылки на документы, реквизиты и поддержку видны в приложении */}
+        <button type="button" className="btn ghost" onClick={() => go('/about')}>
+          О сервисе
+        </button>
       </div>
     </main>
   );

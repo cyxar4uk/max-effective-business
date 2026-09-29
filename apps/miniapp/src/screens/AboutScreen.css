@@ -1,0 +1,5 @@
+.about{padding:16px 18px;gap:8px}
+.about p,.about ul{margin:0;color:var(--ink2)}
+.about ul{padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.about .btn{margin-top:4px}
+.about-links .li{cursor:pointer}
