@@ -3,6 +3,8 @@ import { In, type EntityManager } from 'typeorm';
 import { currentUser } from '../auth/middleware.js';
 import { Interest, Internship, StudentProfile, TaskTag, User } from '../db/entities.js';
 import type { InterestStatus } from '../db/entities.js';
+// Порядок ленты — чистые функции подбора (Тимур); сам процент по-прежнему считает внедрённый matcher
+import { compareForFeed, practiceMonthFits } from '../matching/match.js';
 import { assertSkills, assertTags, ownInternship, requireEmployer, requireStudent, type DomainDeps } from './context.js';
 import { ApiError, parse } from './errors.js';
 import { employerAction, studentAction } from './interestFsm.js';
@@ -158,7 +160,9 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     const suitable = open
       .map((i) => ({ i, ...matcher(student, i) }))
       .filter((x) => x.eligible && x.match.score > 0)
-      .sort((a, b) => b.match.score - a.match.score)
+      // Процент, затем закрыты ли все обязательные, затем месяц практики (matching/compareForFeed)
+      .map((x) => ({ ...x, datesFit: practiceMonthFits(student.practiceMonth, x.i.startsOn, x.i.endsOn) }))
+      .sort(compareForFeed)
       .slice(0, FEED_LIMIT);
     const employers = await employersById(ds, suitable.map((x) => x.i));
     res.json({

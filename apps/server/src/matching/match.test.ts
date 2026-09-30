@@ -3,7 +3,9 @@ import {
   checkFilters,
   computeScore,
   matchStudentToInternship,
+  compareForFeed,
   normalizeCity,
+  practiceMonthFits,
   shouldNotify,
 } from './match.js';
 import { matcher } from './index.js';
@@ -257,5 +259,70 @@ describe('matcher (контракт API)', () => {
       { requiredSkills: [], niceSkills: ['sql'], format: 'remote', city: null },
     );
     expect(r.match.score).toBe(0);
+  });
+});
+
+describe('shouldNotify: все обязательные навыки (#82)', () => {
+  it('без одного обязательного — нет уведомления, даже если процент выше порога', () => {
+    // 1 из 2 обязательных и все желательные: 35 + 30 = 65 %
+    const r = matchStudentToInternship(student({ skills: ['a', 'x', 'y'] }), internship({ requiredSkills: ['a', 'b'], niceSkills: ['x', 'y'] }));
+    expect(r.score).toBe(65);
+    expect(shouldNotify(r)).toBe(false);
+  });
+
+  it('все обязательные закрыты — уведомление при проценте от порога', () => {
+    const r = matchStudentToInternship(student({ skills: ['a', 'b'] }), internship({ requiredSkills: ['a', 'b'], niceSkills: ['x', 'y'] }));
+    expect(r.score).toBe(70);
+    expect(shouldNotify(r)).toBe(true);
+  });
+
+  it('место без обязательных — решает только процент по желательным', () => {
+    const r = matchStudentToInternship(student({ skills: ['x'] }), internship({ niceSkills: ['x', 'y'] }));
+    expect(shouldNotify(r)).toBe(false); // 50 %
+    expect(shouldNotify(matchStudentToInternship(student({ skills: ['x', 'y'] }), internship({ niceSkills: ['x', 'y'] })))).toBe(true);
+  });
+});
+
+describe('practiceMonthFits', () => {
+  it('месяц внутри сроков, на границах и вне', () => {
+    expect(practiceMonthFits('2026-11', '2026-10-19', '2027-01-29')).toBe(true);
+    expect(practiceMonthFits('2026-10', '2026-10-19', '2027-01-29')).toBe(true); // начинается в этом месяце
+    expect(practiceMonthFits('2027-01', '2026-10-19', '2027-01-29')).toBe(true); // заканчивается в этом месяце
+    expect(practiceMonthFits('2026-09', '2026-10-19', '2027-01-29')).toBe(false);
+    expect(practiceMonthFits('2027-02', '2026-10-19', '2027-01-29')).toBe(false);
+  });
+
+  it('у места нет сроков — подходит; студент месяц не указал — неизвестно', () => {
+    expect(practiceMonthFits('2026-11', null, null)).toBe(true);
+    expect(practiceMonthFits('2026-11', '2026-12-01', null)).toBe(false);
+    expect(practiceMonthFits(null, '2026-10-19', '2027-01-29')).toBeNull();
+    expect(practiceMonthFits('ноябрь', '2026-10-19', '2027-01-29')).toBeNull();
+  });
+});
+
+describe('compareForFeed', () => {
+  const item = (key: string, score: number, missing: number, datesFit: boolean | null) => ({
+    key,
+    match: { score, mustMissing: Array.from({ length: missing }, (_, i) => `m${i}`) },
+    datesFit,
+  });
+
+  it('процент главный; при равном — сначала без недостающих обязательных, затем подходящие по срокам; иначе порядок как был', () => {
+    const feed = [
+      item('новое-60', 60, 0, null),
+      item('70-не-по-срокам', 70, 0, false),
+      item('70-по-срокам', 70, 0, true),
+      item('70-без-обязательного', 70, 1, true),
+      item('90', 90, 1, false),
+      item('старое-60', 60, 0, null),
+    ];
+    expect([...feed].sort(compareForFeed).map((x) => x.key)).toEqual([
+      '90',
+      '70-по-срокам',
+      '70-не-по-срокам',
+      '70-без-обязательного',
+      'новое-60',
+      'старое-60',
+    ]);
   });
 });
