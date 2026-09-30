@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
+import { LEGAL } from '../../app/about';
 import { useMe } from '../../app/me';
+import { DocLink } from '../../components/DocLink';
 import { haptic, requestContact, type MaxContact } from '../../max/bridge';
 import './onboarding.css';
 
@@ -150,7 +152,10 @@ export function ConsentScreen() {
             </>
           )}
         </div>
-        <span className="lbl">Текст согласия · версия от 27.09.2026</span>
+        {/* Полный текст — public/legal/consent.html, версия совпадает с CONSENT_VERSION */}
+        <DocLink link={LEGAL.consent} className="lbl ob-doc">
+          Текст согласия · версия от 27.09.2026
+        </DocLink>
         {error && (
           <p className="ob-error" role="alert">
             {error}

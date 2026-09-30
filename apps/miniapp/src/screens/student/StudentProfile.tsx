@@ -134,7 +134,7 @@ export function StudentProfileScreen() {
               text={me.roles.employer ? 'Ваши места и кандидаты' : 'Опубликуйте место и получите откликнувшихся студентов'}
               onClick={() => navigate('/employer')}
             />
-            <LinkRow icon="info" title="О сервисе" text="Документы, реквизиты и поддержка" onClick={() => navigate('/about')} />
+            <LinkRow icon="info" title="О сервисе" text="Документы и поддержка" onClick={() => navigate('/about')} />
           </motion.div>
         </main>
       </StudentShell>

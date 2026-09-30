@@ -163,3 +163,12 @@ export function openLink(url: string): void {
   if (app) app.openLink(url);
   else window.open(url, '_blank', 'noopener');
 }
+
+/**
+ * Документ или внешняя страница по нажатию: в MAX — во внешнем браузере (openLink), вне MAX — в новой вкладке.
+ * Путь из public (например, /legal/terms.html) дополняем доменом мини-приложения: openLink нужен полный адрес.
+ * Вызывать прямо в обработчике нажатия: MAX открывает ссылку только по клику пользователя.
+ */
+export function openPage(url: string): void {
+  openLink(new URL(url, window.location.origin).href);
+}

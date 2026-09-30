@@ -1,14 +1,8 @@
-import type { MouseEvent } from 'react';
-import { ABOUT, type AboutLink } from '../app/about';
+import { ABOUT } from '../app/about';
 import { DemoBadge } from '../components/DemoBadge';
-import { openLink, openMaxLink } from '../max/bridge';
+import { DocLink } from '../components/DocLink';
+import { openMaxLink } from '../max/bridge';
 import './AboutScreen.css';
-
-/** Документ открываем через MAX (во внешнем браузере), путь из public — относительно домена мини-приложения. */
-function open(e: MouseEvent, link: AboutLink) {
-  e.preventDefault();
-  openLink(new URL(link.url, window.location.origin).href);
-}
 
 /**
  * «О сервисе»: назначение, тестовые данные, работа с персональными данными, документы, реквизиты и поддержка
@@ -55,9 +49,12 @@ export function AboutScreen() {
         {documents.length > 0 && (
           <section className="surf about-links" aria-label="Документы">
             {documents.map((doc) => (
-              <a key={doc.url} className="li" href={doc.url} onClick={(e) => open(e, doc)}>
+              <DocLink key={doc.url} className="li" link={doc}>
                 <span className="grow">{doc.title}</span>
-              </a>
+                <svg className="ic sm about-go" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </DocLink>
             ))}
           </section>
         )}
@@ -75,9 +72,7 @@ export function AboutScreen() {
             {support && (
               <p>
                 Поддержка:{' '}
-                <a href={support.url} onClick={(e) => open(e, support)}>
-                  {support.title}
-                </a>
+                <DocLink link={support} />
               </p>
             )}
           </section>
