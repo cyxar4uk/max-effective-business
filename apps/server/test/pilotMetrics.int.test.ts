@@ -92,7 +92,9 @@ describe.skipIf(!url)('метрики пилота', () => {
     expect(m).toEqual({
       places: 3,
       firstMatch: { withResponse: 2, medianHours: 49, withinTarget: 2 },
-      interests: { total: 4, strong: 2 },
+      interests: { total: 4, strong: 2, declined: 0 },
+      // Приглашение s1 на p1: «Интересно» 05.10 15:00, решение 08.10 12:00 — 69 ч
+      employerResponseMedianHours: 69,
       funnel: { profiles: 3, interested: 2 },
       invitations: 1,
       bands: [
@@ -108,6 +110,8 @@ describe.skipIf(!url)('метрики пилота', () => {
     const m = await collectPilotMetrics(ds, parsePeriod([]));
     expect(m.places).toBe(4);
     expect(m.interests.total).toBe(5);
+    // + приглашение на p4 через 24 ч: медиана (69 + 24) / 2
+    expect(m.employerResponseMedianHours).toBe(46.5);
     expect(m.funnel).toEqual({ profiles: 4, interested: 3 });
     expect(m.invitations).toBe(2);
     expect(m.bands[0]).toEqual({ band: '80+', interested: 2, invited: 2 });

@@ -50,7 +50,8 @@ describe('formatPilotMetrics', () => {
   const m: PilotMetrics = {
     places: 4,
     firstMatch: { withResponse: 3, medianHours: 5.5, withinTarget: 2 },
-    interests: { total: 10, strong: 6 },
+    interests: { total: 10, strong: 6, declined: 3 },
+    employerResponseMedianHours: 20.5,
     funnel: { profiles: 8, interested: 5 },
     invitations: 2,
     bands: [
@@ -66,6 +67,8 @@ describe('formatPilotMetrics', () => {
     expect(text).toContain('с 2026-10-01 по 2026-10-31');
     expect(text).toMatch(/Мест с подходящим откликом \(≥ 60 %\)\s+3 \(75 %\)/);
     expect(text).toMatch(/медиана\s+5\.5 ч/);
+    expect(text).toMatch(/работодатель не отклонил\s+7 из 10 \(70 %\)/);
+    expect(text).toMatch(/Ответ работодателя на отклик, медиана\s+20\.5 ч/);
     expect(text).toMatch(/не дольше 2 рабочих дней\s+2 \(67 %\)/);
     expect(text).toMatch(/≥ 70 %»?\s+6 из 10 \(60 %\)/);
     expect(text).toMatch(/первое «Интересно»\s+5 из 8 \(63 %\)/);
@@ -74,7 +77,7 @@ describe('formatPilotMetrics', () => {
   });
 
   it('пустая база — прочерки вместо деления на ноль', () => {
-    const empty: PilotMetrics = { places: 0, firstMatch: { withResponse: 0, medianHours: null, withinTarget: 0 }, interests: { total: 0, strong: 0 }, funnel: { profiles: 0, interested: 0 }, invitations: 0, bands: [] };
+    const empty: PilotMetrics = { places: 0, firstMatch: { withResponse: 0, medianHours: null, withinTarget: 0 }, interests: { total: 0, strong: 0, declined: 0 }, employerResponseMedianHours: null, funnel: { profiles: 0, interested: 0 }, invitations: 0, bands: [] };
     const text = formatPilotMetrics(empty, { from: null, to: null });
     expect(text).toContain('с начала по сегодня');
     expect(text).not.toContain('NaN');

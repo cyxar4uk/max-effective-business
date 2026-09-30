@@ -73,8 +73,13 @@ export interface PilotMetrics {
     medianHours: number | null;
     withinTarget: number;
   };
-  /** Доля «Интересно» с совпадением ≥ MATCH_STRONG. */
-  interests: { total: number; strong: number };
+  /** Доля «Интересно» с совпадением ≥ MATCH_STRONG; declined — сколько из них работодатель отклонил. */
+  interests: { total: number; strong: number; declined: number };
+  /**
+   * Ответ работодателя на «Интересно» (пригласил или отказал), медиана в часах. Время решения — последнее изменение
+   * отклика (updated_at): отдельного времени решения в базе нет. null — решений за период не было.
+   */
+  employerResponseMedianHours: number | null;
   /** Воронка студентов: анкета → первое «Интересно». */
   funnel: { profiles: number; interested: number };
   /** Приглашения — по времени последнего изменения отклика: отдельного времени приглашения в базе нет. */
@@ -115,11 +120,20 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
   ).length;
 
   const [interests] = (await db.query(
-    `SELECT count(*) AS total, count(*) FILTER (WHERE match_score >= ${MATCH_STRONG}) AS strong
+    `SELECT count(*) AS total, count(*) FILTER (WHERE match_score >= ${MATCH_STRONG}) AS strong,
+            count(*) FILTER (WHERE status = 'declined') AS declined
      FROM interests
      WHERE NOT is_demo AND interested_at IS NOT NULL AND ${inPeriod('interested_at')}`,
     params,
-  )) as { total: unknown; strong: unknown }[];
+  )) as { total: unknown; strong: unknown; declined: unknown }[];
+
+  const responses = (await db.query(
+    `SELECT extract(epoch FROM (updated_at - interested_at)) / 3600 AS hours
+     FROM interests
+     WHERE NOT is_demo AND interested_at IS NOT NULL AND status IN ('invited', 'declined') AND ${inPeriod('interested_at')}`,
+    params,
+  )) as { hours: unknown }[];
+  const responseMedian = median(responses.map((r) => Math.max(0, Number(r.hours))));
 
   const [funnel] = (await db.query(
     `SELECT count(*) AS profiles,
@@ -159,7 +173,8 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
       medianHours: medianHours === null ? null : Math.round(medianHours * 10) / 10,
       withinTarget,
     },
-    interests: { total: toNumber(interests?.total), strong: toNumber(interests?.strong) },
+    interests: { total: toNumber(interests?.total), strong: toNumber(interests?.strong), declined: toNumber(interests?.declined) },
+    employerResponseMedianHours: responseMedian === null ? null : Math.round(responseMedian * 10) / 10,
     funnel: { profiles: toNumber(funnel?.profiles), interested: toNumber(funnel?.interested) },
     invitations: toNumber(invitations?.n),
     bands,
@@ -179,6 +194,11 @@ export function formatPilotMetrics(m: PilotMetrics, period: Period): string {
     ['Публикация → первый подходящий отклик, медиана', m.firstMatch.medianHours === null ? '—' : `${m.firstMatch.medianHours} ч`],
     [`  из них не дольше ${TARGET_BUSINESS_DAYS} рабочих дней`, `${m.firstMatch.withinTarget} (${pct(m.firstMatch.withinTarget, m.firstMatch.withResponse)})`],
     [`«Интересно» с совпадением ≥ ${MATCH_STRONG} %`, `${m.interests.strong} из ${m.interests.total} (${pct(m.interests.strong, m.interests.total)})`],
+    [
+      '«Интересно», которые работодатель не отклонил',
+      `${m.interests.total - m.interests.declined} из ${m.interests.total} (${pct(m.interests.total - m.interests.declined, m.interests.total)})`,
+    ],
+    ['Ответ работодателя на отклик, медиана', m.employerResponseMedianHours === null ? '—' : `${m.employerResponseMedianHours} ч`],
     ['Студенты: анкета → первое «Интересно»', `${m.funnel.interested} из ${m.funnel.profiles} (${pct(m.funnel.interested, m.funnel.profiles)})`],
     ['Приглашений', String(m.invitations)],
     ...m.bands.map(({ band, interested, invited }): [string, string] => [
