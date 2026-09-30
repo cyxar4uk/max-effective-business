@@ -90,25 +90,36 @@ describe('демо-данные: разный процент у каждой с�
 });
 
 describe('демо-отклики на место проверяющего под типовую задачу (#64)', () => {
-  // Проверяющий выбирает тег в форме места: тег подставляет свои навыки обязательными (formSteps.tsx), желательных нет.
+  // Проверяющий выбирает тег в форме места: тег подставляет первые два навыка обязательными, остальные — желательными
+  // (formSteps.tsx, TAG_REQUIRED, #70). Критерий держим и для старого расклада «все обязательные»: работодатель может
+  // перетащить навыки сам.
   // Москва, гибрид — самый частый случай; порог уведомления — 60 %.
   const candidates = DEMO_STUDENTS.map((s, i) => ({ userId: i + 1, skills: s.skills, formats: s.formats, city: s.city }));
-  const placeFor = (skills: string[]) => ({ requiredSkills: skills, niceSkills: [], format: 'hybrid' as const, city: 'Москва' });
+  const layouts = {
+    'два обязательных': (skills: string[]) => ({ requiredSkills: skills.slice(0, 2), niceSkills: skills.slice(2) }),
+    'все обязательные': (skills: string[]) => ({ requiredSkills: skills, niceSkills: [] }),
+  };
+  const places = (skills: string[]) =>
+    Object.entries(layouts).map(([name, f]) => [name, { ...f(skills), format: 'hybrid' as const, city: 'Москва' }] as const);
 
   it.each(['marketplaces', 'website', 'spreadsheets', 'social_ads', 'one_c'])('%s: не меньше 4 откликов, из них не меньше 2 от 80 %%', (code) => {
     const tag = TASK_TAGS.find((t) => t.code === code)!;
-    const picked = pickDemoResponders(placeFor(tag.skills), candidates, 60);
-    expect(picked.length).toBeGreaterThanOrEqual(4);
-    expect(picked.filter((p) => p.match.score >= STRONG_SCORE).length).toBeGreaterThanOrEqual(2);
-    // Кроме сильных, есть и кандидат с пробелами — видно, чего не хватает
-    expect(picked.some((p) => p.match.score < STRONG_SCORE)).toBe(true);
+    for (const [layout, place] of places(tag.skills)) {
+      const picked = pickDemoResponders(place, candidates, 60);
+      expect(picked.length, layout).toBeGreaterThanOrEqual(4);
+      expect(picked.filter((p) => p.match.score >= STRONG_SCORE).length, layout).toBeGreaterThanOrEqual(2);
+      // Кроме сильных, есть и кандидат с пробелами — видно, чего не хватает
+      expect(picked.some((p) => p.match.score < STRONG_SCORE), layout).toBe(true);
+    }
   });
 
   it('sales: хотя бы два отклика, один от 80 %', () => {
     const tag = TASK_TAGS.find((t) => t.code === 'sales')!;
-    const picked = pickDemoResponders(placeFor(tag.skills), candidates, 60);
-    expect(picked.length).toBeGreaterThanOrEqual(2);
-    expect(picked.some((p) => p.match.score >= STRONG_SCORE)).toBe(true);
+    for (const [layout, place] of places(tag.skills)) {
+      const picked = pickDemoResponders(place, candidates, 60);
+      expect(picked.length, layout).toBeGreaterThanOrEqual(2);
+      expect(picked.some((p) => p.match.score >= STRONG_SCORE), layout).toBe(true);
+    }
   });
 });
 

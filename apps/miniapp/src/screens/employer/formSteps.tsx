@@ -45,16 +45,23 @@ function templatesFor(tags: readonly TagCode[]): TaskTemplate[] {
     : GENERAL_TEMPLATES.map((tag) => ({ tag, text: TASK_TEMPLATES[tag][0] }));
 }
 
+/** Сколько навыков направления становятся обязательными: остальные — желательные (#70). */
+const TAG_REQUIRED = 2;
+
 /**
- * Включить направление: его навыки идут в обязательные, если их ещё нет, иначе — в желательные.
+ * Включить направление. Обязательных ещё нет — первые TAG_REQUIRED навыков направления (они в справочнике идут по
+ * важности, apps/server/src/seed/tags.ts) становятся обязательными, остальные — желательными. Если все навыки
+ * направления сделать обязательными, студенту для 60 % нужно закрыть 3 из 5, а бот уведомляет только при всех
+ * обязательных — место почти никому не приходит. Обязательные уже есть — навыки направления идут в желательные.
  * Дальше работодатель правит сам.
  */
 function withTag(draft: Draft, tag: Tag, dict: Dict): Pick<Draft, 'tags' | 'requiredSkills' | 'niceSkills'> {
   const skills = tag.skills.filter((s) => dict.skillName.has(s));
   let { requiredSkills, niceSkills } = draft;
   if (requiredSkills.length === 0) {
-    requiredSkills = skills.slice(0, LIMITS.skills);
-    niceSkills = niceSkills.filter((s) => !requiredSkills.includes(s));
+    requiredSkills = skills.slice(0, TAG_REQUIRED);
+    const rest = skills.slice(TAG_REQUIRED).filter((s) => !niceSkills.includes(s));
+    niceSkills = [...niceSkills.filter((s) => !requiredSkills.includes(s)), ...rest].slice(0, LIMITS.skills);
   } else {
     const add = skills.filter((s) => !requiredSkills.includes(s) && !niceSkills.includes(s));
     niceSkills = [...niceSkills, ...add].slice(0, LIMITS.skills);
