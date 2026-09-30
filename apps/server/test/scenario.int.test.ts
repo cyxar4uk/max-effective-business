@@ -260,6 +260,27 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect((await as(STUDENT).get('/api/internships/999999')).status).toBe(404);
   });
 
+  // #75: номера мест идут подряд и видны в ссылке QR — перебор не должен давать ничего сверх публичной карточки
+  it('по номеру места: без подписи — 401, карточка — только публичные поля, контакт — только приглашённому', async () => {
+    for (const path of [`/api/internships/${internshipId}`, `/api/internships/${internshipId}/candidates`]) {
+      expect((await request(app).get(path)).status, path).toBe(401);
+    }
+    expect((await request(app).post(`/api/internships/${internshipId}/candidates/${studentUserId}/invite`)).status).toBe(401);
+
+    const PUBLIC = [
+      'id', 'type', 'title', 'description', 'company', 'requiredSkills', 'niceSkills', 'tags', 'format', 'city',
+      'startsOn', 'endsOn', 'paid', 'salary', 'slots', 'status', 'source', 'sourceUrl', 'isDemo', 'createdAt',
+      'match', 'myInterest', 'isOwner',
+    ];
+    // Посторонний (не студент и не владелец) и студент — никаких телефонов, имён контактов и внутренних id
+    for (const who of [OTHER_EMPLOYER, STUDENT]) {
+      const card = (await as(who).get(`/api/internships/${internshipId}`)).body as Record<string, unknown>;
+      for (const key of Object.keys(card)) expect(PUBLIC, `${who}: ${key}`).toContain(key);
+      expect(Object.keys(card.company as object).sort()).toEqual(['city', 'name']);
+      expect(JSON.stringify(card)).not.toMatch(/\+7\d{10}|phone|ownerUserId|employerId|contactName/);
+    }
+  });
+
   it('без профиля нужной роли — 403', async () => {
     expect((await as(STUDENT).post('/api/internships', { ...PLACE, title: 'X', requiredSkills: ['excel'], format: 'remote' })).status).toBe(403);
     expect((await as(EMPLOYER).get('/api/student/feed')).status).toBe(403);
