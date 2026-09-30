@@ -182,7 +182,8 @@ docker compose up --build
 ## Параметры окружения
 
 - Docker Engine 24+ и Docker Compose v2.24+ (используется `!reset` в `compose.prod.yaml`).
-- ОС: любая с Docker. Сборка образа проверяется в CI на Ubuntu 24.04. TODO: прогон на чистой машине.
+- ОС: любая с Docker. Проверено на чистой машине: VPS с Ubuntu 24.04, Docker 29.8, Compose 5.5 — сборка и запуск
+  прод-связки (`compose.yaml` + `compose.prod.yaml`) за 205 с, 29.09; в CI — на Ubuntu 24.04 на каждом изменении.
 - Свободные порты 3000 и 8080 (меняются через `SERVER_PORT` и `MINIAPP_PORT`).
 - Для smoke-проверки — Node.js 20.6+ на хосте (необязательно).
 - Для прода — сервер с публичным IP, домен и открытые 80/443, см. [docs/deploy.md](docs/deploy.md).
