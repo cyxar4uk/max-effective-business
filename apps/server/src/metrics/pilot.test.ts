@@ -53,6 +53,12 @@ describe('formatPilotMetrics', () => {
     interests: { total: 10, strong: 6 },
     funnel: { profiles: 8, interested: 5 },
     invitations: 2,
+    bands: [
+      { band: '80+', interested: 4, invited: 2 },
+      { band: '70–79', interested: 2, invited: 0 },
+      { band: '60–69', interested: 3, invited: 0 },
+      { band: '<60', interested: 1, invited: 0 },
+    ],
   };
 
   it('таблица с процентами и периодом', () => {
@@ -63,10 +69,12 @@ describe('formatPilotMetrics', () => {
     expect(text).toMatch(/не дольше 2 рабочих дней\s+2 \(67 %\)/);
     expect(text).toMatch(/≥ 70 %»?\s+6 из 10 \(60 %\)/);
     expect(text).toMatch(/первое «Интересно»\s+5 из 8 \(63 %\)/);
+    expect(text).toMatch(/приглашены при совпадении 80\+ %\s+2 из 4 \(50 %\)/);
+    expect(text).toMatch(/приглашены при совпадении <60 %\s+0 из 1 \(0 %\)/);
   });
 
   it('пустая база — прочерки вместо деления на ноль', () => {
-    const empty: PilotMetrics = { places: 0, firstMatch: { withResponse: 0, medianHours: null, withinTarget: 0 }, interests: { total: 0, strong: 0 }, funnel: { profiles: 0, interested: 0 }, invitations: 0 };
+    const empty: PilotMetrics = { places: 0, firstMatch: { withResponse: 0, medianHours: null, withinTarget: 0 }, interests: { total: 0, strong: 0 }, funnel: { profiles: 0, interested: 0 }, invitations: 0, bands: [] };
     const text = formatPilotMetrics(empty, { from: null, to: null });
     expect(text).toContain('с начала по сегодня');
     expect(text).not.toContain('NaN');
