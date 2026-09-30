@@ -17,9 +17,42 @@ export const NICE_WEIGHT = 100 - MUST_WEIGHT;
 /** Форматы, для которых город студента должен совпадать с городом стажировки. */
 export const CITY_BOUND_FORMATS: readonly WorkFormat[] = ['office', 'hybrid'];
 
-/** Приводит название города к виду для сравнения: регистр, пробелы, «ё». */
+/**
+ * Как студенты пишут города пилота в анкете (город — свободный текст) → каноническое название после нормализации.
+ * Только Москва, Петербург и Казань: там пилот и финал; прочие города сравниваются как написаны.
+ */
+const CITY_ALIASES: Readonly<Record<string, string>> = {
+  мск: 'москва',
+  moscow: 'москва',
+  moskva: 'москва',
+  спб: 'санкт-петербург',
+  питер: 'санкт-петербург',
+  петербург: 'санкт-петербург',
+  'с-петербург': 'санкт-петербург',
+  'санкт петербург': 'санкт-петербург',
+  'saint petersburg': 'санкт-петербург',
+  'st. petersburg': 'санкт-петербург',
+  'st petersburg': 'санкт-петербург',
+  'sankt-peterburg': 'санкт-петербург',
+  kazan: 'казань',
+};
+
+/**
+ * Приводит название города к виду для сравнения: регистр, пробелы, «ё», дефис без пробелов, приставка «г.» или
+ * «город», хвост «, Россия», сокращения городов пилота («Мск», «СПб», «Питер»).
+ */
 export function normalizeCity(city: string | null | undefined): string {
-  return (city ?? '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/ё/g, 'е');
+  const base = (city ?? '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\s*-\s*/g, '-')
+    .replace(/^(г\.|г |город )\s*/, '')
+    .replace(/,?\s*(россия|russia)$/, '')
+    .replace(/\.$/, '')
+    .trim();
+  return CITY_ALIASES[base] ?? base;
 }
 
 /** Жёсткие фильтры: формат работы и город для очных форматов. */
@@ -91,7 +124,46 @@ export function matchStudentToInternship(student: StudentMatchInput, internship:
   };
 }
 
-/** Присылать ли студенту уведомление о стажировке. */
+/**
+ * Присылать ли студенту уведомление о стажировке: фильтры пройдены, процент не ниже порога и закрыты **все**
+ * обязательные навыки. Без последнего условия студент без одного обязательного навыка, но со всеми желательными
+ * получал 35 + 30 = 65 % и уведомление: «обязательные» были не обязательными (#82). В ленте такие места остаются,
+ * но стоят ниже (compareForFeed).
+ */
 export function shouldNotify(result: MatchResult, threshold: number = DEFAULT_NOTIFY_THRESHOLD): boolean {
-  return result.passesFilters && result.score >= threshold;
+  return result.passesFilters && result.score >= threshold && result.mustMissing.length === 0;
+}
+
+/**
+ * Попадает ли месяц практики студента (`ГГГГ-ММ`) в сроки места. У места без сроков — да.
+ * null — студент месяц не указал. Даты — строки `ГГГГ-ММ-ДД`, сравниваются как строки.
+ */
+export function practiceMonthFits(
+  month: string | null | undefined,
+  startsOn: string | null | undefined,
+  endsOn: string | null | undefined,
+): boolean | null {
+  if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return null;
+  const monthStart = `${month}-01`;
+  const monthEnd = `${month}-31`;
+  return (!endsOn || endsOn >= monthStart) && (!startsOn || startsOn <= monthEnd);
+}
+
+export interface FeedRankInput {
+  match: Pick<MatchResult, 'score' | 'mustMissing'>;
+  /** practiceMonthFits: true — по срокам подходит, false — нет, null — неизвестно. */
+  datesFit: boolean | null;
+}
+
+/**
+ * Порядок ленты студента. Процент — главный; при равном проценте выше место, где закрыты все обязательные навыки,
+ * затем подходящее по месяцу практики. Остальное — как пришло (сначала новые): сортировка устойчивая.
+ * Процент от этого не меняется — только порядок.
+ */
+export function compareForFeed(a: FeedRankInput, b: FeedRankInput): number {
+  return (
+    b.match.score - a.match.score ||
+    a.match.mustMissing.length - b.match.mustMissing.length ||
+    Number(b.datesFit === true) - Number(a.datesFit === true)
+  );
 }

@@ -66,14 +66,26 @@ export function fallbackMessage(): QueuedMessage {
 
 const list = (items: string[]) => items.slice(0, 3).join(', ');
 
+const TYPE_LABEL: Record<PlaceType, string> = { practice: 'Практика', internship: 'Стажировка', part_time: 'Подработка' };
+const rub = new Intl.NumberFormat('ru-RU');
+
+/** «Стажировка · 30 000 ₽ в месяц», «Практика · без оплаты» — как на карточке в мини-приложении. */
+export function placeTerms(type: PlaceType, paid: boolean | null, salary: number | null): string {
+  const pay = paid === true ? (salary ? `${rub.format(salary)} ₽ в месяц` : 'оплачивается') : paid === false ? 'без оплаты' : 'оплата не указана';
+  return `${TYPE_LABEL[type] ?? 'Место'} · ${pay}`;
+}
+
 export function internshipMatchMessage(opts: {
   internshipId: number;
   title: string;
   company: string;
   score: number;
   matchedSkills: string[];
+  /** Тип и оплата места (#74): студенту это важнее всего после самой задачи. */
+  terms?: { type: PlaceType; paid: boolean | null; salary: number | null };
 }): QueuedMessage {
   const lines = [`Новое место для вас: «${opts.title}», ${opts.company}.`];
+  if (opts.terms) lines.push(placeTerms(opts.terms.type, opts.terms.paid, opts.terms.salary) + '.');
   lines.push(opts.matchedSkills.length ? `Совпадение ${opts.score} %: ${list(opts.matchedSkills)}.` : `Совпадение ${opts.score} %.`);
   return { text: lines.join('\n'), buttons: [[{ text: 'Смотреть', startapp: internshipParam(opts.internshipId) }]] };
 }

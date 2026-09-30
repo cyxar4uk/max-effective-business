@@ -18,3 +18,16 @@ export const TASK_TAGS: TaskTag[] = [
   { code: 'spreadsheets', name: 'Таблицы и аналитика', skills: ['excel', 'google_sheets', 'data_visualization', 'power_bi'] },
   { code: 'sales', name: 'Продажи и клиенты', skills: ['sales', 'crm', 'avito', 'customer_support'] },
 ];
+
+/** Сколько тегов может быть у места — как в API (schemas.ts). */
+export const MAX_PLACE_TAGS = 3;
+
+/**
+ * Теги для места, которое создал не работодатель через форму (тестовые места, «Работа России»): тег ставится, если
+ * среди обязательных навыков места есть навык тега. Без этого фильтр ленты по тегам таких мест не находит.
+ * Порядок — как в TASK_TAGS, не больше MAX_PLACE_TAGS.
+ */
+export function tagsForSkills(requiredSkills: readonly string[], tags: readonly TaskTag[] = TASK_TAGS): string[] {
+  const required = new Set(requiredSkills);
+  return tags.filter((t) => t.skills.some((s) => required.has(s))).map((t) => t.code).slice(0, MAX_PLACE_TAGS);
+}

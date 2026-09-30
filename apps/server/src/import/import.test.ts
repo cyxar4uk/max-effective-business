@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { skillRows } from '../seed/skills.js';
-import { importTrudvsem } from './index.js';
+import { backfillTrudvsemTags, importTrudvsem } from './index.js';
 import { mapSkills, SKILL_MAP_CODES } from './skillMap.js';
 import { cityOf, fetchAll, fetchPilotVacancies, formatOf, mapVacancy, pickFields, placeTypeOf, safeSourceUrl, stripContacts, type TrudvsemVacancy } from './trudvsem.js';
 import { TRUDVSEM_SNAPSHOT } from './trudvsemSnapshot.js';
@@ -230,5 +230,32 @@ describe('importTrudvsem', () => {
     expect(r).toMatchObject({ from: 'none', imported: 0, closed: 0 });
     expect(inserts(sql)).toHaveLength(0);
     expect(sql.some((q) => q.text.includes('UPDATE internships'))).toBe(false);
+  });
+});
+
+describe('теги мест «Работа России»', () => {
+  it('новое место получает теги по обязательным навыкам', async () => {
+    const { db, sql } = fakeDb();
+    await importTrudvsem(db, { fetch: fakeFetch(() => false).fn });
+    const first = inserts(sql)[0] as { text: string; params?: unknown[] };
+    expect(first.text).toContain('tags = EXCLUDED.tags');
+    expect(Array.isArray(first.params?.[12])).toBe(true);
+  });
+
+  it('дозаполнение: только пустые теги и только если есть подходящий тег', async () => {
+    const sql: { text: string; params?: unknown[] }[] = [];
+    const db = {
+      query: async (text: string, params?: unknown[]) => {
+        sql.push({ text, params });
+        return text.startsWith('SELECT')
+          ? [{ id: 1, required_skills: ['excel', 'wildberries'] }, { id: 2, required_skills: ['contract_law'] }]
+          : [];
+      },
+    };
+    expect(await backfillTrudvsemTags(db)).toBe(1);
+    const updates = sql.filter((q) => q.text.startsWith('UPDATE'));
+    expect(updates).toHaveLength(1);
+    expect(updates[0]!.params).toEqual([1, ['marketplaces', 'spreadsheets']]);
+    expect(updates[0]!.text).toContain('cardinality(tags) = 0');
   });
 });

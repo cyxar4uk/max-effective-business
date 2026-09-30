@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SKILL_GROUPS, seedSkills, skillRows } from './skills.js';
-import { TASK_TAGS } from './tags.js';
+import { MAX_PLACE_TAGS, TASK_TAGS, tagsForSkills } from './tags.js';
 
 describe('справочник навыков', () => {
   const rows = skillRows();
@@ -108,5 +108,21 @@ describe('теги задач', () => {
       expect(new Set(t.skills).size, t.code).toBe(t.skills.length);
       for (const s of t.skills) expect(codes.has(s), `${t.code}: ${s}`).toBe(true);
     }
+  });
+});
+
+describe('tagsForSkills', () => {
+  it('тег — если среди обязательных навыков есть навык тега; порядок как в справочнике', () => {
+    expect(tagsForSkills(['wildberries', 'excel'])).toEqual(['marketplaces', 'spreadsheets']);
+    expect(tagsForSkills(['1c_accounting'])).toEqual(['one_c']);
+  });
+
+  it('навыков тегов нет — тегов нет', () => {
+    expect(tagsForSkills(['contract_law', 'civil_law'])).toEqual([]);
+    expect(tagsForSkills([])).toEqual([]);
+  });
+
+  it('не больше трёх тегов, как в API', () => {
+    expect(tagsForSkills(['html_css', 'ozon', '1c_trade', 'smm', 'excel', 'crm'])).toHaveLength(MAX_PLACE_TAGS);
   });
 });

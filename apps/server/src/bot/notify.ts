@@ -77,7 +77,14 @@ export async function onInternshipCreated(deps: NotifyDeps, { internshipId }: Ap
       user,
       KIND.internshipMatch,
       `internship:${internship.id}:student:${user.userId}`,
-      internshipMatchMessage({ internshipId: internship.id, title: internship.title, company, score: match.score, matchedSkills }),
+      internshipMatchMessage({
+        internshipId: internship.id,
+        title: internship.title,
+        company,
+        score: match.score,
+        matchedSkills,
+        terms: { type: internship.type, paid: internship.paid, salary: internship.salary },
+      }),
     );
     if (ok) queued++;
   }

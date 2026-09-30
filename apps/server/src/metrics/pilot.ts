@@ -79,7 +79,15 @@ export interface PilotMetrics {
   funnel: { profiles: number; interested: number };
   /** Приглашения — по времени последнего изменения отклика: отдельного времени приглашения в базе нет. */
   invitations: number;
+  /**
+   * Кого приглашают в зависимости от процента (#72): «Интересно» за период по полосам совпадения и сколько из них
+   * уже приглашены. По нему подбираются порог уведомления и веса 70/30 после пилота.
+   */
+  bands: { band: Band; interested: number; invited: number }[];
 }
+
+export const BANDS = ['80+', '70–79', '60–69', '<60'] as const;
+export type Band = (typeof BANDS)[number];
 
 // Условие периода для столбца: $1 — начало, $2 — конец (не включительно); null — без границы
 const inPeriod = (column: string) => `($1::timestamptz IS NULL OR ${column} >= $1) AND ($2::timestamptz IS NULL OR ${column} < $2)`;
@@ -129,6 +137,20 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
     params,
   )) as { n: unknown }[];
 
+  const bandRows = (await db.query(
+    `SELECT CASE WHEN match_score >= 80 THEN '80+' WHEN match_score >= 70 THEN '70–79'
+                 WHEN match_score >= ${MATCH_OK} THEN '60–69' ELSE '<60' END AS band,
+            count(*) AS interested, count(*) FILTER (WHERE status = 'invited') AS invited
+     FROM interests
+     WHERE NOT is_demo AND interested_at IS NOT NULL AND ${inPeriod('interested_at')}
+     GROUP BY 1`,
+    params,
+  )) as { band: Band; interested: unknown; invited: unknown }[];
+  const bands = BANDS.map((band) => {
+    const row = bandRows.find((r) => r.band === band);
+    return { band, interested: toNumber(row?.interested), invited: toNumber(row?.invited) };
+  });
+
   const medianHours = median(hours);
   return {
     places: places.length,
@@ -140,6 +162,7 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
     interests: { total: toNumber(interests?.total), strong: toNumber(interests?.strong) },
     funnel: { profiles: toNumber(funnel?.profiles), interested: toNumber(funnel?.interested) },
     invitations: toNumber(invitations?.n),
+    bands,
   };
 }
 
@@ -158,6 +181,10 @@ export function formatPilotMetrics(m: PilotMetrics, period: Period): string {
     [`«Интересно» с совпадением ≥ ${MATCH_STRONG} %`, `${m.interests.strong} из ${m.interests.total} (${pct(m.interests.strong, m.interests.total)})`],
     ['Студенты: анкета → первое «Интересно»', `${m.funnel.interested} из ${m.funnel.profiles} (${pct(m.funnel.interested, m.funnel.profiles)})`],
     ['Приглашений', String(m.invitations)],
+    ...m.bands.map(({ band, interested, invited }): [string, string] => [
+      `  приглашены при совпадении ${band} %`,
+      `${invited} из ${interested} (${pct(invited, interested)})`,
+    ]),
   ];
   const width = Math.max(...rows.map(([k]) => k.length));
   return [
