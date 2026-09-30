@@ -157,7 +157,7 @@ Power BI, Статистика. Студент знает Excel, SQL, Power BI, 
 ## Запуск одной командой
 
 ```bash
-cp .env.example .env    # заполнить MAX_BOT_TOKEN и POSTGRES_PASSWORD
+cp .env.example .env    # заполнить MAX_BOT_TOKEN и POSTGRES_PASSWORD; если 3000/8080 заняты — поменять SERVER_PORT/MINIAPP_PORT
 docker compose up --build
 ```
 
@@ -166,9 +166,11 @@ docker compose up --build
 отправит сообщений. Проверка в самом MAX — через нашего развёрнутого бота, токен для этого не нужен.
 
 Поднимаются `db`, `meb-server` и `meb-miniapp`; при старте сервер применяет миграции, загружает справочники и (при
-`SEED_DEMO=true`) тестовые данные. Мини-приложение отдаётся на `http://localhost:8080`, но сценарий целиком проходится
-только внутри MAX: API принимает запросы лишь с подписью данных запуска. Проверка:
-`curl http://localhost:3000/api/health` → `{"status":"ok","db":"ok"}` или полная smoke-проверка
+`SEED_DEMO=true`) тестовые данные. Мини-приложение отдаётся на `http://localhost:8080` (`MINIAPP_PORT`). В обычном
+браузере оно покажет «Не получилось загрузить» — так и должно быть: статика в compose не проксирует `/api`, а API
+принимает запросы только с подписью данных запуска MAX. Сценарий целиком проходится внутри MAX через развёрнутого
+бота, локальный стек проверяет smoke-скрипт ниже. Проверка: `curl http://localhost:3000/api/health` (порт —
+`SERVER_PORT` из `.env`) → `{"status":"ok","db":"ok"}` или полная smoke-проверка
 `node --env-file=.env scripts/smoke.mjs` (мини-приложение и API; токен и порты берутся из `.env`; нужен Node.js 20.6+
 на хосте; создаёт служебного пользователя «Smoke»).
 
@@ -437,6 +439,9 @@ docker compose down        # остановить, данные БД сохра�
 docker compose up          # запустить снова
 docker compose down -v     # остановить и удалить данные (чистый старт)
 ```
+
+Поменяли `POSTGRES_PASSWORD` после первого запуска — база в томе осталась со старым паролем: `docker compose down -v`
+и запустить заново.
 
 ## Команда
 
