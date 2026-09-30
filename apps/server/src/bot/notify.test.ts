@@ -47,6 +47,7 @@ describe('onInternshipCreated', () => {
         student(1, ['excel', 'sql', 'power_bi']), // 100
         student(2, ['excel', 'sql']), // 70
         student(3, ['excel']), // 35 — ниже порога
+        student(5, ['excel', 'power_bi']), // 65, но без обязательного SQL — не пишем (#82)
         student(4, ['excel', 'sql'], { isDemo: true, maxUserId: -2004 }), // демо
       ],
     });
