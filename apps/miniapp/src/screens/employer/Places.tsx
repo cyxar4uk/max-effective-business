@@ -31,7 +31,9 @@ function statusText(p: Internship): string {
   const invited = c.invited > 0 ? `${c.invited} ${plural(c.invited, ['приглашён', 'приглашены', 'приглашены'])}` : null;
   if (p.status === 'closed') return ['Набор закрыт', invited].filter(Boolean).join(' · ');
   if (total === 0) return 'Разослали · откликов пока нет';
-  if (c.interested > 0) return `${responsesText(total)} · ${c.interested} ${plural(c.interested, ['ждёт', 'ждут', 'ждут'])}`;
+  if (c.interested > 0) {
+    return `${responsesText(total)} · ${c.interested} ${plural(c.interested, ['ждёт', 'ждут', 'ждут'])} решения`;
+  }
   return [responsesText(total), invited].filter(Boolean).join(' · ');
 }
 
@@ -123,7 +125,7 @@ export function Places() {
         </span>
         <span className="col grow">
           <span className="pl-howto-t">Как проверить за 5 минут</span>
-          <span className="lbl">Весь сценарий одним аккаунтом: компания и студент</span>
+          <span className="lbl">Для проверяющих: компания и студент одним аккаунтом</span>
         </span>
         <ChevronIcon />
       </button>
@@ -136,8 +138,8 @@ export function Places() {
         <section className="pl-empty cd-in">
           <h2 className="h2">Создайте первое место — это около 3 минут</h2>
           <p className="lead">
-            Опишите задачу и нужные навыки. Бот сам отправит карточку студентам, которым она подходит, а отклики появятся
-            здесь.
+            Это бесплатно. Опишите задачу и нужные навыки — бот сам отправит карточку подходящим студентам, а отклики
+            появятся здесь.
           </p>
           <button type="button" className="btn pri" onClick={create}>
             <PlusIcon />

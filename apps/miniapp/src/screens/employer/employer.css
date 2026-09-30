@@ -71,6 +71,11 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-grp .chips{padding-bottom:12px}
 .pf-hint{padding:14px 16px;gap:4px}
 .pf-hint-t{font-weight:600}
+/* готовые задачи: длинный текст переносится, кнопка растёт по высоте */
+.pf-tpls{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.pf-tpl{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 14px;border:0;border-radius:14px;background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font:500 14.5px/1.3 var(--font);text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.pf-tpl .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pf-tpl.on{box-shadow:inset 0 0 0 2px var(--ink)}
 /* как оформляется каждый тип места — под выбором типа */
 .pf-terms{display:flex;flex-direction:column;gap:4px}
 
@@ -116,6 +121,12 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-live-ok{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink);flex-shrink:0}
 .pf-pulse{width:10px;height:10px;border-radius:50%;background:var(--st);flex-shrink:0;animation:pf-breathe 1.6s ease-in-out infinite}
 .pf-link{border:0;background:none;padding:0;font:inherit;font-weight:500;color:var(--wait-ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+/* «Что дальше» под кнопками экрана «Место опубликовано» */
+.pf-next{width:100%;max-width:480px;margin:20px auto 0;padding:16px 18px;gap:12px}
+.pf-next-t{margin:0;font-size:17px;font-weight:600}
+.pf-next-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;font-size:14.5px;line-height:1.4;color:var(--ink2)}
+.pf-next-list li{display:flex;align-items:flex-start;gap:12px}
+.pf-next-n{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--wait-bg);color:var(--wait-ink);font-size:13px;font-weight:600}
 
 /* шторка «Номер телефона» перед публикацией (PhoneSheet.tsx) — как «Закрыть набор?» в places.css */
 .pf-modal{position:fixed;inset:0;z-index:40;display:flex;align-items:flex-end;justify-content:center}
@@ -142,6 +153,13 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-field input::placeholder{color:var(--ink3);font-weight:400}
 .pf-field.bad label{color:var(--neg-ink)}
 .pf-field .pf-err{font-size:12.5px}
+/* строка «Поделиться номером» — как в профиле студента (sp-link в student.css) */
+.co-phone{width:100%;background:none;border:0;font:inherit;color:var(--ink);text-align:left}
+button.co-phone{cursor:pointer}
+.co-phone > .ic{flex-shrink:0}
+.co-phone > .ic:last-child{color:var(--ink3)}
+.co-phone-ok{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink)}
+.co-phone-note{margin:0;padding:0 14px 12px}
 
 /* десктоп: форма одной страницей и живое превью справа */
 /* фон на всю ширину окна, содержимое — не шире 1168 px по центру */
@@ -201,6 +219,7 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-fresh .pf-done > .pf-rise:nth-child(5){animation-delay:180ms}
 .pf-fresh .pf-done > .pf-rise:nth-child(n+6){animation-delay:220ms}
 .pf-fresh .actions.pf-rise{animation-delay:260ms}
+.pf-fresh .pf-next.pf-rise{animation-delay:300ms}
 
 @media (prefers-reduced-motion: reduce){
   .emp :is(.btn,.chip,.pf-opt,.ibtn,.seg button){transition:none}
@@ -211,7 +230,7 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
   .pf-prog i::after{transform:none;opacity:0;transition:opacity 150ms ease-out}
   .pf-prog i.on::after{opacity:1}
   .pf-fresh .pf-done-ic,.pf-fresh .pf-rise{animation:pf-fade 150ms ease-out backwards}
-  .pf-fresh .pf-done > .pf-rise:nth-child(n),.pf-fresh .actions.pf-rise{animation-delay:0s}
+  .pf-fresh .pf-done > .pf-rise:nth-child(n),.pf-fresh .actions.pf-rise,.pf-fresh .pf-next.pf-rise{animation-delay:0s}
   /* счётчик откликов: число меняется сразу, индикатор ожидания — неподвижный */
   .pf-live .pf-fade-in{animation:none}
   .pf-live .pf-fade-out{display:none}

@@ -453,7 +453,7 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
           <section className="cd-pane" aria-label="Выбранный кандидат">
             {selected ? (
               <div key={selected.studentId} className="cd-pane-in cd-fade">
-                <CandidateCard c={selected} names={names} pending={pendingFor(selected)} />
+                <CandidateCard c={selected} names={names} />
                 <CandidateActions c={selected} place={place} pending={busy} onDecide={(a) => decide(selected, a)} />
               </div>
             ) : (
@@ -663,13 +663,7 @@ function CardDeck({ list, index, names, place, pending, onGo, onDecide, toggle }
           items={list.slice(index)}
           getKey={(x) => x.studentId}
           cardLabel={(x) => `Кандидат: ${firstName(x)}, совпадение ${x.match.score} %`}
-          renderCard={(x) => (
-            <CandidateCardBody
-              c={x}
-              names={names}
-              pending={pending?.candidate.studentId === x.studentId ? pending.action : null}
-            />
-          )}
+          renderCard={(x) => <CandidateCardBody c={x} names={names} />}
           onSwipe={(x) => onGo(list.indexOf(x) + 1)}
           empty={
             <div className="deck-empty cd-deck-end">

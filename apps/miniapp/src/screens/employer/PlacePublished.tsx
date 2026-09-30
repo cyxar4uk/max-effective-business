@@ -70,7 +70,15 @@ function useLiveCandidates(id: number): Live {
   return live;
 }
 
+// Та же ссылка, что в «О сервисе»: чат с ботом, где можно нажать «Начать»
 const openBot = () => openMaxLink(`https://max.ru/${ABOUT.botNick}?start=`);
+
+/** Что будет после публикации — шаги без сроков: сколько ждать откликов в жизни, мы не знаем. */
+const NEXT_STEPS = [
+  'Студенты с подходящими навыками получат карточку в MAX.',
+  'Бот напишет вам о каждом отклике. Пригласить можно одним нажатием — это ни к чему не обязывает.',
+  'После приглашения бот пришлёт контакты обеим сторонам и чек-лист: как оформить и с чего начать.',
+];
 
 /** «Место опубликовано»: сколько уже откликнулось, что будет дальше и куда идти. */
 export function PlacePublished() {
@@ -138,9 +146,10 @@ function Published({ id }: { id: number }) {
           </span>
         </div>
         <p className="lbl m0 pf-rise">
-          Бот напишет вам в чат, когда откликнутся студенты. Не нажимали «Начать»?{' '}
+          Уведомления приходят в чат с ботом. Если вы открыли приложение не из бота, нажмите там «Начать» — иначе бот
+          не сможет вам написать.{' '}
           <button type="button" className="pf-link" onClick={openBot}>
-            Открыть бота
+            Открыть чат с ботом
           </button>
         </p>
       </section>
@@ -156,6 +165,22 @@ function Published({ id }: { id: number }) {
           QR для стенда на ярмарке
         </button>
       </div>
+      {/* Под кнопками: на телефоне 390×844 «Смотреть кандидатов» остаётся на первом экране */}
+      <section className="surf pf-next pf-rise" aria-labelledby="pf-next-t">
+        <h2 className="pf-next-t" id="pf-next-t">
+          Что дальше
+        </h2>
+        <ol className="pf-next-list">
+          {NEXT_STEPS.map((text, i) => (
+            <li key={i}>
+              <span className="pf-next-n num" aria-hidden="true">
+                {i + 1}
+              </span>
+              <span>{text}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
     </main>
   );
 }
