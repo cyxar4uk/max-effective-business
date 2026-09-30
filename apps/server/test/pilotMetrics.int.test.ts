@@ -95,6 +95,12 @@ describe.skipIf(!url)('метрики пилота', () => {
       interests: { total: 4, strong: 2 },
       funnel: { profiles: 3, interested: 2 },
       invitations: 1,
+      bands: [
+        { band: '80+', interested: 1, invited: 1 },
+        { band: '70–79', interested: 1, invited: 0 },
+        { band: '60–69', interested: 1, invited: 0 },
+        { band: '<60', interested: 1, invited: 0 },
+      ],
     });
   });
 
@@ -104,5 +110,6 @@ describe.skipIf(!url)('метрики пилота', () => {
     expect(m.interests.total).toBe(5);
     expect(m.funnel).toEqual({ profiles: 4, interested: 3 });
     expect(m.invitations).toBe(2);
+    expect(m.bands[0]).toEqual({ band: '80+', interested: 2, invited: 2 });
   });
 });
