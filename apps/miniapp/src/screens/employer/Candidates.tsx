@@ -663,7 +663,7 @@ function CardDeck({ list, index, names, place, pending, onGo, onDecide, toggle }
           items={list.slice(index)}
           getKey={(x) => x.studentId}
           cardLabel={(x) => `Кандидат: ${firstName(x)}, совпадение ${x.match.score} %`}
-          renderCard={(x) => <CandidateCardBody c={x} names={names} />}
+          renderCard={(x) => <CandidateCardBody c={x} names={names} deck />}
           onSwipe={(x) => onGo(list.indexOf(x) + 1)}
           empty={
             <div className="deck-empty cd-deck-end">

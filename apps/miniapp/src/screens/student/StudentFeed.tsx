@@ -120,19 +120,27 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
     return () => window.clearTimeout(t);
   }, [botHint]);
 
+  // Подсказка про бота и тост — в одной точке сверху: показываем что-то одно, новое сменяет старое
+  const showToast = (t: Toast) => {
+    setBotHint(false);
+    setToast(t);
+  };
+
   const send = async (place: Internship, action: InterestAction) => {
     try {
       await api.interest(place.id, action);
       if (action === 'interested') {
         haptic.notify('success');
-        if (takeBotHint()) setBotHint(true);
-        else setToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
+        if (takeBotHint()) {
+          setToast(null);
+          setBotHint(true);
+        } else showToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
       }
     } catch (err) {
       haptic.notify('error');
       setSkipped((s) => s.filter((p) => p.id !== place.id));
       setQueue((q) => [place, ...q.filter((p) => p.id !== place.id)]);
-      setToast({
+      showToast({
         kind: 'error',
         text: err instanceof ApiError ? err.message : 'Не получилось отправить. Повторите.',
       });
@@ -282,9 +290,9 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
           <motion.div
             className="bot-hint"
             role="status"
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
             transition={reduced ? fade : spring}
           >
             <span className="grow">

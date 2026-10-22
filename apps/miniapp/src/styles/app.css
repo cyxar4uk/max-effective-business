@@ -66,6 +66,8 @@
 .shade{position:absolute;left:0;right:0;bottom:0;height:74%;background:linear-gradient(to top,rgba(8,8,12,.97) 0%,rgba(8,8,12,.9) 45%,rgba(8,8,12,0) 100%)}
 .info{position:absolute;left:0;right:0;bottom:0;padding:20px;display:flex;flex-direction:column;gap:12px}
 .topchips{position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;gap:6px}
+/* три плашки («3 курс», «Приглашение отправлено», «тестовый отклик») на 360 px в строку не влезают */
+.topchips > .row{flex-wrap:wrap;min-width:0}
 .gchip{height:28px;padding:0 10px;border-radius:999px;background:rgba(0,0,0,.38);color:#fff;font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .gchip.demo{background:var(--demo-cover-bg);color:var(--demo-cover-ink)}
 .title{font-family:"Unbounded","Onest",sans-serif;font-weight:700;font-size:24px;line-height:1.12;letter-spacing:-.02em;margin:0}
