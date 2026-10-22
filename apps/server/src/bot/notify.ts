@@ -4,6 +4,7 @@ import type { BotData, Recipient } from '../db/botData.js';
 import type { AppEvents } from '../events.js';
 import { matchStudentToInternship, shouldNotify } from '../matching/index.js';
 import {
+  demoResponsesMessage,
   digestMessage,
   KIND,
   employerInvitedMessage,
@@ -23,7 +24,7 @@ export const DAILY_MATCH_LIMIT = 3;
 export const dispatchDay = (now: Date) => new Date(now.getTime() + (3 + 2) * 3600_000).toISOString().slice(0, 10);
 
 export interface NotifyDeps {
-  data: Pick<BotData, 'internship' | 'studentsWithProfiles' | 'interestContext' | 'enqueue'>;
+  data: Pick<BotData, 'internship' | 'studentsWithProfiles' | 'interestContext' | 'userById' | 'enqueue'>;
   /** Коды навыков → названия из справочника. */
   skillNames(): Promise<Map<string, string>>;
   /** Сколько уведомлений вида kind у пользователя за текущий день рассылки (см. dispatchDay и botData.countInDispatchDay). */
@@ -106,6 +107,22 @@ export async function onInterestCreated(deps: NotifyDeps, e: AppEvents['interest
   return ok ? 1 : 0;
 }
 
+/** demo.responses → владельцу места одно сообщение: откликнулись тестовые студенты (на каждый отклик не пишем). */
+export async function onDemoResponses(deps: NotifyDeps, { internshipId, count }: AppEvents['demo.responses']): Promise<number> {
+  const found = await deps.data.internship(internshipId);
+  if (!found?.employer) return 0;
+  const owner = await deps.data.userById(found.employer.ownerUserId);
+  if (!reachable(owner)) return 0;
+  const ok = await enqueue(
+    deps,
+    owner,
+    KIND.newCandidate,
+    `demo-responses:${internshipId}`,
+    demoResponsesMessage({ internshipId, title: found.internship.title, count }),
+  );
+  return ok ? 1 : 0;
+}
+
 /** interest.invited → студенту контакт работодателя и чек-лист, работодателю контакт студента. */
 export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest.invited']): Promise<number> {
   const ctx = await deps.data.interestContext(e.interestId);
@@ -127,6 +144,7 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
         contactName: employer?.contactName ?? null,
         phone: employerOwner?.phone ?? null,
         type: internship.type,
+        isDemo: internship.isDemo,
       }),
     );
     if (ok) queued++;

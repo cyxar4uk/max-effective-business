@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EnqueueInput, InterestContext, Recipient, StudentCandidate } from '../db/botData.js';
 import type { Employer, Interest, Internship, StudentProfile } from '../db/entities.js';
-import { DAILY_MATCH_LIMIT, dispatchDay, onInterestCreated, onInterestInvited, onInternshipCreated, serial, type NotifyDeps } from './notify.js';
+import { DAILY_MATCH_LIMIT, dispatchDay, onDemoResponses, onInterestCreated, onInterestInvited, onInternshipCreated, serial, type NotifyDeps } from './notify.js';
 
 const recipient = (userId: number, over: Partial<Recipient> = {}): Recipient => ({ userId, maxUserId: 1000 + userId, firstName: `U${userId}`, isDemo: false, ...over });
 
@@ -16,7 +16,7 @@ const student = (userId: number, skills: string[], over: Partial<Recipient> = {}
   profile: { userId, skills, formats: ['remote'], city: 'Москва' } as unknown as StudentProfile,
 });
 
-function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | null; seen?: Set<string>; today?: number } = {}) {
+function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | null; seen?: Set<string>; today?: number; owner?: Recipient | null } = {}) {
   const queued: EnqueueInput[] = [];
   const seen = over.seen ?? new Set<string>();
   let excluded: number | undefined;
@@ -29,6 +29,7 @@ function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | nul
       internship: async (id) => (id === 7 ? { internship, employer } : null),
       studentsWithProfiles: async (ex) => ((excluded = ex), over.students ?? []),
       interestContext: async () => over.ctx ?? null,
+      userById: async (id) => (over.owner !== undefined ? over.owner : id === 50 ? recipient(50) : null),
       enqueue: async (n) => {
         if (seen.has(n.dedupeKey)) return false;
         seen.add(n.dedupeKey);
@@ -108,11 +109,54 @@ describe('onInterestInvited', () => {
     expect(String(toEmployer!.payload.text)).toContain('U1 Соколова, +70000002001');
   });
 
+  it('приглашение от демо-компании — студенту прямо сказано, что место тестовое', async () => {
+    const demoPlace = { ...internship, isDemo: true } as unknown as Internship;
+    const { d, queued } = deps({ ctx: ctx({ internship: demoPlace }) });
+    await onInterestInvited(d, { interestId: 30, internshipId: 7, studentUserId: 1 });
+    expect(String(queued[0]!.payload.text)).toMatch(/^Тестовое приглашение: «Аналитик», Луч\.\n/);
+    expect(String(queued[0]!.payload.text)).toContain('номер вымышленные');
+    const real = deps({ ctx: ctx() });
+    await onInterestInvited(real.d, { interestId: 30, internshipId: 7, studentUserId: 1 });
+    expect(String(real.queued[0]!.payload.text)).toMatch(/^Вас приглашают: /);
+    expect(String(real.queued[0]!.payload.text)).not.toContain('вымышленные');
+  });
+
   it('демо-студент приглашён проверяющим — пишем только проверяющему', async () => {
     const demoStudent = ctx({ student: { ...student(1, ['excel'], { isDemo: true, maxUserId: -2001 }), phone: '+70000002001', lastName: 'Соколова' } });
     const { d, queued } = deps({ ctx: demoStudent });
     expect(await onInterestInvited(d, { interestId: 30, internshipId: 7, studentUserId: 1 })).toBe(1);
     expect(queued[0]!.userId).toBe(50);
+  });
+});
+
+describe('onDemoResponses', () => {
+  it('владельцу места — одно сообщение на все демо-отклики, повтор не дублирует', async () => {
+    const seen = new Set<string>();
+    const { d, queued } = deps({ seen });
+    expect(await onDemoResponses(d, { internshipId: 7, count: 5 })).toBe(1);
+    expect(queued[0]).toMatchObject({ userId: 50, kind: 'new_candidate', dedupeKey: 'demo-responses:7' });
+    expect(String(queued[0]!.payload.text)).toBe(
+      'На «Аналитик» откликнулись 5 тестовых студентов. Так будут приходить отклики: посмотрите, кто подходит, и пригласите.',
+    );
+    expect(await onDemoResponses(deps({ seen }).d, { internshipId: 7, count: 5 })).toBe(0);
+  });
+
+  it('склонение: 1 студент, 2 студента, 11 студентов, 21 студент', async () => {
+    const text = async (count: number) => {
+      const { d, queued } = deps();
+      await onDemoResponses(d, { internshipId: 7, count });
+      return String(queued[0]!.payload.text);
+    };
+    expect(await text(1)).toContain('откликнулся 1 тестовый студент.');
+    expect(await text(2)).toContain('откликнулись 2 тестовых студента.');
+    expect(await text(11)).toContain('откликнулись 11 тестовых студентов.');
+    expect(await text(21)).toContain('откликнулся 21 тестовый студент.');
+  });
+
+  it('нет места, нет компании или владелец — демо: ничего', async () => {
+    expect(await onDemoResponses(deps().d, { internshipId: 999, count: 3 })).toBe(0);
+    expect(await onDemoResponses(deps({ owner: null }).d, { internshipId: 7, count: 3 })).toBe(0);
+    expect(await onDemoResponses(deps({ owner: recipient(50, { isDemo: true, maxUserId: -1001 }) }).d, { internshipId: 7, count: 3 })).toBe(0);
   });
 });
 

@@ -7,7 +7,7 @@ import { createBotData } from '../db/botData.js';
 import { createUsersRepo } from '../db/users.js';
 import type { EventBus } from '../events.js';
 import { createMaxApi, type MaxApi } from './maxApi.js';
-import { onInterestCreated, onInterestInvited, onInternshipCreated, serial, type NotifyDeps } from './notify.js';
+import { onDemoResponses, onInterestCreated, onInterestInvited, onInternshipCreated, serial, type NotifyDeps } from './notify.js';
 import { createSender } from './sender.js';
 import { createUpdateHandler } from './updates.js';
 
@@ -58,6 +58,7 @@ export function registerBot({ events, ds, config, log, api = createMaxApi({ toke
   events.on('internship.created', (e) => oneAtATime(() => onInternshipCreated(notify, e)).then(logQueued('internship.created')));
   events.on('interest.created', (e) => onInterestCreated(notify, e).then(logQueued('interest.created')));
   events.on('interest.invited', (e) => onInterestInvited(notify, e).then(logQueued('interest.invited')));
+  events.on('demo.responses', (e) => onDemoResponses(notify, e).then(logQueued('demo.responses')));
 
   const sender = createSender({ data, api, botUsername, log });
   const loop = sender.start();

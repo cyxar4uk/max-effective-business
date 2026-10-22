@@ -8,6 +8,8 @@ export interface AppEvents {
   'internship.created': { internshipId: number };
   'interest.created': { interestId: number; internshipId: number; studentUserId: number; status: 'interested' | 'skipped' };
   'interest.invited': { interestId: number; internshipId: number; studentUserId: number };
+  // Только при SEED_DEMO: демо-студенты откликнулись на место проверяющего (seed/demo/responder.ts)
+  'demo.responses': { internshipId: number; count: number };
 }
 
 export type EventName = keyof AppEvents;

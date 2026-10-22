@@ -80,6 +80,11 @@ export function createBotData(ds: DataSource) {
       };
     },
 
+    async userById(userId: number): Promise<Recipient | null> {
+      const u = await users.findOneBy({ id: userId });
+      return u ? recipient(u) : null;
+    },
+
     async userByMaxId(maxUserId: number): Promise<Recipient | null> {
       const u = await users.findOneBy({ maxUserId });
       return u ? recipient(u) : null;
