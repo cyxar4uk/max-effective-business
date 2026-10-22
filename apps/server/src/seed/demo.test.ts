@@ -3,20 +3,25 @@ import { matchStudentToInternship } from '../matching/index.js';
 import { DEMO_EMPLOYERS, DEMO_INTERNSHIPS, DEMO_INVITE_KEYS, DEMO_STUDENTS } from './demo/data.js';
 import { INTERESTS_PER_INTERNSHIP, planDemoInterests } from './demo/plan.js';
 import { pickDemoResponders, STRONG_SCORE } from './demo/responder.js';
-import { TASK_TAGS } from './tags.js';
+import { TASK_TAGS, tagsForSkills } from './tags.js';
 import { skillRows } from './skills.js';
 
 const skillCodes = new Set(skillRows().map((r) => r.code));
 const unique = <T>(xs: T[]) => new Set(xs).size === xs.length;
 const PHONE = /^\+7000000\d{4}$/;
+const KZN = 'Казань';
 
 describe('демо-данные: объём и ключи', () => {
-  it('объём по плану', () => {
-    expect(DEMO_EMPLOYERS).toHaveLength(12);
-    expect(DEMO_INTERNSHIPS.length).toBeGreaterThanOrEqual(20);
-    expect(DEMO_INTERNSHIPS.length).toBeLessThanOrEqual(30);
-    expect(DEMO_STUDENTS.length).toBeGreaterThanOrEqual(50);
-    expect(DEMO_STUDENTS.length).toBeLessThanOrEqual(60);
+  it('объём по плану: Москва и Казань (#99)', () => {
+    const inKazan = <T extends { city: string | null }>(xs: T[]) => xs.filter((x) => x.city === KZN).length;
+    expect(DEMO_EMPLOYERS).toHaveLength(16);
+    expect(inKazan(DEMO_EMPLOYERS)).toBe(4);
+    expect(DEMO_INTERNSHIPS.length).toBeGreaterThanOrEqual(30);
+    expect(DEMO_INTERNSHIPS.length).toBeLessThanOrEqual(40);
+    expect(inKazan(DEMO_INTERNSHIPS)).toBeGreaterThanOrEqual(7);
+    expect(DEMO_STUDENTS.length).toBeGreaterThanOrEqual(60);
+    expect(DEMO_STUDENTS.length).toBeLessThanOrEqual(75);
+    expect(inKazan(DEMO_STUDENTS)).toBeGreaterThanOrEqual(15);
   });
 
   it('max_user_id отрицательные и уникальные — не пересекаются с настоящими пользователями MAX', () => {
@@ -123,6 +128,72 @@ describe('демо-отклики на место проверяющего по�
   });
 });
 
+describe('Казань (#99): финал там, и проверяющий из Казани видит места и отклики у себя', () => {
+  const kazanPlaces = DEMO_INTERNSHIPS.filter((i) => i.city === KZN);
+
+  it('места в Казани — очные и гибридные, на каждый тег задач малого бизнеса есть открытое', () => {
+    for (const i of kazanPlaces) expect(['office', 'hybrid'], i.key).toContain(i.format);
+    const openTags = new Set(kazanPlaces.filter((i) => !i.closed).flatMap((i) => tagsForSkills(i.requiredSkills)));
+    for (const t of TASK_TAGS) expect(openTags.has(t.code), t.code).toBe(true);
+  });
+
+  it('у нового студента из Казани, который хочет очно или гибрид, лента не пустая', () => {
+    const newcomer = { skills: ['excel', 'smm', 'copywriting', 'sales'], formats: ['office' as const, 'hybrid' as const], city: KZN };
+    const feed = DEMO_INTERNSHIPS.filter((i) => !i.closed)
+      .map((i) => matchStudentToInternship(newcomer, i))
+      .filter((r) => r.passesFilters && r.score > 0);
+    expect(feed.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('студенты в Казани — из КФУ, КНИТУ-КАИ и КГЭУ; в Москве есть ВШЭ и МГУ', () => {
+    const universities = (city: string) => new Set(DEMO_STUDENTS.filter((s) => s.city === city).map((s) => s.university));
+    for (const u of ['КФУ', 'КНИТУ-КАИ', 'КГЭУ']) expect(universities(KZN).has(u), u).toBe(true);
+    for (const u of ['ВШЭ', 'МГУ']) expect(universities('Москва').has(u), u).toBe(true);
+  });
+
+  // Как для Москвы (#64): проверяющий публикует место с тегом, тег подставляет навыки. В Казани проверяем и очное,
+  // и гибридное место — удалённое город не проверяет и уже покрыто московскими студентами.
+  const candidates = DEMO_STUDENTS.map((s, i) => ({ userId: i + 1, skills: s.skills, formats: s.formats, city: s.city }));
+  const cases = TASK_TAGS.flatMap((t) =>
+    (['office', 'hybrid'] as const).flatMap((format) => [
+      [`${t.code}, ${format}, два обязательных`, { requiredSkills: t.skills.slice(0, 2), niceSkills: t.skills.slice(2), format, city: KZN }] as const,
+      [`${t.code}, ${format}, все обязательные`, { requiredSkills: t.skills, niceSkills: [], format, city: KZN }] as const,
+    ]),
+  );
+
+  it.each(cases)('%s: не меньше 4 откликов, из них не меньше 2 от 80 %%', (_name, place) => {
+    const picked = pickDemoResponders(place, candidates, 60);
+    expect(picked.length).toBeGreaterThanOrEqual(4);
+    expect(picked.filter((p) => p.match.score >= STRONG_SCORE).length).toBeGreaterThanOrEqual(2);
+    expect(picked.some((p) => p.match.score < STRONG_SCORE)).toBe(true);
+    // Откликаются казанцы: москвич на очное место в Казани не проходит фильтр города
+    for (const p of picked) expect(candidates[p.userId - 1]!.city).toBe(KZN);
+  });
+});
+
+describe('повторная загрузка на проде (#99)', () => {
+  // На проде SEED_DEMO=true и база засеяна раньше: 12 работодателей, 28 мест, 52 студента. Отклики добавляются, но
+  // не удаляются (load.ts), поэтому новые студенты не должны попадать в тройку откликов на старые места — иначе
+  // повторная загрузка допишет четвёртого-пятого откликнувшегося и второго «приглашён».
+  const LEGACY = { employers: 12, internships: 28, students: 52 };
+
+  it('новые записи дописаны в конец, старые ключи на месте', () => {
+    expect(DEMO_EMPLOYERS.slice(0, LEGACY.employers).every((e) => e.city === 'Москва')).toBe(true);
+    expect(DEMO_INTERNSHIPS.slice(0, LEGACY.internships).map((i) => i.key)).toEqual(
+      [...'a1 a2 a3 a4 a5 m1 m2 m3 m4 m5 f1 f2 f3 f4 l1 l2 l3 l4 h1 h2 h3 h4 i1 i2 i3 i4 b1 b2'.split(' ')],
+    );
+    expect(DEMO_STUDENTS.slice(0, LEGACY.students).map((s) => s.key)).toEqual(Array.from({ length: LEGACY.students }, (_, n) => `s${n + 1}`));
+    expect(DEMO_INTERNSHIPS.slice(0, LEGACY.internships).some((i) => i.closed)).toBe(false);
+  });
+
+  it('отклики на старые места те же, что при прежнем составе студентов', () => {
+    const legacyKeys = new Set(DEMO_INTERNSHIPS.slice(0, LEGACY.internships).map((i) => i.key));
+    const before = planDemoInterests(DEMO_INTERNSHIPS.slice(0, LEGACY.internships), DEMO_STUDENTS.slice(0, LEGACY.students), DEMO_INVITE_KEYS);
+    const after = planDemoInterests(DEMO_INTERNSHIPS, DEMO_STUDENTS, DEMO_INVITE_KEYS).filter((x) => legacyKeys.has(x.internship));
+    expect(after).toEqual(before);
+  });
+});
+
 describe('демо-места: занятость в описании (#64)', () => {
   it('у каждого места указана занятость — «25 000 ₽» не читается как полный день ниже МРОТ', () => {
     for (const i of DEMO_INTERNSHIPS) expect(i.description, i.key).toMatch(/часов в неделю/);
@@ -167,19 +238,23 @@ describe('демо-места: тип и оплата (#74)', () => {
   const MROT_2026 = 27_093;
   const HALF_TIME = 20 / 40;
 
-  it('у каждого места есть тип и оплата: сумма у оплачиваемых, у остальных — «без оплаты»', () => {
+  it('у каждого места есть тип и оплата: сумма у оплачиваемых (или «Оплачивается» без суммы), у остальных — «без оплаты»', () => {
     for (const i of DEMO_INTERNSHIPS) {
       expect(['practice', 'internship', 'part_time'], i.key).toContain(i.type);
       expect(typeof i.paid, i.key).toBe('boolean');
-      if (i.paid) expect(i.salary, i.key).toBeGreaterThan(0);
-      else expect(i.salary, i.key).toBeNull();
+      if (i.paid && i.salary !== null) expect(i.salary, i.key).toBeGreaterThan(0);
+      if (!i.paid) expect(i.salary, i.key).toBeNull();
     }
+    // Без суммы — одно-два места (#99): чтобы было видно, как выглядит «Оплачивается», но это не стало нормой
+    const noSum = DEMO_INTERNSHIPS.filter((i) => i.paid && i.salary === null).length;
+    expect(noSum).toBeGreaterThanOrEqual(1);
+    expect(noSum).toBeLessThanOrEqual(2);
   });
 
   it('оплата не ниже МРОТ за отработанную долю ставки, и часы в описании это подтверждают', () => {
     for (const i of DEMO_INTERNSHIPS.filter((x) => x.paid)) {
       expect(i.description, i.key).toMatch(/20 часов в неделю/);
-      expect(i.salary!, i.key).toBeGreaterThanOrEqual(Math.ceil(MROT_2026 * HALF_TIME));
+      if (i.salary !== null) expect(i.salary, i.key).toBeGreaterThanOrEqual(Math.ceil(MROT_2026 * HALF_TIME));
     }
   });
 
@@ -192,5 +267,18 @@ describe('демо-места: тип и оплата (#74)', () => {
     expect(partTime).toBeLessThanOrEqual(2);
     // Место для типовой задачи малого бизнеса, которое проверяющий видит первым, — оплачиваемое
     expect(DEMO_INTERNSHIPS.find((i) => i.key === 'b1')?.paid).toBe(true);
+    // Оплачиваемая практика тоже бывает (#99)
+    expect(count((i) => i.type === 'practice' && i.paid)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('есть место со стартом в феврале–марте 2027 — для тех, кто ищет практику на весну (#99)', () => {
+    expect(DEMO_INTERNSHIPS.some((i) => i.startsOn >= '2027-02-01' && i.startsOn <= '2027-03-31')).toBe(true);
+  });
+
+  it('одно место закрыто, и на нём есть отклики и приглашение (#99)', () => {
+    const closed = DEMO_INTERNSHIPS.filter((i) => i.closed);
+    expect(closed).toHaveLength(1);
+    // Отклики на нём есть, кто-то приглашён — набор закрыли не впустую
+    expect(DEMO_INVITE_KEYS).toContain(closed[0]!.key);
   });
 });
