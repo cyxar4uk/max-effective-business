@@ -99,6 +99,10 @@ const inPeriod = (column: string) => `($1::timestamptz IS NULL OR ${column} >= $
 
 const toNumber = (v: unknown) => Number(v ?? 0);
 
+// Отклики без тестовых: и сам отклик не демо, и место не демо. Настоящий студент может откликнуться на демо-место,
+// и демо-компания пригласит его сама через 20 с (seed/demo/responder.ts) — это не ответ работодателя пилота
+const REAL_INTERESTS = `(SELECT x.* FROM interests x JOIN internships s ON s.id = x.internship_id WHERE NOT x.is_demo AND NOT s.is_demo)`;
+
 export async function collectPilotMetrics(db: Queryable, period: Period): Promise<PilotMetrics> {
   const params = [period.from, period.to];
 
@@ -122,14 +126,14 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
   const [interests] = (await db.query(
     `SELECT count(*) AS total, count(*) FILTER (WHERE match_score >= ${MATCH_STRONG}) AS strong,
             count(*) FILTER (WHERE status = 'declined') AS declined
-     FROM interests
+     FROM ${REAL_INTERESTS} interests
      WHERE NOT is_demo AND interested_at IS NOT NULL AND ${inPeriod('interested_at')}`,
     params,
   )) as { total: unknown; strong: unknown; declined: unknown }[];
 
   const responses = (await db.query(
     `SELECT extract(epoch FROM (updated_at - interested_at)) / 3600 AS hours
-     FROM interests
+     FROM ${REAL_INTERESTS} interests
      WHERE NOT is_demo AND interested_at IS NOT NULL AND status IN ('invited', 'declined') AND ${inPeriod('interested_at')}`,
     params,
   )) as { hours: unknown }[];
@@ -138,7 +142,7 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
   const [funnel] = (await db.query(
     `SELECT count(*) AS profiles,
             count(*) FILTER (WHERE EXISTS (
-              SELECT 1 FROM interests x
+              SELECT 1 FROM ${REAL_INTERESTS} x
               WHERE x.student_user_id = p.user_id AND NOT x.is_demo AND x.interested_at IS NOT NULL
             )) AS interested
      FROM student_profiles p
@@ -147,7 +151,7 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
   )) as { profiles: unknown; interested: unknown }[];
 
   const [invitations] = (await db.query(
-    `SELECT count(*) AS n FROM interests WHERE NOT is_demo AND status = 'invited' AND ${inPeriod('updated_at')}`,
+    `SELECT count(*) AS n FROM ${REAL_INTERESTS} interests WHERE NOT is_demo AND status = 'invited' AND ${inPeriod('updated_at')}`,
     params,
   )) as { n: unknown }[];
 
@@ -155,7 +159,7 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
     `SELECT CASE WHEN match_score >= 80 THEN '80+' WHEN match_score >= 70 THEN '70–79'
                  WHEN match_score >= ${MATCH_OK} THEN '60–69' ELSE '<60' END AS band,
             count(*) AS interested, count(*) FILTER (WHERE status = 'invited') AS invited
-     FROM interests
+     FROM ${REAL_INTERESTS} interests
      WHERE NOT is_demo AND interested_at IS NOT NULL AND ${inPeriod('interested_at')}
      GROUP BY 1`,
     params,

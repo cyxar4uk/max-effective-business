@@ -105,6 +105,25 @@ export function newCandidateMessage(opts: { internshipId: number; title: string;
   };
 }
 
+/** Форма слова для числа: 1 студент, 2 студента, 5 студентов (11–14 — как 5). */
+function plural(n: number, [one, few, many]: [string, string, string]): string {
+  const d = n % 10;
+  const dd = n % 100;
+  if (d === 1 && dd !== 11) return one;
+  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return few;
+  return many;
+}
+
+/** Демо-режим: на место проверяющего откликнулись тестовые студенты. Одно сообщение на все отклики. */
+export function demoResponsesMessage(opts: { internshipId: number; title: string; count: number }): QueuedMessage {
+  const who = plural(opts.count, ['тестовый студент', 'тестовых студента', 'тестовых студентов']);
+  const verb = opts.count % 10 === 1 && opts.count % 100 !== 11 ? 'откликнулся' : 'откликнулись';
+  return {
+    text: `На «${opts.title}» ${verb} ${opts.count} ${who}. Так будут приходить отклики: посмотрите, кто подходит, и пригласите.`,
+    buttons: [[{ text: 'Кандидаты', startapp: internshipParam(opts.internshipId) }]],
+  };
+}
+
 /**
  * Что делать студенту после приглашения. ЧЕРНОВИК: сверить с центром карьеры.
  * Практика — по приказу Минобрнауки России и Минпросвещения России № 885/390 и положению о практике вуза.
@@ -133,11 +152,15 @@ export function studentInvitedMessage(opts: {
   contactName: string | null;
   phone: string | null;
   type?: PlaceType | null;
+  /** Тестовое место: компания и номер вымышленные — говорим об этом прямо, чтобы по номеру не звонили. */
+  isDemo?: boolean;
 }): QueuedMessage {
   const contact = [opts.contactName, opts.phone].filter(Boolean).join(', ') || 'работодатель свяжется с вами сам';
   const lines = [
-    `Вас приглашают: «${opts.title}», ${opts.company}.`,
+    // Тестовое — в первой строке: её видно в превью уведомления MAX
+    `${opts.isDemo ? 'Тестовое приглашение' : 'Вас приглашают'}: «${opts.title}», ${opts.company}.`,
     `Контакт: ${contact}.`,
+    ...(opts.isDemo ? ['Компания и номер вымышленные — так выглядит приглашение от настоящей компании.'] : []),
     '',
     'Что дальше:',
     ...nextStepsFor(opts.type).map((s, i) => `${i + 1}. ${s}`),
