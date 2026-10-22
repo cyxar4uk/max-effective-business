@@ -6,7 +6,7 @@
 .ints-list .li{border-bottom:0}
 .ints-ext{padding-top:0}
 .ints-text{gap:3px}
-.ints-title{font-weight:600;line-height:1.25}
+.ints-title{font-weight:600;line-height:1.25;overflow-wrap:anywhere}
 .ints-text .st{align-self:flex-start}
 .ints-text .st.tandem{margin-bottom:3px}
 .ints-text .st.demo{margin-top:3px}

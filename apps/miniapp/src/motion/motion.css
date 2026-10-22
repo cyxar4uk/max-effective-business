@@ -12,7 +12,9 @@
   }
 }
 
-.routes{display:grid;min-height:100vh;min-height:100dvh}
+/* overflow-x:clip — сдвиг экрана на 24 px во время перехода иначе расширяет страницу: мобильный браузер
+   растягивает под него окно и не сужает обратно, и весь экран уезжает за правый край */
+.routes{display:grid;min-height:100vh;min-height:100dvh;overflow-x:clip}
 .route{grid-area:1/1;min-width:0;position:relative;background:var(--bg);z-index:1}
 .route.out{pointer-events:none;z-index:0}
 /* «Назад»: уходит верхний экран, прежний выезжает под ним.

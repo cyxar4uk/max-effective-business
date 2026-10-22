@@ -113,11 +113,35 @@
 .cd-pager .ibtn{width:36px;height:36px;cursor:pointer}
 .cd-pager .lbl{min-width:44px;text-align:center}
 .cd-pager .ibtn:disabled{opacity:.35;cursor:default}
-/* колода — общий SwipeDeck: карточки абсолютные, высоту задаёт область */
-.cd-deck{flex-grow:1}
-.cd-deck-area{position:relative;display:flex;flex-direction:column;flex:1 0 auto;min-height:470px;border-radius:28px}
-.stack.deck.cd-swipe{margin:0;flex:1 0 470px}
+/* колода — общий SwipeDeck: карточки абсолютные, высоту задаёт область. Высота — под экран, чтобы «Отказать»
+   и «Пригласить» были видны без прокрутки: над колодой ~195 px (шапка, вкладки, счётчик), под ней ~117 px */
+.cd-deck{flex-grow:1;--cd-deck-h:clamp(250px,calc(100vh - 312px),470px)}
+/* у пользовательского свойства значение не проверяется при разборе, поэтому запасной vh — через @supports */
+@supports (height:1dvh){.cd-deck{--cd-deck-h:clamp(250px,calc(100dvh - 312px),470px)}}
+.cd-deck-area{position:relative;display:flex;flex-direction:column;flex:1 0 auto;min-height:var(--cd-deck-h);border-radius:28px}
+.stack.deck.cd-swipe{margin:0;flex:1 0 var(--cd-deck-h);container-type:size}
 .cd-swipe .shade{height:82%}
+/* карточка в колоде — колонкой, как карточка места: плашки сверху, текст снизу и на плашки не наезжает */
+.cd-swipe .deck-card{display:flex;flex-direction:column}
+.cd-swipe .topchips{position:relative;z-index:1;inset:auto;flex:none;flex-wrap:wrap;margin:16px 16px 0}
+.cd-swipe .info{position:relative;flex:none;margin-top:auto}
+/* невысокая колода (навыков в ней не больше 4, остальное — «+N»): сначала без навыков — фраза над ними уже говорит,
+   что совпало и чего не хватает, — потом без пояснений, потом текст короче */
+@container (max-height:480px){
+  .cd-swipe .cd-basis{display:none}
+}
+@container (max-height:430px){
+  .cd-swipe .cd-skills{display:none}
+}
+@container (max-height:370px){
+  .cd-swipe :is(.cd-lock,.cd-initial){display:none}
+  .cd-swipe .cd-phrase{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+}
+@container (max-height:300px){
+  .cd-swipe .info{gap:8px;padding-bottom:16px}
+  .cd-swipe .cd-name + .facts{display:none}
+  .cd-swipe .cd-name{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+}
 .cd-deck-end{gap:10px;padding:24px;text-align:center}
 
 /* карточка кандидата — всегда тёмная, как карточка места */
