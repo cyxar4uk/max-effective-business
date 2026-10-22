@@ -28,7 +28,10 @@ function StudentNav() {
 export function StudentShell({ children }: { children: ReactNode }) {
   return (
     <div className="st-shell">
-      <div className="st-main">{children}</div>
+      {/* data-scroll-root: прокручивается эта область, а не окно; её позицию помнит «Назад» (motion/AnimatedRoutes) */}
+      <div className="st-main" data-scroll-root>
+        {children}
+      </div>
       <StudentNav />
     </div>
   );

@@ -1,7 +1,7 @@
 // «Как проверить за 5 минут» на главном: весь сценарий одним аккаунтом — компания, студент, «Это тандем!».
 // Шаги отмечаются сами по данным API; свёрнута карточка или нет — помним на этом устройстве.
 import { useEffect, useId, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation, useNavigate, useNavigationType } from 'react-router';
 import { api } from '../api/client';
 import type { Interest, Internship, Me } from '../api/types';
 import { useLoad } from '../api/useLoad';
@@ -76,12 +76,13 @@ export function CheckGuide() {
   const box = useRef<HTMLElement>(null);
   const bodyId = useId();
 
-  // Пришли по ссылке «Как проверить» — показываем карточку
+  const navType = useNavigationType();
+  // Пришли по ссылке «Как проверить» — показываем карточку. Вернулись «Назад» — прокрутку уже вернул AnimatedRoutes
   useEffect(() => {
-    if (!asked) return;
+    if (!asked || navType === 'POP') return;
     box.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     box.current?.querySelector<HTMLButtonElement>('.cg-head')?.focus({ preventScroll: true });
-  }, [asked]);
+  }, [asked, navType]);
 
   const toggle = () => {
     haptic.selection();
