@@ -32,8 +32,13 @@ export interface DemoInternship {
   slots: number;
   type: PlaceType;
   paid: boolean;
-  /** ₽ в месяц; только у оплачиваемых. */
+  /** ₽ в месяц; только у оплачиваемых. null у оплачиваемого — «Оплачивается», сумма обсуждается на встрече. */
   salary: number | null;
+  /**
+   * Набор уже закрыт: места нет в ленте и в подборе. Отклик на него по прямой ссылке (`internship_<id>`, id —
+   * `SELECT id FROM internships WHERE source_id = 'demo_<key>'`) получает ответ «Стажировка закрыта».
+   */
+  closed?: boolean;
 }
 
 export interface DemoStudent {
@@ -52,13 +57,21 @@ export interface DemoStudent {
 }
 
 const MSK = 'Москва';
+const KZN = 'Казань';
 const UNI = 'РАНХиГС';
 
-const employer = (n: number, key: string, companyName: string, contactFirstName: string, contactLastName: string): DemoEmployer => ({
+const employer = (
+  n: number,
+  key: string,
+  companyName: string,
+  contactFirstName: string,
+  contactLastName: string,
+  city: string = MSK,
+): DemoEmployer => ({
   key,
   maxUserId: -1000 - n,
   companyName,
-  city: MSK,
+  city,
   contactFirstName,
   contactLastName,
   phone: `+7000000${1000 + n}`,
@@ -77,6 +90,11 @@ export const DEMO_EMPLOYERS: DemoEmployer[] = [
   employer(10, 'polka', 'Магазин «Полка у дома»', 'Артур', 'Гаврилов'),
   employer(11, 'processy', 'Консалтинг «Процессы и люди»', 'Наталья', 'Ефимова'),
   employer(12, 'kolos', 'Агрофирма «Тихий колос»', 'Михаил', 'Зуев'),
+  // Казань (#99): финал проходит там, и проверяющий из Казани должен видеть очные места у себя
+  employer(13, 'karavay', 'Пекарня «Утренний каравай»', 'Гульнара', 'Сабирова', KZN),
+  employer(14, 'nitki', 'Магазин «Нитки и ткани» на маркетплейсах', 'Ильнур', 'Хасанов', KZN),
+  employer(15, 'bauman', 'Бухгалтерское бюро «Баланс на Баумана»', 'Лилия', 'Гарипова', KZN),
+  employer(16, 'kazanka', 'SMM-агентство «Казанка»', 'Динара', 'Мухаметова', KZN),
 ];
 
 const autumn = { startsOn: '2026-10-19', endsOn: '2027-01-29' };
@@ -88,6 +106,11 @@ const practice = { type: 'practice', paid: false, salary: null } as const;
 const internship = (salary: number) => ({ type: 'internship', paid: true, salary }) as const;
 const partTime = (salary: number) => ({ type: 'part_time', paid: true, salary }) as const;
 const winter = { startsOn: '2026-11-09', endsOn: '2027-02-26' };
+const spring = { startsOn: '2027-02-15', endsOn: '2027-05-28' };
+// Условия для разнообразия (#99): оплачиваемое место без суммы — в карточке «Оплачивается», сумму называют на встрече;
+// оплачиваемая практика — бывает и такое.
+const paidNoSum = { type: 'internship', paid: true, salary: null } as const;
+const paidPractice = (salary: number) => ({ type: 'practice', paid: true, salary }) as const;
 
 export const DEMO_INTERNSHIPS: DemoInternship[] = [
   // Аналитика
@@ -125,6 +148,16 @@ export const DEMO_INTERNSHIPS: DemoInternship[] = [
   // Задачи малого бизнеса: маркетплейсы и сайт (справочник от 28.09)
   { key: 'b1', employer: 'polka', title: 'Менеджер маркетплейсов', description: 'Карточки товаров магазина на Wildberries и Ozon: тексты, фото, цены, ответы на вопросы покупателей. Неполная занятость — 20 часов в неделю, график обсуждается.', requiredSkills: ['marketplace_cards', 'wildberries'], niceSkills: ['ozon', 'product_photo', 'unit_economics'], format: 'remote', city: null, ...autumn, slots: 2, ...internship(30000) },
   { key: 'b2', employer: 'zerna', title: 'Помощник по сайту и рассылкам', description: 'Обновлять сайт сети кофеен на Tilda, собирать рассылки о новинках и акциях, отвечать на отзывы. Неполная занятость — 20 часов в неделю, график обсуждается.', requiredSkills: ['no_code', 'email_marketing'], niceSkills: ['seo', 'canva', 'reviews_management'], format: 'remote', city: null, ...winter, slots: 1, ...internship(20000) },
+  // Казань (#99): только очные и гибридные — ради них и заводили; на каждый тег задач малого бизнеса есть открытое место.
+  // Новое дописываем в конец: на проде база уже засеяна, повторная загрузка добавит только новые ключи.
+  { key: 'k1', employer: 'karavay', title: 'Помощник по соцсетям пекарни', description: 'Снимать, как печётся хлеб и эчпочмаки, писать посты и сторис, отвечать на комментарии во «ВКонтакте» и в Telegram. Съёмки утром, пока выпечка свежая. Неполная занятость — 20 часов в неделю: два утра в пекарне, остальное из дома.', requiredSkills: ['smm', 'copywriting'], niceSkills: ['canva', 'video_editing'], format: 'hybrid', city: KZN, ...autumn, slots: 1, ...paidNoSum },
+  { key: 'k2', employer: 'karavay', title: 'Администратор заказов на торты', description: 'Принимать заказы на торты и банкетную выпечку по телефону и в мессенджерах, вести их в CRM, напоминать гостям, когда заказ готов. Практика с оплатой. Неполная занятость — 20 часов в неделю, смены по будням.', requiredSkills: ['sales', 'customer_support'], niceSkills: ['crm', 'avito'], format: 'office', city: KZN, ...autumn, slots: 2, ...paidPractice(15000) },
+  { key: 'k3', employer: 'nitki', title: 'Менеджер карточек на Wildberries и Ozon', description: 'Магазин тканей и фурнитуры для рукоделия: заводить и обновлять карточки, следить за остатками и ценами, разбирать отзывы. Раз в неделю — на склад, снимать новинки. Неполная занятость — 20 часов в неделю.', requiredSkills: ['marketplace_cards', 'wildberries'], niceSkills: ['ozon', 'product_photo', 'unit_economics'], format: 'hybrid', city: KZN, ...autumn, slots: 2, ...internship(30000) },
+  { key: 'k4', employer: 'nitki', title: 'Помощник по сайту магазина', description: 'Весной запускаем свой сайт, чтобы не зависеть от одних маркетплейсов: собрать его на Tilda или WordPress, перенести каталог, подключить Метрику, нарисовать баннеры. Начинаем в феврале, после сессии. 15 часов в неделю, встречи в офисе по пятницам.', requiredSkills: ['no_code', 'wordpress'], niceSkills: ['seo', 'html_css', 'web_analytics', 'canva'], format: 'hybrid', city: KZN, ...spring, slots: 1, ...practice },
+  { key: 'k5', employer: 'nitki', title: 'Стажёр по аналитике продаж', description: 'Свести продажи с Wildberries и Ozon в одну таблицу и понять, какие ткани приносят деньги, а какие лежат на складе. Раз в неделю — короткая сводка для владельца. Неполная занятость — 20 часов в неделю, в офисе.', requiredSkills: ['excel', 'google_sheets'], niceSkills: ['data_visualization', 'unit_economics'], format: 'office', city: KZN, ...autumn, slots: 1, ...internship(28000) },
+  { key: 'k6', employer: 'bauman', title: 'Стажёр-бухгалтер в 1С', description: 'Первичка, банк и сверки в 1С для кафе и магазинов — клиентов бюро. Рядом всегда опытный бухгалтер, засчитываем как производственную практику. Неполная занятость — 20 часов в неделю, офис на Баумана.', requiredSkills: ['1c_accounting', 'accounting'], niceSkills: ['1c_trade', 'tax_accounting'], format: 'office', city: KZN, ...autumn, slots: 2, ...practice },
+  { key: 'k7', employer: 'bauman', title: 'Помощник бухгалтера на годовой отчёт', description: 'Разнести документы за год в 1С и сверить остатки к сдаче годовой отчётности. Набор закрыт. Неполная занятость — 20 часов в неделю, офис на Баумана.', requiredSkills: ['1c_accounting', 'excel'], niceSkills: ['accounting'], format: 'office', city: KZN, ...winter, slots: 2, ...internship(25000), closed: true },
+  { key: 'k8', employer: 'kazanka', title: 'Стажёр по таргетированной рекламе', description: 'Запускать рекламу во «ВКонтакте» для кофеен, салонов и шоурумов Казани, собирать креативы и разбирать, что сработало. Наставник — ведущий таргетолог агентства. Неполная занятость — 20 часов в неделю, планёрки в офисе по вторникам.', requiredSkills: ['targeted_ads', 'smm'], niceSkills: ['copywriting', 'canva', 'web_analytics'], format: 'hybrid', city: KZN, ...autumn, slots: 1, ...paidNoSum },
 ];
 
 const ALL: WorkFormat[] = ['office', 'hybrid', 'remote'];
@@ -137,14 +170,14 @@ const student = (
   direction: string,
   faculty: string,
   skills: string[],
-  where: { city?: string; formats?: WorkFormat[] } = {},
+  where: { city?: string; formats?: WorkFormat[]; university?: string } = {},
 ): DemoStudent => ({
   key: `s${n}`,
   maxUserId: -2000 - n,
   firstName,
   lastName,
   phone: `+7000000${2000 + n}`,
-  university: UNI,
+  university: where.university ?? UNI,
   faculty,
   course,
   direction,
@@ -158,6 +191,20 @@ const IOM = 'Институт отраслевого менеджмента';
 const IGS = 'Институт государственной службы и управления';
 const ILAW = 'Юридический факультет';
 const IBDA = 'Институт бизнеса и делового администрирования';
+const OFFLINE: WorkFormat[] = ['office', 'hybrid'];
+// Казань (#99)
+const KFU = { university: 'КФУ', city: KZN };
+const KAI = { university: 'КНИТУ-КАИ', city: KZN };
+const KGEU = { university: 'КГЭУ', city: KZN };
+const KFU_IUEF = 'Институт управления, экономики и финансов';
+const KFU_JOUR = 'Высшая школа журналистики и медиакоммуникаций';
+const KFU_ITIS = 'Институт информационных технологий и интеллектуальных систем';
+const KAI_ECON = 'Институт экономики, управления и социальных технологий';
+const KAI_IT = 'Институт компьютерных технологий и защиты информации';
+const KGEU_DIG = 'Институт цифровых технологий и экономики';
+// Москва, не РАНХиГС (#99)
+const HSE = { university: 'ВШЭ' };
+const MSU = { university: 'МГУ' };
 
 export const DEMO_STUDENTS: DemoStudent[] = [
   // Аналитика
@@ -223,7 +270,29 @@ export const DEMO_STUDENTS: DemoStudent[] = [
   student(50, 'Тимур', 'Галимов', 3, 'Прикладная информатика', IBDA, ['1c_accounting', '1c_trade', '1c_programming', 'sql', 'git']),
   student(51, 'Нина', 'Осипова', 2, 'Бизнес-информатика', IBDA, ['1c_trade', '1c_programming', 'html_css', 'no_code', 'seo', 'excel']),
   student(52, 'Прохор', 'Ермаков', 2, 'Менеджмент', IOM, ['sales', 'crm', 'avito', 'customer_support', 'negotiations', 'marketplace_cards', 'wildberries', 'ozon']),
+  // Казань (#99): та же «лесенка», что у s41–s52. На место проверяющего в Казани с любым тегом, очное или гибридное,
+  // откликаются не меньше четырёх студентов, из них двое от 80 % и один с пробелами (проверяет src/seed/demo.test.ts).
+  // Полный набор навыков тега — у двоих, частичный — ещё у двоих.
+  student(53, 'Айгуль', 'Нуриева', 3, 'Реклама и связи с общественностью', KFU_JOUR, ['smm', 'copywriting', 'targeted_ads', 'canva', 'video_editing', 'content_marketing'], KFU),
+  student(54, 'Булат', 'Зарипов', 4, 'Маркетинг', KFU_IUEF, ['no_code', 'wordpress', 'html_css', 'seo', 'web_analytics', 'smm', 'copywriting', 'canva'], { ...KFU, formats: OFFLINE }),
+  student(55, 'Алсу', 'Мингазова', 2, 'Менеджмент', KGEU_DIG, ['smm', 'copywriting', 'targeted_ads', 'canva', 'sales', 'crm', 'avito', 'customer_support'], { ...KGEU, formats: OFFLINE }),
+  student(56, 'Ринат', 'Валиев', 3, 'Экономика', KGEU_DIG, ['marketplace_cards', 'wildberries', 'ozon', 'unit_economics', 'excel', 'google_sheets', 'power_bi', '1c_accounting', '1c_trade'], KGEU),
+  student(57, 'Эльвира', 'Шакирова', 2, 'Маркетинг', KFU_IUEF, ['marketplace_cards', 'wildberries', 'ozon', 'product_photo', 'unit_economics', 'avito', 'customer_support', 'sales'], { ...KFU, formats: OFFLINE }),
+  student(58, 'Карина', 'Ибрагимова', 2, 'Менеджмент', KGEU_DIG, ['sales', 'crm', 'avito', 'marketplace_cards', 'wildberries', 'ozon', 'negotiations'], { ...KGEU, formats: OFFLINE }),
+  student(59, 'Артур', 'Мусин', 4, 'Менеджмент', KAI_ECON, ['sales', 'crm', 'avito', 'customer_support', 'b2b_sales', 'negotiations', 'marketplace_cards', 'wildberries'], KAI),
+  student(60, 'Ильдар', 'Хабибуллин', 3, 'Прикладная информатика', KAI_IT, ['1c_accounting', '1c_trade', '1c_programming', 'html_css', 'wordpress', 'no_code', 'seo', 'git'], { ...KAI, formats: OFFLINE }),
+  student(61, 'Лейсан', 'Фаттахова', 4, 'Экономика', KGEU_DIG, ['1c_accounting', '1c_trade', '1c_programming', 'accounting', 'tax_accounting', 'excel'], { ...KGEU, formats: OFFLINE }),
+  student(62, 'Диляра', 'Сафиуллина', 3, 'Экономика', KFU_IUEF, ['accounting', '1c_accounting', '1c_trade', 'excel', 'google_sheets', 'power_bi'], { ...KFU, formats: OFFLINE }),
+  student(63, 'Айрат', 'Гилязов', 4, 'Бизнес-информатика', KFU_ITIS, ['excel', 'google_sheets', 'data_visualization', 'power_bi', 'sql', 'no_code', 'wordpress', 'seo'], KFU),
+  student(64, 'Ангелина', 'Яковлева', 3, 'Бизнес-информатика', KAI_ECON, ['excel', 'google_sheets', 'data_visualization', 'power_bi', 'presentations', 'no_code', 'html_css', 'seo'], { ...KAI, formats: OFFLINE }),
+  // Москва, ВШЭ и МГУ (#99): чтобы не все студенты были из одного вуза. Навыки подобраны так, чтобы не вытеснить
+  // прежних студентов из откликов на старые места — на проде они уже есть (проверяет src/seed/demo.test.ts).
+  student(65, 'Арсений', 'Котов', 2, 'Экономика', 'Факультет экономических наук', ['excel', 'google_sheets', 'presentations', 'english_b2'], HSE),
+  student(66, 'Варвара', 'Лапина', 3, 'Медиакоммуникации', 'Факультет креативных индустрий', ['smm', 'copywriting', 'canva', 'targeted_ads'], HSE),
+  student(67, 'Ян', 'Березин', 4, 'Прикладная математика и информатика', 'Факультет компьютерных наук', ['python', 'git', 'statistics', 'english_b2'], HSE),
+  student(68, 'Ульяна', 'Сорокина', 3, 'Экономика', 'Экономический факультет', ['financial_analysis', 'excel', 'english_b1', 'presentations'], MSU),
+  student(69, 'Тихон', 'Миронов', 2, 'Журналистика', 'Факультет журналистики', ['copywriting', 'content_marketing', 'pr'], { ...MSU, formats: ['remote'] }),
 ];
 
 /** Стажировки, где у первого подходящего кандидата уже «приглашён», а у третьего — «отказ», чтобы в демо были видны все статусы. */
-export const DEMO_INVITE_KEYS = ['a1', 'a3', 'm1', 'f1', 'f4'];
+export const DEMO_INVITE_KEYS = ['a1', 'a3', 'm1', 'f1', 'f4', 'k3', 'k7'];
