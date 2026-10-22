@@ -9,19 +9,19 @@ import { FitLabel } from '../../components/FitLabel';
 const CARD_SKILLS = 6;
 
 /**
- * Вид карточки на шаге ужатия. tight — степень ужатия текста (классы t1–t3 в student.css):
+ * Вид карточки на шаге ужатия. tight — степень ужатия текста (классы t1–t5 в student.css):
  * 1 — заголовок в две строки; 2 — ещё условия (оплата, сроки, места) в одну строку; 3 — условий нет,
- * подсказка своего места в две строки (всё это есть в «Подробнее»).
+ * подсказка своего места в две строки; 4 — без навыков; 5 — ещё и без подсказки (всё это есть в «Подробнее»).
  */
 interface Squeeze {
   skills: number;
-  tight: 0 | 1 | 2 | 3;
+  tight: 0 | 1 | 2 | 3 | 4 | 5;
 }
 
 /**
  * Шаги ужатия, если текст не помещается в карточку (узкий или невысокий экран, своё место с подсказкой):
- * сначала меньше навыков — остальные в «+N», потом ужатие текста. Процент и хотя бы один навык с «+N»
- * остаются всегда: процент показываем вместе с расшифровкой.
+ * сначала меньше навыков — остальные в «+N», потом ужатие текста. Процент остаётся всегда; хотя бы один навык
+ * с «+N» — до последнего шага, на который попадает только совсем невысокий экран (MAX на Android 360×640).
  */
 function squeezeSteps(total: number): Squeeze[] {
   const most = Math.min(CARD_SKILLS, total);
@@ -30,6 +30,7 @@ function squeezeSteps(total: number): Squeeze[] {
   for (let n = most; n >= few; n--) steps.push({ skills: n, tight: 0 });
   steps.push({ skills: few, tight: 1 }, { skills: few, tight: 2 });
   steps.push({ skills: Math.min(1, most), tight: 2 }, { skills: Math.min(1, most), tight: 3 });
+  steps.push({ skills: Math.min(1, most), tight: 4 }, { skills: Math.min(1, most), tight: 5 });
   return steps;
 }
 

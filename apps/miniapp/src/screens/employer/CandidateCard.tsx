@@ -16,6 +16,8 @@ import { DemoBadge } from '../../components/DemoBadge';
 interface CardProps {
   c: Candidate;
   names: SkillNames;
+  /** В колоде «Карточки»: карточка ниже, навыков — не больше 4, остальное в «+N». */
+  deck?: boolean;
 }
 
 /** Тёмная карточка кандидата — как карточка места в ленте студента. */
@@ -29,7 +31,7 @@ export function CandidateCard(props: CardProps) {
 }
 
 /** Содержимое карточки: в колоде «Карточки» его оборачивает SwipeDeck, на десктопе — CandidateCard. */
-export function CandidateCardBody({ c, names }: CardProps) {
+export function CandidateCardBody({ c, names, deck = false }: CardProps) {
   const name = c.status === 'invited' ? fullName(c) : firstName(c);
   const when = whenText(c.interestedAt);
   return (
@@ -65,7 +67,7 @@ export function CandidateCardBody({ c, names }: CardProps) {
           </span>
         </div>
         <p className="cd-phrase">{matchText(c.match, names)}</p>
-        <MatchSkills match={c.match} names={names} max={8} />
+        <MatchSkills match={c.match} names={names} max={deck ? 4 : 8} />
         {c.status === 'interested' && (
           <p className="facts cd-lock">
             <LockIcon />
