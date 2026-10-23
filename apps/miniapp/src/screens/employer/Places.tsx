@@ -6,13 +6,13 @@ import type { GuideState } from '../CheckGuide';
 import type { Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { ErrorState } from '../../components/ErrorState';
-import { Skeleton } from '../../components/Skeleton';
 import { DemoBadge } from '../../components/DemoBadge';
 import { haptic } from '../../max/bridge';
 import { paths, responsesText } from './candidate';
 import { plural } from './draft';
 import { BuildingIcon, ChevronIcon, PlusIcon, QrIcon, RouteIcon } from './icons';
 import { PlaceArt } from './PlaceArt';
+import { useDesktop } from './useDesktop';
 import './employer.css';
 import './places.css';
 import './qr.css';
@@ -76,6 +76,20 @@ function PlaceTile({ place, index }: { place: Internship; index: number }) {
   );
 }
 
+/** Загрузка — плитками, как сам список: не две длинные полосы на всю ширину. */
+function TilesSkeleton() {
+  return (
+    <div className="pl-grid" role="status" aria-busy="true" aria-label="Загрузка">
+      {Array.from({ length: 3 }, (_, i) => (
+        <span key={i} className="pl-skel" aria-hidden="true">
+          <span className="skeleton-line pl-skel-art" />
+          <span className="skeleton-line pl-skel-t" />
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function NewTile({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="pl-tile pl-new cd-in" onClick={onClick}>
@@ -90,6 +104,7 @@ function NewTile({ onClick }: { onClick: () => void }) {
 
 export function Places() {
   const navigate = useNavigate();
+  const desktop = useDesktop();
   const [state, retry] = useLoad(api.employerInternships, []);
   const [filter, setFilter] = useState<Filter>('open');
 
@@ -115,9 +130,17 @@ export function Places() {
             </span>
           )}
         </div>
-        <button type="button" className="ibtn pl-add" aria-label="Новое место" onClick={create}>
-          <PlusIcon className="ic" />
-        </button>
+        {/* Десктоп: место для подписи есть — кнопка с текстом, а не одинокий «+» у края окна */}
+        {desktop ? (
+          <button type="button" className="btn pri sm" onClick={create}>
+            <PlusIcon />
+            Новое место
+          </button>
+        ) : (
+          <button type="button" className="ibtn pl-add" aria-label="Новое место" onClick={create}>
+            <PlusIcon className="ic" />
+          </button>
+        )}
       </header>
       <button type="button" className="pl-howto" onClick={() => navigate('/', { state: { guide: true } satisfies GuideState })}>
         <span className="pl-howto-ic" aria-hidden="true">
@@ -131,7 +154,7 @@ export function Places() {
       </button>
 
       {state.status === 'loading' ? (
-        <Skeleton lines={2} height={180} />
+        <TilesSkeleton />
       ) : state.status === 'error' ? (
         <ErrorState error={state.error} onRetry={retry} />
       ) : places.length === 0 ? (

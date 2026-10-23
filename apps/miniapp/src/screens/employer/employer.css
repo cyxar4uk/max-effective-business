@@ -50,6 +50,10 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-opt.on .pf-radio{background:var(--btn);box-shadow:none}
 .pf-opts[aria-invalid="true"] .pf-opt{box-shadow:inset 0 0 0 1px var(--neg-ink)}
 .seg button{cursor:pointer}
+/* тёмная тема: выбранный сегмент (--surf2) темнее дорожки (--chip поверх --surf) — выбор не виден. Светлее дорожки */
+@media (prefers-color-scheme: dark){
+  .emp .seg button.on{background:rgba(255,255,255,.16);color:var(--ink)}
+}
 
 /* теги и навыки */
 .chip{cursor:pointer}
@@ -121,6 +125,8 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-live-ok{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok-ink);flex-shrink:0}
 .pf-pulse{width:10px;height:10px;border-radius:50%;background:var(--st);flex-shrink:0;animation:pf-breathe 1.6s ease-in-out infinite}
 .pf-link{border:0;background:none;padding:0;font:inherit;font-weight:500;color:var(--wait-ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+/* кнопки — в одну колонку с текстом: на десктопе они тянулись на всю ширину окна */
+.pf-acts{width:100%;max-width:480px;margin:0 auto}
 /* «Что дальше» под кнопками экрана «Место опубликовано» */
 .pf-next{width:100%;max-width:480px;margin:20px auto 0;padding:16px 18px;gap:12px}
 .pf-next-t{margin:0;font-size:17px;font-weight:600}
@@ -136,6 +142,11 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 /* фокус ставим на саму шторку, чтобы с клавиатуры начать с неё; рамка у неё не нужна (перебивает .emp :focus-visible) */
 .sheet.pf-sheet:focus-visible{outline:0}
 @keyframes pf-sheet-in{from{transform:translateY(100%)}}
+/* тёмная тема — как у «Закрыть набор?» (places.css): затемнение плотнее, у шторки контур */
+@media (prefers-color-scheme: dark){
+  .pf-dim{background:rgba(0,0,0,.62)}
+  .sheet.pf-sheet{box-shadow:0 0 0 1px var(--line2),var(--shadow)}
+}
 @media (min-width:1024px){
   .pf-modal{align-items:center}
   .sheet.pf-sheet{max-width:480px;border-radius:30px;padding:24px 28px;animation:pf-rise 240ms var(--pf-ease)}
@@ -165,6 +176,7 @@ button.co-phone{cursor:pointer}
 /* фон на всю ширину окна, содержимое — не шире 1168 px по центру */
 .pf-desk{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:36px;padding:28px max(36px,calc((100% - 1168px) / 2)) 40px;min-height:100vh}
 .pf-desk-head{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+.pf-desk-head .h1{text-wrap:balance}
 .pf-blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .pf-blk{background:var(--surf);border-radius:22px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0;scroll-margin-top:24px}
 .pf-blk.wide{grid-column:1/-1}
@@ -173,6 +185,10 @@ button.co-phone{cursor:pointer}
 .pf-blk .pf-input,.pf-blk .pf-area{background:var(--bg)}
 .pf-desk-side{position:sticky;top:28px;align-self:start;display:flex;flex-direction:column;gap:14px}
 .pf-desk-side .pf-card-wrap{min-height:540px}
+/* профиль компании на десктопе: «Сохранить» сразу под полями, а не у нижнего края окна через пустой экран */
+@media (min-width:1024px){
+  .co .pf-foot{position:static;margin-top:8px;padding-top:4px;background:none}
+}
 
 /* ---------- движение ----------
    Только transform и opacity. «Уменьшить движение» в системе — одни проявления 150 мс, без сдвигов и перелётов. */

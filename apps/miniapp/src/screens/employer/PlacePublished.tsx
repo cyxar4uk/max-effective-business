@@ -153,7 +153,7 @@ function Published({ id }: { id: number }) {
           </button>
         </p>
       </section>
-      <div className="actions pf-rise">
+      <div className="actions pf-acts pf-rise">
         <button type="button" className="btn pri" onClick={() => navigate(`/employer/internships/${id}/candidates`)}>
           {count > 0 ? `Смотреть кандидатов (${count})` : 'Смотреть кандидатов'}
         </button>

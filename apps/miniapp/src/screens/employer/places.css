@@ -41,6 +41,9 @@
 .pl-new-t{font-weight:600;color:var(--ink)}
 .pl-empty{display:flex;flex-direction:column;gap:12px;padding:24px 0}
 .pl-empty .btn{align-self:stretch}
+.pl-skel{display:flex;flex-direction:column;gap:8px}
+.pl-skel-art{aspect-ratio:1/1;border-radius:22px}
+.pl-skel-t{height:16px;width:70%;border-radius:8px}
 .pl-links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:auto;padding-top:24px}
 .pl-links .btn{height:40px}
 
@@ -201,19 +204,24 @@
 .emp .toggle i{transition:transform 150ms var(--pf-ease)}
 .emp .toggle.on i{left:3px;transform:translateX(20px)}
 .cd-sheet .btn:disabled{opacity:.6;cursor:default}
+/* тёмная тема: затемнение .45 на почти чёрном фоне не видно, шторка сливалась с экраном — плотнее и с контуром */
+@media (prefers-color-scheme: dark){
+  .cd-dim{background:rgba(0,0,0,.62)}
+  .sheet.cd-sheet{box-shadow:0 0 0 1px var(--line2),var(--shadow)}
+}
 
 @media (min-width:1024px){
   .cd{padding-left:max(36px,calc((100% - 1168px) / 2));padding-right:max(36px,calc((100% - 1168px) / 2));gap:18px}
   .cd-head{padding-top:28px;gap:16px}
   .thumb.cd-thumb{width:64px;height:64px;border-radius:18px}
   .cd-title{font-size:30px}
-  .cd-desk{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:28px;align-items:start}
+  /* карточка — справа до края шапки (там «QR для стенда» и «Закрыть набор»), список забирает остальную ширину */
+  .cd-desk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,520px);gap:28px;align-items:start}
   .cd-desk-list{display:flex;flex-direction:column;gap:12px;min-width:0}
   .cd-pane{position:sticky;top:24px;min-width:0}
-  .cd-pane-in{max-width:520px}
   .cd-pane .card.cd-card{min-height:470px}
-  .cd-pane-empty{padding:40px 0;text-align:center}
-  .cd-keys{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0}
+  .cd-pane-empty{display:flex;align-items:center;justify-content:center;min-height:470px;padding:24px;border-radius:28px;border:2px dashed var(--line2);text-align:center}
+  .cd-keys{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;padding:0 14px}
   .cd-modal{align-items:center}
   .sheet.cd-sheet{max-width:480px;border-radius:30px;padding:24px 28px;animation:cd-rise 240ms var(--pf-ease)}
   .cd-sheet .grab{display:none}
@@ -238,12 +246,22 @@
 .etm-check{position:absolute;left:50%;bottom:-2px;z-index:2;width:44px;height:44px;margin-left:-22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--btn);color:var(--btn-ink);box-shadow:var(--shadow)}
 .etm-check .ic{stroke-width:3}
 .etm-head{display:flex;flex-direction:column;gap:8px;text-align:center}
+.etm-head .lead{text-wrap:balance}
 .etm-h{margin:0;font-family:var(--font-display);font-weight:800;font-size:36px;line-height:1.05;letter-spacing:-.02em}
 .etm-note{margin:0;text-align:center}
 .etm .cd-contact{margin-top:0}
 /* действия всегда на виду */
 .etm-acts{position:sticky;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;width:100%;max-width:480px;margin:0 auto;padding:20px 0 calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 78%,transparent)}
 .etm-acts .btn{width:100%}
+/* десктоп: окно высокое, кнопки и так на виду — экран одним блоком по центру, без пустоты над кнопками */
+@media (min-width:1024px){
+  .etm{justify-content:center}
+  /* свечение — за сферами, которые теперь в середине окна, а не у верхнего края */
+  .etm-glow-clip{top:calc(50% - 400px);height:440px}
+  .etm-glow{top:0}
+  .etm-body{flex-grow:0;padding-top:48px}
+  .etm-acts{position:static;padding-top:6px;background:none}
+}
 
 /* ---------- документы практики ---------- */
 .dc{gap:16px;width:100%;max-width:640px;margin:0 auto;padding-top:16px}
@@ -268,6 +286,10 @@
 .dc-contact{display:flex;flex-direction:column;gap:8px}
 .dc-contact .cd-contact{margin-top:0}
 .dc-foot{margin-top:auto;padding-top:8px}
+@media (min-width:1024px){
+  .dc{padding-top:28px}
+  .dc-foot{margin-top:0}
+}
 
 @media (prefers-reduced-motion: reduce){
   .fill.dc-fill{transition:none}
