@@ -94,7 +94,7 @@ const PHONE = /(\+7|(?<!\d)8)([\s()-]*\d){10}(?!\d)/g;
 export function typographQuotes(text: string): string {
   return text
     .replace(/[„“”]/g, '"')
-    .replace(/(^|[\s(\[«])"/g, '$1«')
+    .replace(/(^|[\s([«])"/g, '$1«')
     .replace(/"/g, '»');
 }
 
