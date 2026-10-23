@@ -79,6 +79,20 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     await assertTags(ds, patch.tags ?? []);
     if (patch.status === 'open' && internship.status !== 'open') await assertOpenLimit(employer.id);
     const saved = await internships.save(internships.merge(internship, patch));
+    // Сменились требования — у тех, кто ждёт решения, пересчитываем процент: иначе у кандидатов остаётся старый (#102).
+    // Приглашённых и отказанных не трогаем — решение уже принято по тому проценту
+    if (['requiredSkills', 'niceSkills', 'format', 'city'].some((k) => k in patch)) {
+      const waiting = (await ds.query(
+        `SELECT x.id, p.skills, p.formats, p.city
+         FROM interests x JOIN student_profiles p ON p.user_id = x.student_user_id
+         WHERE x.internship_id = $1 AND x.status = 'interested'`,
+        [saved.id],
+      )) as { id: number; skills: string[]; formats: StudentProfile['formats']; city: string }[];
+      for (const w of waiting) {
+        const { match } = matcher({ skills: w.skills, formats: w.formats, city: w.city }, saved);
+        await ds.query('UPDATE interests SET match_score = $2, match = $3::jsonb WHERE id = $1', [w.id, match.score, JSON.stringify(match)]);
+      }
+    }
     res.json(internshipView(saved, employer, { isOwner: true }));
   });
 
@@ -109,6 +123,20 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
         if (!interest || interest.status === 'skipped') throw new ApiError('NOT_FOUND', 'Этот студент не откликался на стажировку');
         const t = employerAction(interest.status, action);
         if (!t.ok) throw new ApiError('CONFLICT', t.message);
+        if (t.changed && action === 'invited') {
+          // Мест не больше, чем slots (#102). Блокируем место, чтобы два параллельных приглашения не прошли оба.
+          // Тестовые студенты места не занимают: проверяющий может пригласить демо-кандидата, а потом себя — сценарий
+          // «одним аккаунтом» не упирается в лимит. Приглашать тестового студента сверх мест тоже можно
+          await m.query('SELECT id FROM internships WHERE id = $1 FOR UPDATE', [internship.id]);
+          const [row] = (await m.query(
+            `SELECT count(*)::int AS n FROM interests WHERE internship_id = $1 AND status = 'invited' AND NOT is_demo`,
+            [internship.id],
+          )) as { n: number }[];
+          const n = row?.n ?? 0;
+          if (!interest.isDemo && n >= internship.slots) {
+            throw new ApiError('CONFLICT', `Все места уже заняты: приглашено ${n} из ${internship.slots}. Увеличьте число мест или закройте набор`);
+          }
+        }
         if (t.changed) await m.update(Interest, { id: interest.id }, { status: t.next });
         return { interestId: interest.id, changed: t.changed };
       });
@@ -147,6 +175,8 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     const q = internships
       .createQueryBuilder('i')
       .where(`i.status = 'open'`)
+      // Место, у которого срок уже прошёл, в ленту не попадает (#102)
+      .andWhere('(i.ends_on IS NULL OR i.ends_on >= current_date)')
       .andWhere('NOT EXISTS (SELECT 1 FROM interests x WHERE x.internship_id = i.id AND x.student_user_id = :uid)', { uid: user.id })
       .andWhere('i.format = ANY(:formats::text[])', { formats: student.formats })
       .andWhere(

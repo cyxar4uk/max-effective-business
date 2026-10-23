@@ -31,7 +31,11 @@ const practiceMonth = z.preprocess(
 );
 
 export const phoneBody = z.object({
-  phone: z.string().regex(/^\+?\d{10,15}$/, 'Номер в формате +79990000000'),
+  // Пробелы, скобки и дефисы допускаем («+7 999 000-00-00»): подпись MAX проверяется по номеру как он пришёл,
+  // а сохраняется он уже только цифрами (routes.ts) (#102)
+  phone: z
+    .string()
+    .refine((v) => /^\+?\d{10,15}$/.test(v.replace(/[\s()-]/g, '')), 'Номер в формате +79990000000'),
   authDate: z
     .union([z.string(), z.number()], { error: 'Некорректная подпись номера' })
     .transform(String)
