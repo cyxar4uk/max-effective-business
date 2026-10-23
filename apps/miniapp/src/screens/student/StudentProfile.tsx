@@ -10,7 +10,7 @@ import { ErrorState } from '../../components/ErrorState';
 import { useReduced } from '../../motion/springs';
 import { listItem } from '../../motion/variants';
 import { loadSkills } from './dict';
-import { FORMAT_LABEL, MONTHS, nameOf, skillNames } from './place';
+import { FORMAT_LABEL, FORMATS, MONTHS, nameOf, skillNames } from './place';
 import { ProfileFormScreen } from './ProfileForm';
 import { RequireConsent, StudentShell } from './StudentShell';
 import { Icon, ListSkeleton } from './ui';
@@ -83,7 +83,8 @@ export function StudentProfileScreen() {
           <Row k="Направление" v={p.direction} />
           <Row k="Курс" v={String(p.course)} />
           <Row k="Город" v={p.city} />
-          <Row k="Формат" v={p.formats.map((f) => FORMAT_LABEL[f]).join(', ')} />
+          {/* В порядке анкеты, а не в порядке, в каком их отмечали */}
+          <Row k="Формат" v={FORMATS.filter((f) => p.formats.includes(f)).map((f) => FORMAT_LABEL[f]).join(', ')} />
           {month && <Row k="Месяц практики" v={month} />}
         </motion.div>
         <motion.div className="col" style={{ gap: 8 }} {...listItem(1, reduced)}>

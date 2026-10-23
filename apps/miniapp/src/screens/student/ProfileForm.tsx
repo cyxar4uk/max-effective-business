@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { startTransition, useMemo, useState } from 'react';
+import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { Me, Skills, StudentProfile, WorkFormat } from '../../api/types';
@@ -135,6 +135,23 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState<string | null>(null);
+  // Счётчик неудачных попыток: после каждой показываем первую ошибку (баннер или поле), даже если она за краем экрана
+  const [failed, setFailed] = useState(0);
+
+  // Новый шаг — с начала экрана: меняется только ?step, и прокрутку при этом ведёт сама анкета (motion/AnimatedRoutes)
+  const shownStep = useRef(step);
+  useLayoutEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    window.scrollTo(0, 0);
+  }, [step]);
+
+  useEffect(() => {
+    if (!failed) return;
+    document
+      .querySelector('.sf-banner, .sf .field.err, .sf .field-err')
+      ?.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  }, [failed, reduced]);
 
   const months = useMemo(() => monthOptions(initial?.practiceMonth ?? null), [initial]);
   const looks = useBubbleLooks(skills);
@@ -157,11 +174,13 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   const goStep2 = () => {
     const e = validateStep1();
     setErrors(e);
+    // Баннер — от прошлой попытки сохранить: на шаге 1 он устарел и перехватил бы прокрутку к ошибке
+    setMessage(null);
     if (Object.keys(e).length > 0) {
       haptic.notify('error');
+      setFailed((n) => n + 1);
       return;
     }
-    setMessage(null);
     navigate({ search: searchWithStep('skills') }, { state: { fromStep1: true } });
   };
 
@@ -204,6 +223,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
     if (Object.keys(e).length > 0) {
       haptic.notify('error');
       setMessage('Проверьте анкету');
+      setFailed((n) => n + 1);
       return;
     }
     setSaving(true);
@@ -231,6 +251,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
       setErrors(apiErr ? fieldErrors(apiErr.fields) : {});
       setMessage(apiErr?.message ?? 'Не получилось сохранить. Повторите.');
       setSaving(false);
+      setFailed((n) => n + 1);
     }
   };
 
@@ -291,8 +312,8 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
       <main className="sf">
         {progress}
         <div className="sf-head">
-          <span className="lbl">Анкета · 1 из 2 · около 2 минут</span>
-          <h1 className="d m0 sf-h1">{mode === 'edit' ? 'Анкета' : 'Расскажите о себе'}</h1>
+          <span className="lbl">Анкета · 1 из 2{mode === 'new' && ' · около 2 минут'}</span>
+          <h1 className="d m0 sf-h1">{mode === 'edit' ? 'Анкета' : <>Расскажите о&nbsp;себе</>}</h1>
           {mode === 'new' && (
             <p className="m0 sf-why">
               Заполните один раз — бот сам пришлёт места, где нужны ваши навыки. Компания увидит анкету, только если вы
@@ -470,7 +491,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
       </div>
       <div className="sf-foot">
         {errors.skills && <span className="field-err sf-skills-err">{errors.skills}</span>}
-        <button type="button" className="btn pri" onClick={save} disabled={saving || count < MIN_SKILLS}>
+        <button type="button" className={count < MIN_SKILLS ? 'btn pri sf-few' : 'btn pri'} onClick={save} disabled={saving || count < MIN_SKILLS}>
           {saving
             ? 'Сохраняем…'
             : count < MIN_SKILLS
