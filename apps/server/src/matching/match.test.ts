@@ -204,6 +204,18 @@ describe('normalizeCity', () => {
     expect(normalizeCity('Набережные Челны, Татарстан')).toBe('набережные челны');
   });
 
+  it('страна без запятой и регионы, которые пишут словом или аббревиатурой', () => {
+    for (const c of ['Казань Россия', 'Kazan Russia', 'Казань РФ']) expect(normalizeCity(c), c).toBe('казань');
+    expect(normalizeCity('Москва Россия')).toBe('москва');
+    expect(normalizeCity('Удмуртия, Ижевск')).toBe('ижевск');
+    expect(normalizeCity('Башкирия, Уфа')).toBe('уфа');
+    expect(normalizeCity('ХМАО-Югра, Сургут')).toBe('сургут');
+    expect(normalizeCity('Подмосковье, Химки')).toBe('химки');
+    // Город, который сам похож на регион или страну, не трогаем
+    expect(normalizeCity('Ртищево')).toBe('ртищево');
+    expect(normalizeCity('Россошь')).toBe('россошь');
+  });
+
   it('город с регионом проходит фильтр на очное место в Казани (#101)', () => {
     const r = matchStudentToInternship(student({ city: 'Казань, Татарстан', skills: ['a'] }), internship({ requiredSkills: ['a'], format: 'office', city: 'Казань' }));
     expect(r.passesFilters).toBe(true);
