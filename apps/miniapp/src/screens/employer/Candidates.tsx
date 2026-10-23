@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -218,10 +219,10 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
     else setQuery({ view: 'list' });
   };
 
-  const step = (delta: number) => {
+  const step = (delta: number, from = index) => {
     if (list.length === 0) return;
-    const next = list[Math.min(list.length - 1, Math.max(0, index + delta))];
-    if (next && next !== selected) {
+    const next = list[Math.min(list.length - 1, Math.max(0, from + delta))];
+    if (next && next !== list[from]) {
       haptic.selection();
       select(next, desktop);
     }
@@ -242,6 +243,25 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
     }
   };
 
+  // «Список» ⇄ «Карточки» меняет только ?view, и экран оставался прокручен: колода открывалась без шапки и вкладок.
+  // Карточки — с начала экрана, список — там, где его оставили
+  const shownView = useRef(view);
+  const listScroll = useRef(0);
+  useEffect(() => {
+    if (desktop || view !== 'list') return;
+    // Событие прокрутки приходит позже: после смены вида (обрезка под короткую колоду, scrollTo) его не считаем
+    const onScroll = () => {
+      if (shownView.current === 'list') listScroll.current = window.scrollY;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [view, desktop]);
+  useLayoutEffect(() => {
+    if (shownView.current === view) return;
+    shownView.current = view;
+    if (!desktop) window.scrollTo(0, view === 'list' ? listScroll.current : 0);
+  }, [view, desktop]);
+
   // Десктоп: ↑↓ — кандидат, Enter — пригласить, Backspace — отказать, Esc — отменить решение в отсчёте
   const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
   useEffect(() => {
@@ -249,22 +269,27 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
       if (!desktop || sheet || e.altKey || e.ctrlKey || e.metaKey) return;
       const target = e.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
-      const onRow = Boolean(target?.closest('[data-cd-row]'));
-      const free = onRow || target === document.body || target?.tagName === 'MAIN';
+      const row = target?.closest<HTMLElement>('[data-cd-row]');
+      const free = Boolean(row) || target === document.body || target?.tagName === 'MAIN';
       if (e.key === 'Escape' && pending) {
         e.preventDefault();
         cancel();
         return;
       }
       if (!free) return;
+      // Фокус на строке — считаем от неё: после быстрых ↓ адрес (?c) может ещё не обновиться, а рамка уже здесь
+      const rowAt = row ? list.findIndex((x) => String(x.studentId) === row.dataset.cdRow) : -1;
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
-        step(e.key === 'ArrowDown' ? 1 : -1);
-      } else if ((e.key === 'Enter' || e.key === 'Backspace') && selected) {
-        e.preventDefault();
+        step(e.key === 'ArrowDown' ? 1 : -1, rowAt >= 0 ? rowAt : index);
+      } else if (e.key === 'Enter' || e.key === 'Backspace') {
+        const c = rowAt >= 0 ? list[rowAt] : selected;
         const canDecide =
-          selected.status === 'interested' && place.status === 'open' && busy?.candidate.studentId !== selected.studentId;
-        if (canDecide) decide(selected, e.key === 'Enter' ? 'invite' : 'decline');
+          c && c.status === 'interested' && place.status === 'open' && busy?.candidate.studentId !== c.studentId;
+        // Решать нельзя — Enter на строке остаётся обычным нажатием кнопки и открывает карточку
+        if (!c || !canDecide) return;
+        e.preventDefault();
+        decide(c, e.key === 'Enter' ? 'invite' : 'decline');
       }
     };
   });
@@ -430,6 +455,10 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
       pendingFor={pendingFor}
       sendingId={sending?.candidate.studentId ?? null}
       onOpen={openCard}
+      onFocusRow={(c) => {
+        // Десктоп: фокус (Tab, стрелки) открывает кандидата справа — Enter решает только про того, кого видно
+        if (desktop && c.studentId !== selected?.studentId) setQuery({ c: c.studentId });
+      }}
       rowRef={(sid, el) => {
         if (el) rows.current.set(sid, el);
         else rows.current.delete(sid);
@@ -449,23 +478,43 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
             <div id="cd-panel" role="tabpanel" aria-labelledby={`cd-tab-${tab}`} key={tab} className="cd-fade">
               {listEl}
             </div>
+            {list.length > 0 && (
+              <p className="cd-keys lbl" aria-hidden="true">
+                <span className="kbd">↑</span>
+                <span className="kbd">↓</span> кандидат
+                {/* Решать можно только во «Ждут решения» открытого места — в других вкладках клавиши не подсказываем */}
+                {tab === 'waiting' && place.status === 'open' && (
+                  <>
+                    {' '}
+                    <span className="kbd">Enter</span> пригласить <span className="kbd">Backspace</span> отказать
+                  </>
+                )}
+                {(pending || (tab === 'waiting' && place.status === 'open')) && (
+                  <>
+                    {' '}
+                    <span className="kbd">Esc</span> отменить решение
+                  </>
+                )}
+              </p>
+            )}
           </section>
-          <section className="cd-pane" aria-label="Выбранный кандидат">
-            {selected ? (
+          {selected ? (
+            <section className="cd-pane" aria-label="Выбранный кандидат">
               <div key={selected.studentId} className="cd-pane-in cd-fade">
                 <CandidateCard c={selected} names={names} />
                 <CandidateActions c={selected} place={place} pending={busy} onDecide={(a) => decide(selected, a)} />
               </div>
-            ) : (
-              <p className="lbl cd-pane-empty">Выберите кандидата слева.</p>
-            )}
-          </section>
+            </section>
+          ) : (
+            // Во вкладке никого: пояснение — в списке слева; рамка-заглушка — только там, куда ещё придут отклики
+            tab === 'waiting' &&
+            place.status === 'open' && (
+              <div className="cd-pane cd-pane-empty" aria-hidden="true">
+                <span className="lbl">Новые отклики откроются здесь</span>
+              </div>
+            )
+          )}
         </div>
-        <p className="cd-keys lbl" aria-hidden="true">
-          <span className="kbd">↑</span>
-          <span className="kbd">↓</span> кандидат <span className="kbd">Enter</span> пригласить{' '}
-          <span className="kbd">Backspace</span> отказать <span className="kbd">Esc</span> отменить решение
-        </p>
         {toasts}
         {sheetEl}
       </>
@@ -475,7 +524,8 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
   return (
     <>
       {head}
-      <OwnLinkBanner placeId={place.id} />
+      {/* В «Карточках» плашка сдвигала «Пригласить» за нижний край на низких экранах — она остаётся в «Списке» */}
+      {view === 'list' && <OwnLinkBanner placeId={place.id} />}
       {closedBanner}
       {tabs}
       <div id="cd-panel" role="tabpanel" aria-labelledby={`cd-tab-${tab}`} key={`${tab}-${view}`} className="cd-panel cd-fade">
@@ -532,11 +582,12 @@ interface ListProps {
   /** Кандидат, решение по которому уже ушло на сервер. */
   sendingId: number | null;
   onOpen: (c: Candidate) => void;
+  onFocusRow: (c: Candidate) => void;
   rowRef: (studentId: number, el: HTMLButtonElement | null) => void;
 }
 
 /** Список кандидатов: проявляется снизу со сдвигом 20 мс на строку. */
-function CandidateList({ list, tab, closed, selected, names, pendingFor, sendingId, onOpen, rowRef }: ListProps) {
+function CandidateList({ list, tab, closed, selected, names, pendingFor, sendingId, onOpen, onFocusRow, rowRef }: ListProps) {
   if (list.length === 0) {
     return <p className="lbl cd-tab-empty">{tab === 'waiting' && closed ? 'Никто не ждёт решения.' : EMPTY_TAB[tab]}</p>;
   }
@@ -553,9 +604,10 @@ function CandidateList({ list, tab, closed, selected, names, pendingFor, sending
                 type="button"
                 className={on ? 'cd-row on' : 'cd-row'}
                 aria-current={on ? 'true' : undefined}
-                data-cd-row=""
+                data-cd-row={c.studentId}
                 ref={(el) => rowRef(c.studentId, el)}
                 onClick={() => onOpen(c)}
+                onFocus={() => onFocusRow(c)}
               >
                 <Avatar c={c} size={44} />
                 <span className="col grow">

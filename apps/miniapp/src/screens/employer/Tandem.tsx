@@ -131,7 +131,9 @@ function Tandem({ id, studentId }: { id: number; studentId: number }) {
             Это тандем!
           </motion.h1>
           <motion.p className="lead" {...rise(TEXT_DELAY + 0.06)}>
-            Вы пригласили {accusative(name)} на «{place.title}». Бот уже отправил студенту ваш контакт и чек-лист.
+            Вы пригласили {accusative(name)} на «{place.title}». Бот уже отправил студенту ваш контакт и{' '}
+            {/* по дефису «чек-лист» рвался, и «лист» оставался один на строке */}
+            <span style={{ whiteSpace: 'nowrap' }}>чек-лист</span>.
           </motion.p>
         </div>
         <motion.div {...item(0)}>

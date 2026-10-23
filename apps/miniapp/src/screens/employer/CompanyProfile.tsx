@@ -18,6 +18,8 @@ const CONSENT_PATH = '/consent?next=/employer/profile';
 
 const LIMIT = { companyName: 200, city: 100, contactName: 200 } as const;
 type FieldName = keyof typeof LIMIT;
+/** id полей в порядке на экране. */
+const FIELD_ID: Record<FieldName, string> = { companyName: 'co-name', city: 'co-city', contactName: 'co-contact' };
 
 const historyIndex = (): number => (window.history.state as { idx?: number } | null)?.idx ?? 0;
 
@@ -188,6 +190,9 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
       setErrors(found);
       setAttempt((n) => n + 1);
       haptic.notify('error');
+      // Курсор — в первое пустое поле: с клавиатуры и экранным диктором не надо искать, что не так
+      const first = (Object.keys(FIELD_ID) as FieldName[]).find((k) => k in found);
+      if (first) document.getElementById(FIELD_ID[first])?.focus();
       return;
     }
 
@@ -229,7 +234,7 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
         </header>
         <div className="surf">
           <TextField
-            id="co-name"
+            id={FIELD_ID.companyName}
             label="Название компании"
             value={form.companyName}
             error={errors.companyName}
@@ -239,7 +244,7 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
             autoComplete="organization"
           />
           <TextField
-            id="co-city"
+            id={FIELD_ID.city}
             label="Город"
             value={form.city}
             error={errors.city}
@@ -249,7 +254,7 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
             autoComplete="address-level2"
           />
           <TextField
-            id="co-contact"
+            id={FIELD_ID.contactName}
             label="Контактное лицо"
             value={form.contactName}
             error={errors.contactName}
