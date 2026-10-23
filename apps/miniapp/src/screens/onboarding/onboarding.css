@@ -20,6 +20,14 @@
 }
 .ob-step{display:flex;flex-direction:column;gap:14px}
 .ob-step .btn{width:100%}
+/* невысокий экран (MAX на Android 360×640 — видно ~560 px): шторка плотнее, и «Не сейчас» видна без прокрутки */
+@media (max-width:599px) and (max-height:640px){
+  .ob-sheet{gap:8px;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+  .ob-step{gap:10px}
+  .ob-h{font-size:22px}
+  .ob-list .li{padding-top:9px;padding-bottom:9px}
+  .ob-note{margin-top:-4px}
+}
 
 /* движение: скрим проявляется, шторка выезжает снизу; кривые — motion.css */
 .ob-dim{animation:ob-show .25s ease-out backwards}
