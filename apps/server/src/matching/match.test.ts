@@ -193,6 +193,24 @@ describe('normalizeCity', () => {
     expect(normalizeCity('Москва.')).toBe('москва');
   });
 
+  it('регион и страна через запятую — в любом порядке, уточнение в скобках (#101)', () => {
+    for (const c of ['Казань, Татарстан', 'Казань, Республика Татарстан', 'Республика Татарстан, Казань', 'г. Казань, РТ', 'Казань (Татарстан)', 'Казань, Россия']) {
+      expect(normalizeCity(c), c).toBe('казань');
+    }
+    expect(normalizeCity('Россия, Москва')).toBe('москва');
+    expect(normalizeCity('Москва, Московская обл.')).toBe('москва');
+    expect(normalizeCity('Химки, Московская область')).toBe('химки');
+    expect(normalizeCity('СПб, Ленинградская обл.')).toBe('санкт-петербург');
+    expect(normalizeCity('Набережные Челны, Татарстан')).toBe('набережные челны');
+  });
+
+  it('город с регионом проходит фильтр на очное место в Казани (#101)', () => {
+    const r = matchStudentToInternship(student({ city: 'Казань, Татарстан', skills: ['a'] }), internship({ requiredSkills: ['a'], format: 'office', city: 'Казань' }));
+    expect(r.passesFilters).toBe(true);
+    const other = matchStudentToInternship(student({ city: 'Набережные Челны, Татарстан', skills: ['a'] }), internship({ requiredSkills: ['a'], format: 'office', city: 'Казань' }));
+    expect(other.filterFailures).toContain('city');
+  });
+
   it('сокращения и латиница для городов пилота', () => {
     for (const c of ['Мск', 'МСК', 'Moscow', 'moskva']) expect(normalizeCity(c), c).toBe('москва');
     for (const c of ['СПб', 'Питер', 'Петербург', 'С-Петербург', 'Санкт Петербург', 'Saint Petersburg', 'St. Petersburg']) {
