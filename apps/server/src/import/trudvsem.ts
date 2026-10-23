@@ -86,6 +86,18 @@ const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+/gu;
 // +7 или 8 и ровно 10 цифр с любыми разделителями: +7 (495) 123-45-67, +7 (8552) 12-34-56, 8 912 345 67 89
 const PHONE = /(\+7|(?<!\d)8)([\s()-]*\d){10}(?!\d)/g;
 
+/**
+ * Кавычки-«ёлочки» вместо прямых и «лапок» в названиях: `ООО "АРС НЕДВИЖИМОСТЬ"` → `ООО «АРС НЕДВИЖИМОСТЬ»`.
+ * Открывающая — в начале строки или после пробела и скобки, иначе закрывающая. Регистр не трогаем: в капсе бывают
+ * аббревиатуры (ООО, ИП, АО, IT). Непарную кавычку на конце не дописываем — только меняем вид.
+ */
+export function typographQuotes(text: string): string {
+  return text
+    .replace(/[„“”]/g, '"')
+    .replace(/(^|[\s(\[«])"/g, '$1«')
+    .replace(/"/g, '»');
+}
+
 /** Телефоны и почта из свободного текста обязанностей и требований — не храним. */
 export function stripContacts(text: string | undefined): string | undefined {
   return text?.replace(EMAIL, '[контакт скрыт]').replace(PHONE, '[контакт скрыт]');
@@ -153,8 +165,8 @@ export function mapVacancy(v: TrudvsemVacancy): ImportedPlace | null {
   return {
     sourceId: v.id,
     sourceUrl: safeSourceUrl(v.vac_url),
-    title: title.trim().slice(0, 200),
-    companyName: (v.company?.name ?? 'Работодатель с «Работа России»').trim().slice(0, 200),
+    title: typographQuotes(title.trim()).slice(0, 200),
+    companyName: typographQuotes((v.company?.name ?? 'Работодатель с «Работа России»').trim()).slice(0, 200),
     description: description.length > MAX_DESCRIPTION ? `${description.slice(0, MAX_DESCRIPTION - 1)}…` : description,
     requiredSkills: skills,
     format,

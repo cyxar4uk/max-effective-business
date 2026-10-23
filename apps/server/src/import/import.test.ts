@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { skillRows } from '../seed/skills.js';
-import { backfillTrudvsemTags, importTrudvsem } from './index.js';
+import { backfillTrudvsemQuotes, backfillTrudvsemTags, importTrudvsem } from './index.js';
 import { mapSkills, SKILL_MAP_CODES } from './skillMap.js';
-import { cityOf, fetchAll, fetchPilotVacancies, formatOf, mapVacancy, pickFields, placeTypeOf, safeSourceUrl, stripContacts, type TrudvsemVacancy } from './trudvsem.js';
+import { cityOf, fetchAll, fetchPilotVacancies, formatOf, mapVacancy, pickFields, placeTypeOf, safeSourceUrl, stripContacts, typographQuotes, type TrudvsemVacancy } from './trudvsem.js';
 import { TRUDVSEM_SNAPSHOT } from './trudvsemSnapshot.js';
 
 const vacancy = (over: Partial<TrudvsemVacancy> = {}): TrudvsemVacancy => ({
@@ -257,5 +257,34 @@ describe('теги мест «Работа России»', () => {
     expect(updates).toHaveLength(1);
     expect(updates[0]!.params).toEqual([1, ['marketplaces', 'spreadsheets']]);
     expect(updates[0]!.text).toContain('cardinality(tags) = 0');
+  });
+});
+
+describe('«ёлочки» в названиях «Работа России» (#116, находка 6)', () => {
+  it('прямые и «лапки» — в «ёлочки», регистр не трогаем', () => {
+    expect(typographQuotes('ООО "АРС НЕДВИЖИМОСТЬ"')).toBe('ООО «АРС НЕДВИЖИМОСТЬ»');
+    expect(typographQuotes('"Ромашка"')).toBe('«Ромашка»');
+    expect(typographQuotes('АО „Вектор“')).toBe('АО «Вектор»');
+    expect(typographQuotes('ГБУ "Центр (филиал "Север")"')).toBe('ГБУ «Центр (филиал «Север»)»');
+    expect(typographQuotes('ИП Иванов')).toBe('ИП Иванов');
+    expect(typographQuotes('Стажёр в «Луч»')).toBe('Стажёр в «Луч»');
+  });
+
+  it('импорт ставит «ёлочки» в компанию и название', () => {
+    const p = mapVacancy(vacancy({ company: { name: 'ООО "ТЕСТ"' }, 'job-name': 'Стажёр "аналитик"' }));
+    expect(p?.companyName).toBe('ООО «ТЕСТ»');
+    expect(p?.title).toBe('Стажёр «аналитик»');
+  });
+
+  it('дозаполнение: уже загруженные места с прямыми кавычками', async () => {
+    const sql: { text: string; params?: unknown[] }[] = [];
+    const db = {
+      query: async (text: string, params?: unknown[]) => {
+        sql.push({ text, params });
+        return text.startsWith('SELECT') ? [{ id: 5, company_name: 'ООО "АРС"', title: 'Стажёр' }] : [];
+      },
+    };
+    expect(await backfillTrudvsemQuotes(db)).toBe(1);
+    expect(sql.find((q) => q.text.startsWith('UPDATE'))?.params).toEqual([5, 'ООО «АРС»', 'Стажёр']);
   });
 });
