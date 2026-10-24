@@ -115,6 +115,8 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 /* превью карточки — как в ленте студента */
 /* превью растёт по тексту: страница прокручивается, текст не обрезается; надпись обложки уступает место тексту */
 .pf-card-wrap{position:relative;display:flex;min-height:520px;flex-shrink:0}
+/* Проверка на телефоне: карточка целиком над «Опубликовать» — 340 px на шапку шага и кнопку. Обложка ужимается первой */
+.pf-body .pf-card-wrap{min-height:clamp(400px,calc(100dvh - 340px),520px)}
 .pf-card-wrap .card{position:relative;inset:auto;flex:1 1 auto;display:flex;flex-direction:column}
 .pf-card-wrap .card-face{position:relative;inset:auto;flex:1 0 auto}
 .pf-card-title{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}

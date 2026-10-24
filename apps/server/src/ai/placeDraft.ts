@@ -78,8 +78,35 @@ export function buildSystemPrompt(groups: readonly SkillGroupSeed[], tags: reado
   ].join('\n');
 }
 
+// Контакты в Сбер не отправляем: для черновика они не нужны, а описание иногда пишут вместе с номером и почтой
+const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,}/gu;
+// Ссылки на личные страницы и мессенджеры
+const LINK = /(?:https?:\/\/)?(?:t\.me|telegram\.me|wa\.me|vk\.com|vk\.ru|ok\.ru|instagram\.com)\/[^\s,;)]+/giu;
+// Ник в Telegram или MAX: @ не после буквы или цифры, иначе это кусок почты
+const NICK = /(?<![\p{L}\p{N}])@[A-Za-z0-9_]{3,}/gu;
+// Разделители в номере: пробел, дефис, тире из автозамены, точка
+const SEP = '[\\s\\-\\u2010-\\u2015.]';
+// +7 или 8 и ещё 10 цифр с любой разбивкой: +7 (917) 123–45–67, 8 8432 12-34-56, 89171234567
+const PHONE_FULL = new RegExp(`(?<!\\d)(?:\\+7|8)${SEP}*\\(?\\d(?:[\\s\\-\\u2010-\\u2015.()]*\\d){9}(?!\\d)`, 'g');
+// Без кода страны — только с разбивкой после кода: (917) 123-45-67, 917 123 45 67. Десять цифр подряд — это ИНН, не трогаем
+const PHONE_LOCAL = new RegExp(`(?<!\\d)(?:\\(\\d{3}\\)${SEP}*|\\d{3}${SEP}+)\\d{3}${SEP}*\\d{2}${SEP}*\\d{2}(?!\\d)`, 'g');
+
+/** Телефоны, почты, ники и ссылки → пометки: модель видит, что контакт был, но не сам контакт. */
+export function maskContacts(text: string): string {
+  return (
+    text
+      // Символы нулевой ширины разбили бы номер на куски, которые маска не узнает
+      .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+      .replace(EMAIL, '[почта]')
+      .replace(LINK, '[ссылка]')
+      .replace(NICK, '[ник]')
+      .replace(PHONE_FULL, '[телефон]')
+      .replace(PHONE_LOCAL, '[телефон]')
+  );
+}
+
 export function userMessage(text: string): string {
-  const clean = text
+  const clean = maskContacts(text)
     // Управляющие символы, кроме перевода строки и табуляции
     // eslint-disable-next-line no-control-regex -- вырезаем именно управляющие символы
     .replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, ' ')
@@ -257,16 +284,18 @@ export function createPlaceDrafter({
           { role: 'system', content: system },
           { role: 'user', content: userMessage(text) },
         ];
-        const raw = await ai.chat(messages, { signal });
-        const draft = parseModelAnswer(raw, groups, tags);
+        const reply = await ai.chat(messages, { signal });
+        // Только код причины, без текста: отказ по теме (blacklist) и обрезанный ответ (length) отличаем от кривого JSON
+        const finishReason = reply.finishReason?.slice(0, 32) ?? null;
+        const draft = parseModelAnswer(reply.text, groups, tags);
         if (!draft) {
           // Сам ответ в лог не пишем: в нём может быть пересказ текста работодателя
-          log.warn({ ms: now() - started, rawLength: raw.length }, 'ИИ-черновик: ответ не по формату, откат на ключевые слова');
+          log.warn({ ms: now() - started, rawLength: reply.text.length, finishReason }, 'ИИ-черновик: ответ не по формату, откат на ключевые слова');
           return rules(text);
         }
         // Заголовок модель не дала — берём из текста, навыки оставляем её
         const title = draft.title || titleFromText(text);
-        log.info({ ms: now() - started, required: draft.requiredSkills.length, nice: draft.niceSkills.length }, 'ИИ-черновик готов');
+        log.info({ ms: now() - started, required: draft.requiredSkills.length, nice: draft.niceSkills.length, finishReason }, 'ИИ-черновик готов');
         return { source: 'ai', ...draft, title };
       } catch (err) {
         const e = err instanceof GigaChatError ? { status: err.status, stage: err.stage, reason: err.message } : { reason: err instanceof Error ? err.name : 'unknown' };

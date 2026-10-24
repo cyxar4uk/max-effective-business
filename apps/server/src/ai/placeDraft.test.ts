@@ -2,8 +2,8 @@ import { pino } from 'pino';
 import { describe, expect, it, vi } from 'vitest';
 import { SKILL_GROUPS } from '../seed/skills.js';
 import { TASK_TAGS } from '../seed/tags.js';
-import { GigaChatError, type GigaChat } from './gigachat.js';
-import { buildSystemPrompt, createPlaceDrafter, extractJson, parseModelAnswer, userMessage } from './placeDraft.js';
+import { GigaChatError, type ChatReply, type GigaChat } from './gigachat.js';
+import { buildSystemPrompt, createPlaceDrafter, extractJson, maskContacts, parseModelAnswer, userMessage } from './placeDraft.js';
 import { rulesDraft, titleFromText } from './rules.js';
 
 const log = pino({ level: 'silent' });
@@ -108,6 +108,27 @@ describe('промпт', () => {
     expect(nested.slice('<<<ЗАДАЧА'.length, -'ЗАДАЧА>>>'.length)).not.toMatch(/<<<|>>>/);
   });
 
+  it('телефоны, почты и ники в Сбер не уходят', () => {
+    const msg = userMessage(
+      'Кофейня, вести инсту. Звоните +7 (917) 123-45-67 или 89171234567, 8 800 555 35 35, ' +
+        'пишите anna.k+job@mail.ru или @kofe_zerno',
+    );
+    for (const leak of ['917', '1234567', '555', 'anna', 'mail.ru', 'kofe_zerno']) expect(msg).not.toContain(leak);
+    expect(msg).toContain('Звоните [телефон] или [телефон], [телефон]');
+    expect(msg).toContain('пишите [почта] или [ник]');
+  });
+
+  it('телефоны в других записях и ссылки на мессенджеры тоже', () => {
+    const phones = ['+7 917 123\u201345\u201367', '8.917.123.45.67', '8 8432 12-34-56', '8 85594 1-23-45', '(917)123-45-67', '917 123 45 67', '8 917 123​45 67'];
+    for (const p of phones) expect(maskContacts(`звоните ${p} днём`)).toBe('звоните [телефон] днём');
+    expect(maskContacts('пишите t.me/ivan_hr или https://vk.com/kofe.zerno')).toBe('пишите [ссылка] или [ссылка]');
+  });
+
+  it('суммы, даты и годы — не телефоны', () => {
+    const text = 'Оплата 25000-30000 ₽ или 30 000\u201340 000 ₽, с 01.11.2026 по 30.11.2026, опыт 2025 2026, 40 часов в неделю, 1С 8.3, ИНН 1655123456 и 165512345678';
+    expect(userMessage(text)).toBe(`<<<ЗАДАЧА\n${text}\nЗАДАЧА>>>`);
+  });
+
   it('примеры — с настоящими кодами, и в одном тип и формат null', () => {
     const examples = system.split('\n').filter((l) => l.startsWith('{'));
     expect(examples).toHaveLength(2);
@@ -209,7 +230,8 @@ describe('rulesDraft: по ключевым словам', () => {
 });
 
 describe('createPlaceDrafter', () => {
-  const ok = '{"title":"Вести соцсети кофейни","tag":"social_ads","requiredSkills":["smm"],"niceSkills":["canva"],"type":null,"format":"office"}';
+  const reply = (text: string, finishReason: string | null = 'stop'): ChatReply => ({ text, finishReason });
+  const ok = reply('{"title":"Вести соцсети кофейни","tag":"social_ads","requiredSkills":["smm"],"niceSkills":["canva"],"type":null,"format":"office"}');
   const fakeAi = (chat: GigaChat['chat']): GigaChat => ({ chat: vi.fn(chat), models: vi.fn(async () => []) });
 
   it('ответ модели — source: ai', async () => {
@@ -235,12 +257,24 @@ describe('createPlaceDrafter', () => {
   });
 
   it('кривой ответ — откат на правила', async () => {
-    const ai = fakeAi(async () => 'Извините, я не могу помочь');
+    const ai = fakeAi(async () => reply('Извините, я не могу помочь', 'blacklist'));
     expect((await createPlaceDrafter({ ai, log }).draft('вести инсту кофейни')).source).toBe('rules');
   });
 
+  it('в логе — код причины остановки, без текста ответа и задачи', async () => {
+    const lines: string[] = [];
+    const spy = pino({ level: 'info' }, { write: (line: string) => void lines.push(line) });
+    const ai = fakeAi(async () => reply('Не могу обсуждать эту тему', 'blacklist'));
+    await createPlaceDrafter({ ai, log: spy }).draft('бар, коктейли и афиши');
+    await createPlaceDrafter({ ai: fakeAi(async () => ok), log: spy }).draft('вести инсту кофейни');
+    const out = lines.join('');
+    expect(out).toContain('"finishReason":"blacklist"');
+    expect(out).toContain('"finishReason":"stop"');
+    for (const leak of ['Не могу', 'коктейл', 'инсту']) expect(out).not.toContain(leak);
+  });
+
   it('пустой заголовок от модели — заголовок из текста, навыки модели', async () => {
-    const ai = fakeAi(async () => '{"title":"","tag":"social_ads","requiredSkills":["smm"],"niceSkills":[]}');
+    const ai = fakeAi(async () => reply('{"title":"","tag":"social_ads","requiredSkills":["smm"],"niceSkills":[]}'));
     expect(await createPlaceDrafter({ ai, log }).draft('Нужен человек вести инсту кофейни')).toMatchObject({
       source: 'ai',
       title: 'Вести инсту кофейни',

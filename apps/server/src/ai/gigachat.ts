@@ -27,9 +27,15 @@ export class GigaChatError extends Error {
   }
 }
 
+export interface ChatReply {
+  text: string;
+  /** stop — ответ целиком, length — обрезан по max_tokens, blacklist — отказ по теме; null — поля нет. */
+  finishReason: string | null;
+}
+
 export interface GigaChat {
-  /** Текст ответа модели. signal — общий срок на токен и ответ. */
-  chat(messages: ChatMessage[], opts: { signal: AbortSignal; temperature?: number; maxTokens?: number }): Promise<string>;
+  /** Ответ модели. signal — общий срок на токен и ответ. */
+  chat(messages: ChatMessage[], opts: { signal: AbortSignal; temperature?: number; maxTokens?: number }): Promise<ChatReply>;
   /** id доступных моделей (GET /models). Заодно проверяет ключ: без токена список не получить. */
   models(signal: AbortSignal): Promise<string[]>;
 }
@@ -116,10 +122,11 @@ export function createGigaChat(opts: GigaChatOptions): GigaChat {
       // Токен отозвали раньше срока — следующий запрос возьмёт новый
       if (res.status === 401) token = null;
       if (!res.ok) throw new GigaChatError(res.status, 'chat', `Ответ GigaChat: HTTP ${res.status}`);
-      const data = (await res.json().catch(() => null)) as { choices?: { message?: { content?: unknown } }[] } | null;
-      const content = data?.choices?.[0]?.message?.content;
+      const data = (await res.json().catch(() => null)) as { choices?: { message?: { content?: unknown }; finish_reason?: unknown }[] } | null;
+      const choice = data?.choices?.[0];
+      const content = choice?.message?.content;
       if (typeof content !== 'string') throw new GigaChatError(res.status, 'chat', 'Ответ GigaChat без текста');
-      return content;
+      return { text: content, finishReason: typeof choice?.finish_reason === 'string' ? choice.finish_reason : null };
     },
 
     async models(signal) {

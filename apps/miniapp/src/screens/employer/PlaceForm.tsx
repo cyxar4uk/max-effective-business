@@ -466,7 +466,7 @@ function Review({ draft, dict, errors, onEdit }: ReviewProps) {
   return (
     <section className="pf-body">
       <h1 className="pf-q">Проверьте карточку</h1>
-      <p className="lead pf-sub">Так её увидят студенты. Процент совпадения каждый увидит свой.</p>
+      <p className="lead pf-sub">Так её увидят студенты.</p>
       <PlacePreview draft={draft} dict={dict} />
       {description && (
         <div className="surf pf-desc">
