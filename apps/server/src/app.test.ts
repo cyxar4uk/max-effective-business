@@ -164,6 +164,15 @@ describe('конфиг', () => {
     expect(() => loadConfig({ ...env, DEMO_INVITE_COOLDOWN_HOURS: '1.5' })).toThrow('DEMO_INVITE_COOLDOWN_HOURS');
     expect(() => loadConfig({ ...env, DEMO_INVITE_COOLDOWN_HOURS: '-1' })).toThrow('DEMO_INVITE_COOLDOWN_HOURS');
   });
+
+  it('QUIET_HOURS: по умолчанию и пусто — 22–9, off — выключены, иначе ошибка', () => {
+    const env = { DATABASE_URL: 'postgres://x', MAX_BOT_TOKEN: 't' };
+    expect(loadConfig(env).QUIET_HOURS).toEqual({ from: 22, to: 9 });
+    expect(loadConfig({ ...env, QUIET_HOURS: ' ' }).QUIET_HOURS).toEqual({ from: 22, to: 9 });
+    expect(loadConfig({ ...env, QUIET_HOURS: 'OFF' }).QUIET_HOURS).toBeNull();
+    expect(loadConfig({ ...env, QUIET_HOURS: '23-8' }).QUIET_HOURS).toEqual({ from: 23, to: 8 });
+    for (const bad of ['22', '25-9', '9-9', 'false']) expect(() => loadConfig({ ...env, QUIET_HOURS: bad })).toThrow('QUIET_HOURS');
+  });
 });
 
 describe('прочее', () => {

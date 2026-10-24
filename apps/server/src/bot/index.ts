@@ -14,7 +14,7 @@ import { createUpdateHandler } from './updates.js';
 export interface BotDeps {
   events: EventBus;
   ds: DataSource;
-  config: Pick<Config, 'MAX_BOT_TOKEN' | 'MATCH_NOTIFY_THRESHOLD' | 'MATCH_DAILY_LIMIT' | 'SEED_DEMO'>;
+  config: Pick<Config, 'MAX_BOT_TOKEN' | 'MATCH_NOTIFY_THRESHOLD' | 'MATCH_DAILY_LIMIT' | 'QUIET_HOURS' | 'SEED_DEMO'>;
   log: Logger;
   api?: MaxApi;
 }
@@ -61,8 +61,9 @@ export function registerBot({ events, ds, config, log, api = createMaxApi({ toke
   events.on('interest.invited', (e) => onInterestInvited(notify, e).then(logQueued('interest.invited')));
   events.on('demo.responses', (e) => onDemoResponses(notify, e).then(logQueued('demo.responses')));
 
-  const sender = createSender({ data, api, botUsername, log });
+  const sender = createSender({ data, api, botUsername, log, quietHours: config.QUIET_HOURS });
   const loop = sender.start();
+  log.info({ quietHours: config.QUIET_HOURS ? `${config.QUIET_HOURS.from}-${config.QUIET_HOURS.to}` : 'off' }, 'Тихие часы бота по Москве');
 
   return {
     onUpdate: createUpdateHandler({ upsertUser: (u) => users.upsertFromMax(u), enqueue: (n) => data.enqueue(n), demo: config.SEED_DEMO }),

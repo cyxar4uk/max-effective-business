@@ -13,7 +13,12 @@ const row = (id: number, maxUserId: number, over: Partial<Row> = {}): Row => ({
 // 12:00 по Москве — не тихие часы
 const NOON_MSK = Date.parse('2026-09-28T09:00:00Z');
 
-function setup(rows: Row[], send: (userId: number, body: NewMessageBody) => Promise<void> = async () => {}, start = NOON_MSK) {
+function setup(
+  rows: Row[],
+  send: (userId: number, body: NewMessageBody) => Promise<void> = async () => {},
+  start = NOON_MSK,
+  quietHours?: { from: number; to: number } | null,
+) {
   let clock = start;
   const log: string[] = [];
   const sentAt: { userId: number; t: number; body: NewMessageBody }[] = [];
@@ -33,6 +38,7 @@ function setup(rows: Row[], send: (userId: number, body: NewMessageBody) => Prom
     },
     botUsername: async () => 'career_bot',
     log: pino({ level: 'silent' }),
+    quietHours,
     now: () => clock,
     sleep: async (ms) => void (clock += ms),
   });
@@ -134,5 +140,12 @@ describe('тихие часы 22:00–9:00 по Москве', () => {
     // отложено без траты попытки (defer), а не повтор после ошибки (retry)
     expect(log).toEqual([`defer 1 ${10 * 3600}`, 'sent 2']);
     expect(sentAt.map((s) => s.userId)).toEqual([502]);
+  });
+
+  it('QUIET_HOURS=off (null) — ночью уведомление уходит сразу', async () => {
+    const night = at('2026-09-28T20:00:00Z'); // 23:00 МСК
+    const { sender, log } = setup([row(1, 501, { kind: 'internship_match' })], undefined, night, null);
+    await sender.tick();
+    expect(log).toEqual(['sent 1']);
   });
 });
