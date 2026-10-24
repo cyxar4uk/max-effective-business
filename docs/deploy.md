@@ -144,6 +144,32 @@ DEPLOY_MODE=proxy DEPLOY_HOST=deploy@<ip> scripts/deploy.sh   # за чужим 
 Скрипт переключает код на `origin/<ветка>` (или на указанный коммит), пересобирает образы и перезапускает контейнеры. Миграции применяются
 при старте сервера. Данные БД и сертификаты — в томах `db-data` и `caddy-data`, между выкатками не теряются.
 
+## Прод на VK Cloud: образы собираем локально
+
+С ВМ в VK Cloud зарубежные хосты (Docker Hub, npm) открываются нестабильно, поэтому `scripts/deploy.sh --build` там не
+подходит. Порядок, которым выкатывали финальную версию:
+
+```bash
+# на своей машине, из актуального main
+docker compose build meb-server meb-miniapp
+docker save max-effective-business-meb-server:latest max-effective-business-meb-miniapp:latest | gzip -1 > images.tar.gz
+# залить на сервер (при нестабильной связи — частями через split и cat, сверить sha256sum)
+
+# на сервере
+cd /opt/max-effective-business
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' | gzip > ~/backups/meb-$(date +%Y%m%d-%H%M).sql.gz
+docker tag max-effective-business-meb-server:latest max-effective-business-meb-server:rollback-<hash>   # и miniapp
+docker load -i images.tar.gz
+git fetch origin main && git merge --ff-only origin/main
+docker compose -f compose.yaml -f compose.prod.yaml -f compose.local.yaml up -d --no-build
+```
+
+`compose.local.yaml` (не в git) подключает сертификат, выпущенный через DNS-01: автовыпуск Let's Encrypt до этой ВМ
+не доходит. Откат — вернуть тег `:rollback-<hash>` на `:latest` и снова `up -d --no-build`.
+
+Резервная копия базы — раз в сутки по cron в `~/backups`, хранится 7 дней (`/etc/cron.d/meb-backup`). Копия на той же
+ВМ спасает от ошибки в данных, но не от потери ВМ: для пилота — выгрузка в объектное хранилище.
+
 ## Если что-то сломалось
 
 ```bash
