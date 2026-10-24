@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addBusinessDays, formatPilotMetrics, median, mskDate, parsePeriod, type PilotMetrics } from './pilot.js';
+import { addBusinessDays, bind, formatPilotMetrics, median, mskDate, parseExcludeIds, parsePeriod, type PilotMetrics } from './pilot.js';
 
 describe('addBusinessDays', () => {
   it('будни: +2 рабочих дня — через двое суток', () => {
@@ -46,12 +46,29 @@ describe('parsePeriod', () => {
   });
 });
 
+describe('parseExcludeIds', () => {
+  it('max_user_id команды через запятую, пробел или точку с запятой; мусор отбрасываем', () => {
+    expect(parseExcludeIds('411890855, 123;456  789')).toEqual([411890855, 123, 456, 789]);
+    expect(parseExcludeIds('abc,,0,12.5')).toEqual([]);
+    expect(parseExcludeIds(undefined)).toEqual([]);
+  });
+});
+
+describe('bind', () => {
+  it('именованные параметры → позиционные в порядке появления, неиспользуемые не передаются', () => {
+    expect(bind('a = :thr AND b = :from AND c = :thr AND d::text', { from: 1, thr: 60, excl: [] })).toEqual([
+      'a = $1 AND b = $2 AND c = $1 AND d::text',
+      [60, 1],
+    ]);
+  });
+});
+
 describe('formatPilotMetrics', () => {
   const m: PilotMetrics = {
     places: 4,
-    firstMatch: { withResponse: 3, medianHours: 5.5, withinTarget: 2 },
-    interests: { total: 12, strong: 6, employer: 10, declined: 3 },
-    employerResponseMedianHours: 20.5,
+    firstMatch: { eligible: 3, withinTarget: 2, withResponse: 3, medianHours: 5.5 },
+    interests: { total: 12, strong: 6 },
+    decisions: { invited: 3, declined: 1, olderThan24h: 8, pendingOver24h: 4, decidedWithin24h: 3, medianHours: 20.5 },
     funnel: { profiles: 8, interested: 5 },
     invitations: 2,
     bands: [
@@ -62,27 +79,40 @@ describe('formatPilotMetrics', () => {
     ],
   };
 
-  it('таблица с процентами и периодом', () => {
-    const text = formatPilotMetrics(m, parsePeriod(['--from', '2026-10-01', '--to', '2026-10-31']));
+  it('таблица с процентами и периодом: у долей числитель и знаменатель, у медиан — n, порог из настроек', () => {
+    const text = formatPilotMetrics(m, parsePeriod(['--from', '2026-10-01', '--to', '2026-10-31']), { threshold: 65 });
     expect(text).toContain('с 2026-10-01 по 2026-10-31');
-    expect(text).toMatch(/Мест с подходящим откликом \(≥ 60 %\)\s+3 \(75 %\)/);
-    expect(text).toMatch(/медиана\s+5\.5 ч/);
-    expect(text).toMatch(/работодатель не отклонил\s+7 из 10 \(70 %\)/);
-    expect(text).toMatch(/Ответ работодателя на отклик, медиана\s+20\.5 ч/);
-    expect(text).toMatch(/не дольше 2 рабочих дней\s+2 \(67 %\)/);
+    expect(text).toContain('самоотзывов и аккаунтов команды');
+    // Главная метрика — по местам, у которых срок уже прошёл, а не по местам с откликом (#125)
+    expect(text).toMatch(/не дольше 2 рабочих дней\s+2 из 3 \(67 %\) — из мест, у которых срок уже прошёл/);
+    expect(text).toMatch(/Мест с подходящим откликом \(≥ 65 % и все обязательные\)\s+3 из 4 \(75 %\)/);
+    expect(text).toMatch(/первый подходящий отклик, медиана\s+5\.5 ч \(n = 3\)/);
     expect(text).toMatch(/≥ 70 %»?\s+6 из 12 \(50 %\)/);
-    // «Не отклонил» — только по местам работодателей (10 из 12 откликов), «Работа России» не считается
-
+    // Вместо «не отклонил» (100 %, если работодатель молчит) — пригласил из принятых решений: 3 / (3 + 1)
+    expect(text).toMatch(/пригласил — из принятых решений\s+3 из 4 \(75 %\)/);
+    expect(text).not.toMatch(/не отклонил/);
+    expect(text).toMatch(/старше суток без решения\s+4 из 8 \(50 %\)/);
+    expect(text).toMatch(/старше суток, решённые за сутки\s+3 из 8 \(38 %\)/);
+    expect(text).toMatch(/Ответ работодателя на отклик, медиана\s+20\.5 ч \(n = 4\)/);
     expect(text).toMatch(/первое «Интересно»\s+5 из 8 \(63 %\)/);
     expect(text).toMatch(/приглашены при совпадении 80\+ %\s+2 из 4 \(50 %\)/);
     expect(text).toMatch(/приглашены при совпадении <60 %\s+0 из 1 \(0 %\)/);
   });
 
   it('пустая база — прочерки вместо деления на ноль', () => {
-    const empty: PilotMetrics = { places: 0, firstMatch: { withResponse: 0, medianHours: null, withinTarget: 0 }, interests: { total: 0, strong: 0, employer: 0, declined: 0 }, employerResponseMedianHours: null, funnel: { profiles: 0, interested: 0 }, invitations: 0, bands: [] };
+    const empty: PilotMetrics = {
+      places: 0,
+      firstMatch: { eligible: 0, withinTarget: 0, withResponse: 0, medianHours: null },
+      interests: { total: 0, strong: 0 },
+      decisions: { invited: 0, declined: 0, olderThan24h: 0, pendingOver24h: 0, decidedWithin24h: 0, medianHours: null },
+      funnel: { profiles: 0, interested: 0 },
+      invitations: 0,
+      bands: [],
+    };
     const text = formatPilotMetrics(empty, { from: null, to: null });
     expect(text).toContain('с начала по сегодня');
     expect(text).not.toContain('NaN');
     expect(text).toMatch(/медиана\s+—/);
+    expect(text).toMatch(/0 из 0 \(—\)/);
   });
 });
