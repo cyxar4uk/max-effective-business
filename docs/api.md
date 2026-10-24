@@ -172,10 +172,23 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 Считает модуль `matching` (Тимур). Везде, где стажировка показывается студенту или кандидат работодателю:
 
 ```json
-{ "score": 65, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": ["power_bi"], "niceMissing": [] }
+{
+  "score": 65,
+  "mustMatched": ["excel"],
+  "mustMissing": ["sql"],
+  "niceMatched": ["power_bi"],
+  "niceMissing": [],
+  "mustClose": [],
+  "niceClose": []
+}
 ```
 
 Коды навыков; названия клиент берёт из `/api/skills`.
+
+`mustClose` / `niceClose` (#71) — требования, закрытые близким навыком наполовину: `{ "need": "wildberries", "have":
+"ozon" }` — место хочет Wildberries, у студента есть Ozon. Такое требование остаётся и в `mustMissing` /
+`niceMissing`: навыка у студента нет. Пары близких навыков — `apps/server/src/seed/closeSkills.ts`. В откликах,
+сохранённых до #71 (`interests.match`), этих полей нет — читать как пустые.
 
 ### Место (стажировка, практика, подработка)
 
@@ -203,7 +216,7 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
   "sourceUrl": null,
   "isDemo": false,
   "createdAt": "2026-09-27T10:00:00.000Z",
-  "match": { "score": 65, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": ["power_bi"], "niceMissing": [] },
+  "match": { "score": 65, "mustMatched": ["excel"], "mustMissing": ["sql"], "niceMatched": ["power_bi"], "niceMissing": [], "mustClose": [], "niceClose": [] },
   "myInterest": null
 }
 ```

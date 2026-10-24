@@ -30,6 +30,8 @@ const schema = z.object({
 
   // Порог совпадения для уведомления студента, %
   MATCH_NOTIFY_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
+  // Сколько новых мест в день бот присылает студенту, остальное — подборкой; 0 — без лимита (живой показ на защите)
+  MATCH_DAILY_LIMIT: z.coerce.number().int().min(0).default(3),
 
   // GigaChat для ИИ-черновика карточки места (POST /api/internships/draft). Authorization key из Studio —
   // base64(client_id:client_secret). Пусто — черновик собирается по ключевым словам, без модели.

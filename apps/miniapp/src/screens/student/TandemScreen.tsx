@@ -4,6 +4,7 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { api } from '../../api/client';
 import type { Interest } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
+import { backTo, STUDENT_TABS } from '../../app/history';
 import { useMe } from '../../app/me';
 import { DemoBadge } from '../../components/DemoBadge';
 import { EmptyState } from '../../components/EmptyState';
@@ -142,7 +143,7 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
         </motion.p>
       </div>
       <motion.div className="tm-acts" {...item(3)}>
-        <button type="button" className="btn pri" onClick={() => navigate('/student', { replace: true })}>
+        <button type="button" className="btn pri" onClick={() => backTo(navigate, '/student', STUDENT_TABS)}>
           Смотреть другие места
         </button>
         <button type="button" className="btn ghost" onClick={allInterests}>

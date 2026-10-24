@@ -44,7 +44,7 @@ const roleButtons: AppButton[][] = [[{ text: 'Я студент', startapp: 'stu
 export function welcomeMessage(opts: { firstName?: string | null; demo: boolean; startPayload?: string | null }): QueuedMessage {
   const lines = [
     opts.firstName ? `Здравствуйте, ${opts.firstName}! Это «Тандем».` : 'Здравствуйте! Это «Тандем».',
-    'Студенту присылаем только подходящие места: практику, стажировки, подработку. Работодатель видит, кто откликнулся и насколько подходит.',
+    'Студенту присылаем только подходящие места: практику, стажировки и подработку. Работодатель видит, кто откликнулся и насколько подходит.',
     'Кто вы?',
   ];
   if (opts.demo) lines.push('', 'Сейчас демо-режим: компании и студенты тестовые.');
@@ -81,19 +81,26 @@ export function internshipMatchMessage(opts: {
   company: string;
   score: number;
   matchedSkills: string[];
+  /**
+   * Близкие навыки (#71), уже готовые фразы «Excel (есть Google Таблицы)»: процент выше точных совпадений, и без этой
+   * строки непонятно почему. Уведомление идёт, только если обязательные закрыты точно, — здесь только желательные.
+   */
+  closeSkills?: string[];
   /** Тип и оплата места (#74): студенту это важнее всего после самой задачи. */
   terms?: { type: PlaceType; paid: boolean | null; salary: number | null };
 }): QueuedMessage {
   const lines = [`Новое место для вас: «${opts.title}», ${opts.company}.`];
   if (opts.terms) lines.push(placeTerms(opts.terms.type, opts.terms.paid, opts.terms.salary) + '.');
   lines.push(opts.matchedSkills.length ? `Совпадение ${opts.score} %: ${list(opts.matchedSkills)}.` : `Совпадение ${opts.score} %.`);
+  if (opts.closeSkills?.length) lines.push(`Наполовину засчитано: ${list(opts.closeSkills)}.`);
   return { text: lines.join('\n'), buttons: [[{ text: 'Смотреть', startapp: internshipParam(opts.internshipId) }]] };
 }
 
 /** Студенту уже пришло столько новых мест за день: остальные — одной подборкой со ссылкой на ленту. */
 export function digestMessage(): QueuedMessage {
   return {
-    text: 'Сегодня для вас появились ещё подходящие места. Все они — в ленте.',
+    // Без «сегодня»: подборка, поставленная после 22:00, уходит утром (тихие часы) (#102)
+    text: 'Для вас появились ещё подходящие места. Все они — в ленте.',
     buttons: [[{ text: 'Открыть ленту', startapp: 'student' }]],
   };
 }

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../../api/client';
 import type { GuideState } from '../CheckGuide';
+import { backTo } from '../../app/history';
 import type { Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { ErrorState } from '../../components/ErrorState';
@@ -203,7 +204,7 @@ export function Places() {
           <BuildingIcon />
           Профиль компании
         </button>
-        <button type="button" className="btn ghost sm" onClick={() => navigate('/')}>
+        <button type="button" className="btn ghost sm" onClick={() => backTo(navigate, '/')}>
           Сменить роль
         </button>
       </nav>

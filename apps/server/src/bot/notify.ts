@@ -14,7 +14,10 @@ import {
   type QueuedMessage,
 } from './messages.js';
 
-/** Студенту — не больше стольких новых мест в день, остальное подборкой (решение Артёма от 27.09). */
+/**
+ * Студенту — не больше стольких новых мест в день, остальное подборкой (решение Артёма от 27.09).
+ * Значение по умолчанию; на сервере — MATCH_DAILY_LIMIT, 0 — без лимита (живой показ на защите).
+ */
 export const DAILY_MATCH_LIMIT = 3;
 
 /**
@@ -30,6 +33,8 @@ export interface NotifyDeps {
   /** Сколько уведомлений вида kind у пользователя за текущий день рассылки (см. dispatchDay и botData.countInDispatchDay). */
   countInDispatchDay(userId: number, kind: string): Promise<number>;
   threshold: number;
+  /** Лимит новых мест в день на студента; 0 — без лимита. По умолчанию DAILY_MATCH_LIMIT. */
+  dailyLimit?: number;
   now?: () => Date;
 }
 
@@ -67,12 +72,15 @@ export async function onInternshipCreated(deps: NotifyDeps, { internshipId }: Ap
     const match = matchStudentToInternship(profile, internship);
     if (!shouldNotify(match, deps.threshold)) continue;
     // Лимит в день рассылки: сверх него — одна подборка со ссылкой на ленту
-    if ((await deps.countInDispatchDay(user.userId, KIND.internshipMatch)) >= DAILY_MATCH_LIMIT) {
+    const limit = deps.dailyLimit ?? DAILY_MATCH_LIMIT;
+    if (limit > 0 && (await deps.countInDispatchDay(user.userId, KIND.internshipMatch)) >= limit) {
       const day = dispatchDay(deps.now?.() ?? new Date());
       if (await enqueue(deps, user, KIND.digest, `digest:${user.userId}:${day}`, digestMessage())) queued++;
       continue;
     }
-    const matchedSkills = [...match.mustMatched, ...match.niceMatched].map((c) => names.get(c) ?? c);
+    const name = (c: string) => names.get(c) ?? c;
+    const matchedSkills = [...match.mustMatched, ...match.niceMatched].map(name);
+    const closeSkills = [...match.mustClose, ...match.niceClose].map(({ need, have }) => `${name(need)} (есть ${name(have)})`);
     const ok = await enqueue(
       deps,
       user,
@@ -84,6 +92,7 @@ export async function onInternshipCreated(deps: NotifyDeps, { internshipId }: Ap
         company,
         score: match.score,
         matchedSkills,
+        closeSkills,
         terms: { type: internship.type, paid: internship.paid, salary: internship.salary },
       }),
     );

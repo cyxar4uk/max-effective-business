@@ -18,6 +18,8 @@ export interface ImportResult {
   closed: number;
   /** Скольким уже загруженным местам проставлены теги (backfillTrudvsemTags). */
   tagged: number;
+  /** Сколько вакансий не удалось записать (битые данные): они пропущены, остальные записаны. */
+  failed: number;
 }
 
 type Query = (sql: string, params?: unknown[]) => Promise<unknown>;
@@ -74,14 +76,23 @@ export async function importTrudvsem(
     // которые живой импорт уже закрыл, и затёр бы свежие данные старыми.
     const [row] = (await db.query(`SELECT count(*)::int AS n FROM internships WHERE source = 'trudvsem'`)) as { n: number }[];
     if ((row?.n ?? 0) > 0) {
-      return { from: 'none', vacancies: 0, imported: 0, skipped: 0, closed: 0, tagged: await backfillTrudvsemTags(db) };
+      return { from: 'none', vacancies: 0, imported: 0, skipped: 0, closed: 0, tagged: await backfillTrudvsemTags(db), failed: 0 };
     }
     from = 'snapshot';
     vacancies = opts.snapshot ?? TRUDVSEM_SNAPSHOT.vacancies;
   }
 
   const places = vacancies.map(mapVacancy).filter((p): p is ImportedPlace => p !== null);
-  for (const p of places) await upsert(db, p, from === 'snapshot');
+  // Одна битая запись (например, нулевой символ в описании) не должна ронять весь импорт (#102): пропускаем её и идём дальше
+  let failed = 0;
+  for (const p of places) {
+    try {
+      await upsert(db, p, from === 'snapshot');
+    } catch (err) {
+      failed++;
+      opts.log?.warn({ err, sourceId: p.sourceId }, '«Работа России»: вакансия не записана');
+    }
+  }
 
   // Пропавшие с сайта вакансии закрываем только по полному живому ответу: по снимку или неполному ответу не видно,
   // что вакансию сняли с публикации
@@ -97,7 +108,7 @@ export async function importTrudvsem(
   }
 
   const tagged = await backfillTrudvsemTags(db);
-  return { from, vacancies: vacancies.length, imported: places.length, skipped: vacancies.length - places.length, closed, tagged };
+  return { from, vacancies: vacancies.length, imported: places.length - failed, skipped: vacancies.length - places.length, closed, tagged, failed };
 }
 
 /** Раз в 6 часов: чаще незачем, API медленный. */

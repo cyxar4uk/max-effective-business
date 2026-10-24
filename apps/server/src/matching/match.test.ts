@@ -10,6 +10,7 @@ import {
 } from './match.js';
 import { matcher } from './index.js';
 import type { InternshipMatchInput, StudentMatchInput } from './types.js';
+import { closeSkillsMap } from '../seed/closeSkills.js';
 
 const student = (over: Partial<StudentMatchInput> = {}): StudentMatchInput => ({
   skills: [],
@@ -74,6 +75,8 @@ describe('matchStudentToInternship', () => {
       mustMissing: [],
       niceMatched: ['power_bi'],
       niceMissing: [],
+      mustClose: [],
+      niceClose: [],
     });
   });
 
@@ -270,7 +273,31 @@ describe('matcher (контракт API)', () => {
     );
     expect(r).toEqual({
       eligible: true,
-      match: { score: 65, mustMatched: ['excel'], mustMissing: ['sql'], niceMatched: ['power_bi'], niceMissing: [] },
+      match: {
+        score: 65,
+        mustMatched: ['excel'],
+        mustMissing: ['sql'],
+        niceMatched: ['power_bi'],
+        niceMissing: [],
+        mustClose: [],
+        niceClose: [],
+      },
+    });
+  });
+
+  it('близкий навык — в расшифровке «нужен — есть»', () => {
+    const r = matcher(
+      { skills: ['ozon'], formats: ['remote'], city: 'Москва' },
+      { requiredSkills: ['wildberries'], niceSkills: [], format: 'remote', city: null },
+    );
+    expect(r.match).toEqual({
+      score: 50,
+      mustMatched: [],
+      mustMissing: ['wildberries'],
+      niceMatched: [],
+      niceMissing: [],
+      mustClose: [{ need: 'wildberries', have: 'ozon' }],
+      niceClose: [],
     });
   });
 
@@ -310,6 +337,134 @@ describe('shouldNotify: все обязательные навыки (#82)', () 
     const r = matchStudentToInternship(student({ skills: ['x'] }), internship({ niceSkills: ['x', 'y'] }));
     expect(shouldNotify(r)).toBe(false); // 50 %
     expect(shouldNotify(matchStudentToInternship(student({ skills: ['x', 'y'] }), internship({ niceSkills: ['x', 'y'] })))).toBe(true);
+  });
+});
+
+describe('близкие навыки (#71)', () => {
+  it('близкий обязательный — половина веса: Ozon вместо Wildberries', () => {
+    // обязательные: Wildberries, карточки; желательное: юнит-экономика. Есть Ozon и карточки.
+    // 70 × (0,5 + 1)/2 + 30 × 0 = 52,5 → 53 (без близких было 35)
+    const r = matchStudentToInternship(
+      student({ skills: ['ozon', 'marketplace_cards'] }),
+      internship({ requiredSkills: ['wildberries', 'marketplace_cards'], niceSkills: ['unit_economics'] }),
+    );
+    expect(r.score).toBe(53);
+    expect(r.mustMatched).toEqual(['marketplace_cards']);
+    expect(r.mustMissing).toEqual(['wildberries']);
+    expect(r.mustClose).toEqual([{ need: 'wildberries', have: 'ozon' }]);
+    expect(r.niceClose).toEqual([]);
+  });
+
+  it('близкий желательный — половина его веса: Google Таблицы вместо Excel', () => {
+    // 70 × 1/1 + 30 × 0,5/1 = 85 (было 70)
+    const r = matchStudentToInternship(
+      student({ skills: ['sql', 'google_sheets'] }),
+      internship({ requiredSkills: ['sql'], niceSkills: ['excel'] }),
+    );
+    expect(r.score).toBe(85);
+    expect(r.niceMissing).toEqual(['excel']);
+    expect(r.niceClose).toEqual([{ need: 'excel', have: 'google_sheets' }]);
+  });
+
+  it('только близкие и без желательных: 100 × 0,5 = 50', () => {
+    const r = matchStudentToInternship(student({ skills: ['google_sheets'] }), internship({ requiredSkills: ['excel'] }));
+    expect(r.score).toBe(50);
+  });
+
+  it('навык студента засчитывается один раз: точное совпадение не идёт ещё и в близкие', () => {
+    // Место хочет и Wildberries, и Ozon; у студента только Ozon — он закрывает Ozon, а Wildberries остаётся без пары
+    const r = matchStudentToInternship(student({ skills: ['ozon'] }), internship({ requiredSkills: ['wildberries', 'ozon'] }));
+    expect(r.mustMatched).toEqual(['ozon']);
+    expect(r.mustClose).toEqual([]);
+    expect(r.score).toBe(50);
+  });
+
+  it('один близкий навык закрывает одно требование, а не все рядом', () => {
+    // Ozon близок и к Wildberries, и к карточкам, но засчитывается за одно из них
+    const r = matchStudentToInternship(
+      student({ skills: ['ozon'] }),
+      internship({ requiredSkills: ['wildberries', 'marketplace_cards'] }),
+    );
+    expect(r.mustClose).toEqual([{ need: 'wildberries', have: 'ozon' }]);
+    expect(r.score).toBe(25);
+  });
+
+  it('раскладывает близкие так, чтобы закрыть больше требований', () => {
+    // x близок к a и b, y — только к a. Жадно a взял бы x, и b остался бы без пары; правильно a ← y, b ← x
+    const close = closeSkillsMap([
+      ['a', 'x'],
+      ['b', 'x'],
+      ['a', 'y'],
+    ]);
+    const r = matchStudentToInternship(student({ skills: ['x', 'y'] }), internship({ requiredSkills: ['a', 'b'] }), close);
+    expect(r.mustClose).toEqual([
+      { need: 'a', have: 'y' },
+      { need: 'b', have: 'x' },
+    ]);
+    expect(r.score).toBe(50);
+  });
+
+  it('близкие сначала к обязательным, затем к желательным', () => {
+    const close = closeSkillsMap([
+      ['must', 'x'],
+      ['nice', 'x'],
+    ]);
+    const r = matchStudentToInternship(student({ skills: ['x'] }), internship({ requiredSkills: ['must'], niceSkills: ['nice'] }), close);
+    expect(r.mustClose).toEqual([{ need: 'must', have: 'x' }]);
+    expect(r.niceClose).toEqual([]);
+    // 70 × 0,5 = 35
+    expect(r.score).toBe(35);
+  });
+
+  it('обязательный не забирает навык у желательного, если у обязательного есть запасной близкий', () => {
+    // 1С: ЗУП близок и к 1С: Бухгалтерии, и к кадровому делопроизводству; бухучёт — к 1С: Бухгалтерии.
+    // Правильно: ЗУП ← кадровое делопроизводство, бухучёт ← 1С: Бухгалтерия. 70 × 0,5 + 30 × 0,5 = 50 (а не 35)
+    const r = matchStudentToInternship(
+      student({ skills: ['1c_accounting', 'hr_admin'] }),
+      internship({ requiredSkills: ['1c_zup'], niceSkills: ['accounting'] }),
+    );
+    expect(r.mustClose).toEqual([{ need: '1c_zup', have: 'hr_admin' }]);
+    expect(r.niceClose).toEqual([{ need: 'accounting', have: '1c_accounting' }]);
+    expect(r.score).toBe(50);
+  });
+
+  it('место без обязательных: близкий желательный поднимает процент и может включить уведомление', () => {
+    // Желательные Excel и SQL, у студента Google Таблицы и SQL: 100 × 1,5/2 = 75. Обязательных нет — проверять нечего
+    const r = matchStudentToInternship(student({ skills: ['google_sheets', 'sql'] }), internship({ niceSkills: ['excel', 'sql'] }));
+    expect(r.score).toBe(75);
+    expect(shouldNotify(r)).toBe(true);
+  });
+
+  it('близость не переходит по цепочке', () => {
+    // excel ~ google_sheets, но google_sheets ни с чем больше не близок: Power BI от Excel не получает ничего
+    const r = matchStudentToInternship(student({ skills: ['excel'] }), internship({ requiredSkills: ['data_visualization'] }));
+    expect(r.score).toBe(0);
+    expect(r.mustClose).toEqual([]);
+  });
+
+  it('близкий обязательный не включает уведомление бота, даже при проценте выше порога', () => {
+    // 70 × (1 + 0,5)/2 + 30 × 2/2 = 82,5 → 83, но Wildberries у студента нет
+    const r = matchStudentToInternship(
+      student({ skills: ['ozon', 'marketplace_cards', 'unit_economics', 'product_photo'] }),
+      internship({ requiredSkills: ['wildberries', 'marketplace_cards'], niceSkills: ['unit_economics', 'product_photo'] }),
+    );
+    expect(r.score).toBe(83);
+    expect(r.mustMissing).toEqual(['wildberries']);
+    expect(shouldNotify(r)).toBe(false);
+  });
+
+  it('близкий желательный уведомлению не мешает: обязательные закрыты точно', () => {
+    const r = matchStudentToInternship(
+      student({ skills: ['sql', 'google_sheets'] }),
+      internship({ requiredSkills: ['sql'], niceSkills: ['excel'] }),
+    );
+    expect(shouldNotify(r)).toBe(true);
+  });
+
+  it('без справочника близких — прежний расчёт', () => {
+    const r = matchStudentToInternship(student({ skills: ['ozon'] }), internship({ requiredSkills: ['wildberries'] }), new Map());
+    expect(r.score).toBe(0);
+    expect(r.mustClose).toEqual([]);
   });
 });
 

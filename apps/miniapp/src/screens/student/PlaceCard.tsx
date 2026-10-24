@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import type { Internship } from '../../api/types';
+import { closeOf } from '../../app/matchText';
 import { companyInitial, coverOf, nameOf, placeFacts, placeWhere, typeChip, type SkillNames } from './place';
 import { Cover, Eq, Icon, Pct } from './ui';
 import { DemoBadge } from '../../components/DemoBadge';
@@ -94,6 +95,8 @@ export function PlaceCardFace({ place, names, active }: { place: Internship; nam
         ...[...match.mustMissing, ...match.niceMissing].map((c) => [c, false] as const),
       ]
     : [];
+  // «≈ Wildberries»: навыка нет, но есть близкий, засчитано наполовину (#71); подробно — на экране места
+  const close = match ? closeOf(match) : new Map<string, string>();
   const facts = placeFacts(place);
   const face = useRef<HTMLDivElement>(null);
   const info = useRef<HTMLDivElement>(null);
@@ -142,7 +145,10 @@ export function PlaceCardFace({ place, names, active }: { place: Internship; nam
               {skills.slice(0, view.skills).map(([code, ok]) => (
                 <span key={code} className={`sk ${ok ? 'ok' : 'no'}`}>
                   {ok && <Icon name="check" />}
-                  <span className="pc-sk-name">{nameOf(names, code)}</span>
+                  <span className="pc-sk-name">
+                    {!ok && close.has(code) && '≈ '}
+                    {nameOf(names, code)}
+                  </span>
                 </span>
               ))}
               {skills.length > view.skills && <span className="sk no">+{skills.length - view.skills}</span>}

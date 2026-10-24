@@ -131,19 +131,30 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
     number
   >;
 
-  const say = useCallback((text: string, tone: NoticeValue['tone']) => setNotice((n) => ({ text, tone, n: (n?.n ?? 0) + 1 })), []);
+  // Сообщение с кнопкой («Это тандем!») простое подтверждение не перекрывает: отказ следующему кандидату уходит через
+  // 5 секунд, и его «Отказ отправлен» убрал бы кнопку раньше времени. Ошибку показываем всегда
+  const say = useCallback(
+    (text: string, tone: NoticeValue['tone'], action?: NoticeValue['action']) =>
+      setNotice((n) => (n?.action && tone === 'ok' && !action ? n : { text, tone, action, n: (n?.n ?? 0) + 1 })),
+    [],
+  );
   const hideNotice = useCallback(() => setNotice(null), []);
 
   const decision = useDecision({
-    onDone: (c, action, mounted) => {
+    onDone: (c, action, mounted, waiting) => {
       if (!mounted) return;
       update((d) => withCandidate(d, c));
       if (action === 'invite') {
         // Тактильный отклик — сразу с ответом сервера, вместе с переходом на «Это тандем!»
         haptic.notify('success');
-        navigate(paths.tandem(place.id, c.studentId), {
-          state: { justInvited: true, candidate: c, place } satisfies TandemState,
-        });
+        const openTandem = () =>
+          navigate(paths.tandem(place.id, c.studentId), {
+            state: { justInvited: true, candidate: c, place } satisfies TandemState,
+          });
+        // Пригласили и сразу решили по следующему: его отсчёт ещё идёт. Переход размонтировал бы экран, и решение
+        // ушло бы без 5 секунд на отмену, — поэтому «Это тандем!» не открываем сами, а предлагаем кнопкой
+        if (waiting) say(`Приглашение отправлено: ${firstName(c)}`, 'ok', { label: 'Это тандем!', onClick: openTandem });
+        else openTandem();
       } else {
         // Открыт тот, кому отказали, — переходим к следующему по списку, а не к первому
         if (selected?.studentId === c.studentId && tab === 'waiting') {

@@ -1,4 +1,6 @@
+import { CLOSE_SKILLS, type CloseSkills } from '../seed/closeSkills.js';
 import type {
+  CloseSkill,
   FilterFailure,
   InternshipMatchInput,
   MatchResult,
@@ -91,6 +93,7 @@ export function checkFilters(student: StudentMatchInput, internship: InternshipM
  * 70 % × доля закрытых обязательных + 30 % × доля закрытых желательных.
  * Нет желательных — только обязательные; нет обязательных — только желательные; нет никаких требований — 100.
  * Считаем в целых числах, чтобы округление половины шло всегда вверх, без ошибок плавающей точки.
+ * Половинки за близкие навыки — тоже в целых: закрытые и всего передаются в половинах (см. matchStudentToInternship).
  */
 export function computeScore(mustMatched: number, mustTotal: number, niceMatched: number, niceTotal: number): number {
   let numerator: number;
@@ -114,8 +117,49 @@ function unique(ids: readonly SkillCode[]): SkillCode[] {
   return [...new Set(ids)];
 }
 
-/** Считает совпадение студента со стажировкой. Чистая функция: без БД, сети и времени. */
-export function matchStudentToInternship(student: StudentMatchInput, internship: InternshipMatchInput): MatchResult {
+/**
+ * Близкие навыки студента к недостающим требованиям (#71): требование → навык студента. Навык студента засчитывается
+ * один раз: либо точно, либо близким к одному требованию — иначе один Ozon закрывал бы и Wildberries, и карточки
+ * товаров, и процент «плыл» вверх. Из нескольких раскладов берём тот, где закрыто больше требований, — паросочетание
+ * Куна (списки по 5–10 навыков). Требования идут по порядку `needs`: уже закрытое более поздним не открывается, поэтому
+ * при обязательных впереди их закрыто максимум, а желательные закрываются тем, что осталось.
+ * `free` — навыки студента, не совпавшие точно ни с одним требованием.
+ */
+function closeFor(needs: readonly SkillCode[], free: ReadonlySet<SkillCode>, close: CloseSkills): Map<SkillCode, SkillCode> {
+  const needOf = new Map<SkillCode, SkillCode>(); // навык студента → требование, которое он закрывает
+  const assign = (need: SkillCode, seen: Set<SkillCode>): boolean => {
+    for (const have of close.get(need) ?? []) {
+      if (!free.has(have) || seen.has(have)) continue;
+      seen.add(have);
+      const taken = needOf.get(have);
+      if (taken === undefined || assign(taken, seen)) {
+        needOf.set(have, need);
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const need of needs) assign(need, new Set());
+  return new Map([...needOf].map(([have, need]) => [need, have] as const));
+}
+
+function closeList(needs: readonly SkillCode[], haveOf: ReadonlyMap<SkillCode, SkillCode>): CloseSkill[] {
+  return needs.flatMap((need) => {
+    const have = haveOf.get(need);
+    return have === undefined ? [] : [{ need, have }];
+  });
+}
+
+/**
+ * Считает совпадение студента со стажировкой. Чистая функция: без БД, сети и времени.
+ * Требование, которого у студента нет, но есть близкий навык (seed/closeSkills.ts), даёт половину своего веса.
+ * Сначала точные совпадения, затем близкие к обязательным, затем к желательным: у обязательных вес больше.
+ */
+export function matchStudentToInternship(
+  student: StudentMatchInput,
+  internship: InternshipMatchInput,
+  close: CloseSkills = CLOSE_SKILLS,
+): MatchResult {
   const studentSkills = new Set(student.skills);
   const must = unique(internship.requiredSkills);
   // Навык, указанный и обязательным, и желательным, считаем обязательным.
@@ -127,17 +171,45 @@ export function matchStudentToInternship(student: StudentMatchInput, internship:
   const niceMatched = nice.filter((id) => studentSkills.has(id));
   const niceMissing = nice.filter((id) => !studentSkills.has(id));
 
+  // Навыки студента, которые не совпали ни с одним требованием точно, — кандидаты в близкие
+  const niceSet = new Set(nice);
+  const free = new Set(student.skills.filter((id) => !mustSet.has(id) && !niceSet.has(id)));
+  // Один расклад на обязательные и желательные сразу: иначе обязательный мог бы забрать навык, нужный желательному,
+  // хотя у него есть запасной близкий
+  const haveOf = closeFor([...mustMissing, ...niceMissing], free, close);
+  const mustClose = closeList(mustMissing, haveOf);
+  const niceClose = closeList(niceMissing, haveOf);
+
   const filterFailures = checkFilters(student, internship);
 
   return {
-    score: computeScore(mustMatched.length, must.length, niceMatched.length, nice.length),
+    // В половинах: точное совпадение — 2, близкое — 1, всего — 2 на навык
+    score: computeScore(
+      2 * mustMatched.length + mustClose.length,
+      2 * must.length,
+      2 * niceMatched.length + niceClose.length,
+      2 * nice.length,
+    ),
     passesFilters: filterFailures.length === 0,
     filterFailures,
     mustMatched,
     mustMissing,
     niceMatched,
     niceMissing,
+    mustClose,
+    niceClose,
   };
+}
+
+/** Расшифровка для API и БД (`interests.match`): результат без фильтров — они видны по тому, показано ли место. */
+export type MatchBreakdownOf = Pick<
+  MatchResult,
+  'score' | 'mustMatched' | 'mustMissing' | 'niceMatched' | 'niceMissing' | 'mustClose' | 'niceClose'
+>;
+
+export function matchBreakdown(r: MatchResult): MatchBreakdownOf {
+  const { score, mustMatched, mustMissing, niceMatched, niceMissing, mustClose, niceClose } = r;
+  return { score, mustMatched, mustMissing, niceMatched, niceMissing, mustClose, niceClose };
 }
 
 /**
@@ -145,6 +217,8 @@ export function matchStudentToInternship(student: StudentMatchInput, internship:
  * обязательные навыки. Без последнего условия студент без одного обязательного навыка, но со всеми желательными
  * получал 35 + 30 = 65 % и уведомление: «обязательные» были не обязательными (#82). В ленте такие места остаются,
  * но стоят ниже (compareForFeed).
+ * Близкий навык обязательный не закрывает (#71): он в mustMissing, и уведомления нет — бот пишет только о местах,
+ * где студент уже умеет всё обязательное; Ozon вместо Wildberries студент увидит в ленте.
  */
 export function shouldNotify(result: MatchResult, threshold: number = DEFAULT_NOTIFY_THRESHOLD): boolean {
   return result.passesFilters && result.score >= threshold && result.mustMissing.length === 0;

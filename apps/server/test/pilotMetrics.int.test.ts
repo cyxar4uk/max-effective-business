@@ -96,14 +96,16 @@ describe.skipIf(!url)('метрики пилота', () => {
     expect(m).toEqual({
       places: 3,
       firstMatch: { withResponse: 2, medianHours: 49, withinTarget: 2 },
-      interests: { total: 4, strong: 2, declined: 0 },
+      // employer — без отклика на место «Работа России»: там решений в сервисе нет (#102)
+      interests: { total: 4, strong: 2, employer: 3, declined: 0 },
       // Приглашение s1 на p1: «Интересно» 05.10 15:00, решение 08.10 12:00 — 69 ч
       employerResponseMedianHours: 69,
       funnel: { profiles: 3, interested: 2 },
       invitations: 1,
       bands: [
         { band: '80+', interested: 1, invited: 1 },
-        { band: '70–79', interested: 1, invited: 0 },
+        // Отклик на 75 % — на место «Работа России», в разрез решений работодателя он не входит
+        { band: '70–79', interested: 0, invited: 0 },
         { band: '60–69', interested: 1, invited: 0 },
         { band: '<60', interested: 1, invited: 0 },
       ],

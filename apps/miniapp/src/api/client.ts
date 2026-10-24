@@ -53,7 +53,7 @@ interface ErrorBody {
 }
 
 interface RequestOptions {
-  /** Запрос доживёт до конца, даже если мини-приложение закрывают (решение по кандидату при уходе с экрана). */
+  /** Запрос доживёт до конца, даже если мини-приложение закрывают (решение по кандидату или пропуск места при уходе с экрана). */
   keepalive?: boolean;
 }
 
@@ -116,7 +116,8 @@ export const api = {
   updateInternship: (id: number, change: InternshipPatch) => patch<Internship>(`/internships/${id}`, change),
 
   internship: (id: number) => get<Internship>(`/internships/${id}`),
-  interest: (id: number, action: InterestAction) => post<InterestResult>(`/internships/${id}/interest`, { action }),
+  interest: (id: number, action: InterestAction, options?: RequestOptions) =>
+    post<InterestResult>(`/internships/${id}/interest`, { action }, options),
   candidates: (id: number) => get<Items<Candidate>>(`/internships/${id}/candidates`),
   invite: (id: number, studentId: number, options?: RequestOptions) =>
     post<Candidate>(`/internships/${id}/candidates/${studentId}/invite`, undefined, options),

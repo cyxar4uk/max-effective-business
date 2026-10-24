@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import type { Internship, Match } from '../../api/types';
+import { closeOf } from '../../app/matchText';
 import { openLink } from '../../max/bridge';
 import {
   addSkillHref,
@@ -15,11 +16,17 @@ import {
 } from './place';
 import { Eq, Icon, Pct } from './ui';
 
-function SkillRow({ code, ok, names }: { code: string; ok: boolean; names: SkillNames }) {
+/** close — близкий навык студента, которым требование закрыто наполовину (#71). */
+function SkillRow({ code, ok, close, names }: { code: string; ok: boolean; close?: string; names: SkillNames }) {
   return (
     <div className="row sd-skill">
-      <span className={`sk ${ok ? 'ok' : 'no'} sd-mark`}>{ok && <Icon name="check" />}</span>
-      <span className={ok ? 'grow' : 'grow sd-miss'}>{nameOf(names, code)}</span>
+      <span className={`sk ${ok ? 'ok' : 'no'} sd-mark`} aria-hidden={close ? true : undefined}>
+        {ok ? <Icon name="check" /> : close && '≈'}
+      </span>
+      <span className={ok ? 'grow' : 'grow sd-miss'}>
+        {nameOf(names, code)}
+        {close && <span className="sd-close">есть близкий: {nameOf(names, close)} — засчитано наполовину</span>}
+      </span>
       {!ok && (
         <Link className="sd-link" to={addSkillHref(code)}>
           Умею — добавить
@@ -33,6 +40,7 @@ function SkillRow({ code, ok, names }: { code: string; ok: boolean; names: Skill
 export function MatchBreakdown({ match, names }: { match: Match; names: SkillNames }) {
   const must = [...match.mustMatched.map((c) => [c, true] as const), ...match.mustMissing.map((c) => [c, false] as const)];
   const nice = [...match.niceMatched.map((c) => [c, true] as const), ...match.niceMissing.map((c) => [c, false] as const)];
+  const close = closeOf(match);
   return (
     <section className="surf sd-match" aria-label="Совпадение по навыкам">
       <div className="match">
@@ -50,11 +58,11 @@ export function MatchBreakdown({ match, names }: { match: Match; names: SkillNam
       </div>
       {must.length > 0 && <span className="cap">Обязательные</span>}
       {must.map(([code, ok]) => (
-        <SkillRow key={code} code={code} ok={ok} names={names} />
+        <SkillRow key={code} code={code} ok={ok} close={ok ? undefined : close.get(code)} names={names} />
       ))}
       {nice.length > 0 && <span className="cap">Желательные</span>}
       {nice.map(([code, ok]) => (
-        <SkillRow key={code} code={code} ok={ok} names={names} />
+        <SkillRow key={code} code={code} ok={ok} close={ok ? undefined : close.get(code)} names={names} />
       ))}
     </section>
   );

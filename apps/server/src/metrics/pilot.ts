@@ -73,8 +73,11 @@ export interface PilotMetrics {
     medianHours: number | null;
     withinTarget: number;
   };
-  /** Доля «Интересно» с совпадением ≥ MATCH_STRONG; declined — сколько из них работодатель отклонил. */
-  interests: { total: number; strong: number; declined: number };
+  /**
+   * Доля «Интересно» с совпадением ≥ MATCH_STRONG (по всем местам). employer — «Интересно» на места работодателей
+   * сервиса, declined — сколько из них отклонено: «Работа России» сюда не входит, там решений в сервисе нет.
+   */
+  interests: { total: number; strong: number; employer: number; declined: number };
   /**
    * Ответ работодателя на «Интересно» (пригласил или отказал), медиана в часах. Время решения — последнее изменение
    * отклика (updated_at): отдельного времени решения в базе нет. null — решений за период не было.
@@ -102,6 +105,9 @@ const toNumber = (v: unknown) => Number(v ?? 0);
 // Отклики без тестовых: и сам отклик не демо, и место не демо. Настоящий студент может откликнуться на демо-место,
 // и демо-компания пригласит его сама через 20 с (seed/demo/responder.ts) — это не ответ работодателя пилота
 const REAL_INTERESTS = `(SELECT x.* FROM interests x JOIN internships s ON s.id = x.internship_id WHERE NOT x.is_demo AND NOT s.is_demo)`;
+// Отклики на места работодателей сервиса: на места «Работа России» решения в сервисе никто не принимает — они навсегда
+// «интересно» и завышали бы долю неотклонённых и занижали долю приглашённых (#102)
+const EMPLOYER_INTERESTS = `(SELECT x.* FROM interests x JOIN internships s ON s.id = x.internship_id WHERE NOT x.is_demo AND NOT s.is_demo AND s.source = 'employer')`;
 
 export async function collectPilotMetrics(db: Queryable, period: Period): Promise<PilotMetrics> {
   const params = [period.from, period.to];
@@ -124,12 +130,18 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
   ).length;
 
   const [interests] = (await db.query(
-    `SELECT count(*) AS total, count(*) FILTER (WHERE match_score >= ${MATCH_STRONG}) AS strong,
-            count(*) FILTER (WHERE status = 'declined') AS declined
+    `SELECT count(*) AS total, count(*) FILTER (WHERE match_score >= ${MATCH_STRONG}) AS strong
      FROM ${REAL_INTERESTS} interests
      WHERE NOT is_demo AND interested_at IS NOT NULL AND ${inPeriod('interested_at')}`,
     params,
-  )) as { total: unknown; strong: unknown; declined: unknown }[];
+  )) as { total: unknown; strong: unknown }[];
+
+  const [decisions] = (await db.query(
+    `SELECT count(*) AS employer, count(*) FILTER (WHERE status = 'declined') AS declined
+     FROM ${EMPLOYER_INTERESTS} interests
+     WHERE interested_at IS NOT NULL AND ${inPeriod('interested_at')}`,
+    params,
+  )) as { employer: unknown; declined: unknown }[];
 
   const responses = (await db.query(
     `SELECT extract(epoch FROM (updated_at - interested_at)) / 3600 AS hours
@@ -159,7 +171,7 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
     `SELECT CASE WHEN match_score >= 80 THEN '80+' WHEN match_score >= 70 THEN '70–79'
                  WHEN match_score >= ${MATCH_OK} THEN '60–69' ELSE '<60' END AS band,
             count(*) AS interested, count(*) FILTER (WHERE status = 'invited') AS invited
-     FROM ${REAL_INTERESTS} interests
+     FROM ${EMPLOYER_INTERESTS} interests
      WHERE NOT is_demo AND interested_at IS NOT NULL AND ${inPeriod('interested_at')}
      GROUP BY 1`,
     params,
@@ -177,7 +189,12 @@ export async function collectPilotMetrics(db: Queryable, period: Period): Promis
       medianHours: medianHours === null ? null : Math.round(medianHours * 10) / 10,
       withinTarget,
     },
-    interests: { total: toNumber(interests?.total), strong: toNumber(interests?.strong), declined: toNumber(interests?.declined) },
+    interests: {
+      total: toNumber(interests?.total),
+      strong: toNumber(interests?.strong),
+      employer: toNumber(decisions?.employer),
+      declined: toNumber(decisions?.declined),
+    },
     employerResponseMedianHours: responseMedian === null ? null : Math.round(responseMedian * 10) / 10,
     funnel: { profiles: toNumber(funnel?.profiles), interested: toNumber(funnel?.interested) },
     invitations: toNumber(invitations?.n),
@@ -200,7 +217,7 @@ export function formatPilotMetrics(m: PilotMetrics, period: Period): string {
     [`«Интересно» с совпадением ≥ ${MATCH_STRONG} %`, `${m.interests.strong} из ${m.interests.total} (${pct(m.interests.strong, m.interests.total)})`],
     [
       '«Интересно», которые работодатель не отклонил',
-      `${m.interests.total - m.interests.declined} из ${m.interests.total} (${pct(m.interests.total - m.interests.declined, m.interests.total)})`,
+      `${m.interests.employer - m.interests.declined} из ${m.interests.employer} (${pct(m.interests.employer - m.interests.declined, m.interests.employer)})`,
     ],
     ['Ответ работодателя на отклик, медиана', m.employerResponseMedianHours === null ? '—' : `${m.employerResponseMedianHours} ч`],
     ['Студенты: анкета → первое «Интересно»', `${m.funnel.interested} из ${m.funnel.profiles} (${pct(m.funnel.interested, m.funnel.profiles)})`],

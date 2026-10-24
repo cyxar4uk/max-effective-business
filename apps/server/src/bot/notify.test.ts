@@ -24,7 +24,8 @@ function deps(over: { students?: StudentCandidate[]; ctx?: InterestContext | nul
     threshold: 60,
     countInDispatchDay: async () => over.today ?? 0,
     now: () => new Date('2026-09-28T10:00:00Z'),
-    skillNames: async () => new Map([['excel', 'Excel'], ['sql', 'SQL'], ['power_bi', 'Power BI']]),
+    skillNames: async () =>
+      new Map([['excel', 'Excel'], ['sql', 'SQL'], ['power_bi', 'Power BI'], ['data_visualization', 'Визуализация данных']]),
     data: {
       internship: async (id) => (id === 7 ? { internship, employer } : null),
       studentsWithProfiles: async (ex) => ((excluded = ex), over.students ?? []),
@@ -59,6 +60,18 @@ describe('onInternshipCreated', () => {
       [2, 'internship:7:student:2'],
     ]);
     expect(String(queued[0]!.payload.text)).toContain('Excel, SQL, Power BI');
+  });
+
+  it('близкие навыки (#71): к желательному — пишем и называем замену; к обязательному — не пишем', async () => {
+    const { d, queued } = deps({
+      students: [
+        student(1, ['excel', 'sql', 'data_visualization']), // 70 + 15 = 85: Power BI ≈ визуализация данных
+        student(2, ['google_sheets', 'sql', 'power_bi']), // 35/2 + 35 + 30 = 83, но Excel у студента нет
+      ],
+    });
+    expect(await onInternshipCreated(d, { internshipId: 7 })).toBe(1);
+    expect(queued[0]!.userId).toBe(1);
+    expect(String(queued[0]!.payload.text)).toContain('Совпадение 85 %: Excel, SQL.\nНаполовину засчитано: Power BI (есть Визуализация данных).');
   });
 
   it('повтор события не ставит уведомления второй раз', async () => {
@@ -169,6 +182,13 @@ describe('лимит «не больше 3 новых мест в день»', (
     expect(first.queued[0]).toMatchObject({ userId: 1, kind: 'digest', dedupeKey: 'digest:1:2026-09-28' });
     // второе место сверх лимита в тот же день — подборка уже стоит, второй не будет
     expect(await onInternshipCreated(deps({ students, seen, today: DAILY_MATCH_LIMIT + 1 }).d, { internshipId: 7 })).toBe(0);
+  });
+
+  it('лимит 0 (живой показ) — место приходит, сколько бы их ни было сегодня', async () => {
+    const { d, queued } = deps({ students: [student(1, ['excel', 'sql'])], today: DAILY_MATCH_LIMIT + 10 });
+    d.dailyLimit = 0;
+    expect(await onInternshipCreated(d, { internshipId: 7 })).toBe(1);
+    expect(queued[0]!.kind).toBe('internship_match');
   });
 
   it('до лимита — обычное сообщение о месте', async () => {

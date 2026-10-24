@@ -24,7 +24,8 @@ describe('корень Минцифры для MAX Bot API', () => {
     expect(new Date(cert.validTo).getTime()).toBeGreaterThan(Date.now() + 365 * 24 * 3600_000);
   });
 
-  it('после вызова — среди доверенных по умолчанию, стандартные корни на месте, повторный вызов ничего не меняет', () => {
+  // tls.setDefaultCACertificates появился в Node 24.5: на более старом Node проверять нечего (#102)
+  it.skipIf(typeof tls.setDefaultCACertificates !== 'function')('после вызова — среди доверенных по умолчанию, стандартные корни на месте, повторный вызов ничего не меняет', () => {
     const subjects = () => tls.getCACertificates('default').map((pem) => new X509Certificate(pem));
     expect(trustRussianRootCa()).toBe(true);
     const after = subjects();

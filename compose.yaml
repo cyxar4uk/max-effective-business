@@ -50,6 +50,7 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-0}
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-120}
       MATCH_NOTIFY_THRESHOLD: ${MATCH_NOTIFY_THRESHOLD:-60}
+      MATCH_DAILY_LIMIT: ${MATCH_DAILY_LIMIT:-3}
       # ИИ-черновик карточки места; без ключа — по ключевым словам
       GIGACHAT_AUTH_KEY: ${GIGACHAT_AUTH_KEY:-}
       GIGACHAT_SCOPE: ${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}

@@ -7,6 +7,7 @@ import { NotificationQueue1790000000001 } from './migrations/1790000000001-Notif
 import { PlaceFields1790000000002 } from './migrations/1790000000002-PlaceFields.js';
 import { UsersMinimalPd1790000000003 } from './migrations/1790000000003-UsersMinimalPd.js';
 import { InterestedAt1790000000004 } from './migrations/1790000000004-InterestedAt.js';
+import { NotificationsUserKindIdx1790000000005 } from './migrations/1790000000005-NotificationsUserKindIdx.js';
 
 // pg по умолчанию отдаёт bigint (int8) строкой. Наши id и count(*) укладываются
 // в Number.MAX_SAFE_INTEGER, поэтому читаем их числами.
@@ -18,6 +19,7 @@ export const migrations = [
   PlaceFields1790000000002,
   UsersMinimalPd1790000000003,
   InterestedAt1790000000004,
+  NotificationsUserKindIdx1790000000005,
 ];
 
 export function createDataSource(url: string): DataSource {
