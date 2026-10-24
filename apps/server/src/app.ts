@@ -6,6 +6,7 @@ import { pinoHttp } from 'pino-http';
 import type { Logger } from 'pino';
 import { errorBody, errorHandler, notFoundHandler } from './api/errors.js';
 import type { DomainDeps } from './api/context.js';
+import { draftRouter, type DraftDeps } from './api/drafts.js';
 import { internshipsRouter } from './api/internships.js';
 import { profilesRouter } from './api/profiles.js';
 import { apiRouter } from './api/routes.js';
@@ -35,9 +36,11 @@ export interface AppDeps {
   domain?: Omit<DomainDeps, 'events'>;
   // Обработчик обновлений MAX Bot API от модуля bot; без него вебхук не подключается
   onBotUpdate?: UpdateHandler;
+  // ИИ-черновик карточки места (POST /api/internships/draft); лимит в час — из конфига
+  draft?: Omit<DraftDeps, 'perHour'>;
 }
 
-export function createApp({ config, log, repos, events, domain, onBotUpdate }: AppDeps): Express {
+export function createApp({ config, log, repos, events, domain, onBotUpdate, draft }: AppDeps): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', config.TRUST_PROXY);
@@ -101,6 +104,7 @@ export function createApp({ config, log, repos, events, domain, onBotUpdate }: A
     '/api',
     requireMaxUser({ botToken: config.MAX_BOT_TOKEN, maxAgeSec: config.INIT_DATA_MAX_AGE_SEC, users: repos.users }),
     apiRouter(repos, config),
+    ...(draft ? [draftRouter({ ...draft, perHour: config.AI_DRAFT_PER_HOUR })] : []),
     ...(domain ? [profilesRouter({ ...domain, events }), internshipsRouter({ ...domain, events })] : []),
   );
 

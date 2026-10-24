@@ -50,6 +50,11 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-0}
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-120}
       MATCH_NOTIFY_THRESHOLD: ${MATCH_NOTIFY_THRESHOLD:-60}
+      # ИИ-черновик карточки места; без ключа — по ключевым словам
+      GIGACHAT_AUTH_KEY: ${GIGACHAT_AUTH_KEY:-}
+      GIGACHAT_SCOPE: ${GIGACHAT_SCOPE:-GIGACHAT_API_PERS}
+      GIGACHAT_MODEL: ${GIGACHAT_MODEL:-GigaChat-2}
+      AI_DRAFT_PER_HOUR: ${AI_DRAFT_PER_HOUR:-10}
     ports:
       - "${SERVER_PORT:-3000}:3000"
     restart: unless-stopped

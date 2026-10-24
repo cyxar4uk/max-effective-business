@@ -46,6 +46,7 @@ import {
   TypeStep,
   type StepProps,
 } from './formSteps';
+import { useAiDraft } from './useAiDraft';
 import { PlacePreview } from './PlacePreview';
 import { PhoneSheet } from './PhoneSheet';
 import type { PublishedState } from './PlacePublished';
@@ -211,6 +212,9 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     if (publishError) setPublishError(null);
   };
 
+  // «Заполнить за меня» (шаг 1): ответ применится, даже если на телефоне уже ушли на следующий шаг
+  const ai = useAiDraft(draft, update, dict);
+
   const goToStep = (k: number) => {
     if (desktop) {
       document.getElementById(`pf-blk-${k}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -293,7 +297,7 @@ function PlaceFormBody({ userId, profile, skills, tags }: BodyProps) {
     );
   }
 
-  const stepProps = { draft, update, errors, dict };
+  const stepProps = { draft, update, errors, dict, ai };
   const phoneSheet = askPhone && (desktop || step === REVIEW_STEP) && (
     <PhoneSheet onPublish={() => void publish(true)} onClose={() => setAskPhone(false)} />
   );

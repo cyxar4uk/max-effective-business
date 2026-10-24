@@ -80,6 +80,15 @@ textarea.pf-line{display:block;resize:none;overflow:hidden;overflow-wrap:anywher
 .pf-tpl{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:10px 14px;border:0;border-radius:14px;background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font:500 14.5px/1.3 var(--font);text-align:left;overflow-wrap:anywhere;cursor:pointer}
 .pf-tpl .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .pf-tpl.on{box-shadow:inset 0 0 0 2px var(--ink)}
+/* «Заполнить за меня» (AiDraft.tsx): задача своими словами → черновик карточки */
+.pf-ai{gap:8px}
+.pf-ai .pf-hint-t + .lbl{margin-top:-4px}
+.pf-area.pf-brief{min-height:96px;background:var(--bg);resize:none}
+.pf-ai-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pf-ai-row .btn{flex-shrink:0}
+.pf-ai-row .btn[aria-busy="true"]{opacity:.7;cursor:progress}
+.pf-ai-note{margin:0;padding:10px 12px;border-radius:14px;background:var(--wait-bg);color:var(--wait-ink);font-size:14px;line-height:1.35;animation:pf-fade 150ms ease-out}
+.pf-ai-note.rules{background:var(--chip);color:var(--ink2)}
 /* как оформляется каждый тип места — под выбором типа */
 .pf-terms{display:flex;flex-direction:column;gap:4px}
 

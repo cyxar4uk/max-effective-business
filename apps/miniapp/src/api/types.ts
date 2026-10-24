@@ -100,6 +100,19 @@ export interface InternshipInput {
 
 export type InternshipPatch = Partial<InternshipInput> & { status?: InternshipStatus };
 
+/** Ответ POST /api/internships/draft: черновик карточки места из текста работодателя. */
+export interface PlaceDraftSuggestion {
+  /** ai — от GigaChat; rules — по ключевым словам: «ИИ» в интерфейсе не пишем. */
+  source: 'ai' | 'rules';
+  title: string;
+  tags: TagCode[];
+  requiredSkills: SkillCode[];
+  niceSkills: SkillCode[];
+  /** null — из текста не понять: поле формы не трогаем. */
+  type: InternshipType | null;
+  format: WorkFormat | null;
+}
+
 export interface Interest {
   status: InterestStatus;
   match: Match;

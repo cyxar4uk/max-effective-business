@@ -1,3 +1,5 @@
+import { createDrafterFromConfig } from './ai/index.js';
+import { requireEmployer } from './api/context.js';
 import { createApp } from './app.js';
 import { registerBot } from './bot/index.js';
 import { loadConfig } from './config.js';
@@ -34,7 +36,12 @@ const bot = registerBot({ events, ds, config, log });
 // Места из «Работа России»: фоном при старте и раз в 6 часов; при недоступном API — сохранённый снимок
 const trudvsem = registerTrudvsemImport({ ds, log });
 
-const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher }, onBotUpdate: bot.onUpdate });
+// ИИ-черновик карточки места: GigaChat, а без ключа — по ключевым словам (src/ai/)
+const draft = {
+  drafter: createDrafterFromConfig(config, log),
+  assertEmployer: async (userId: number) => void (await requireEmployer(ds, userId)),
+};
+const app = createApp({ config, log, repos: createRepos(ds), events, domain: { ds, matcher }, onBotUpdate: bot.onUpdate, draft });
 const server = app.listen(config.PORT, () => log.info({ port: config.PORT }, 'Сервер запущен'));
 server.requestTimeout = 15_000;
 
