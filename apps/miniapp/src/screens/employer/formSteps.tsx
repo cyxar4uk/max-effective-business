@@ -2,6 +2,8 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { InternshipType, SkillCode, Tag, TagCode, WorkFormat } from '../../api/types';
 import { haptic } from '../../max/bridge';
+import { AiDraft } from './AiDraft';
+import type { AiDraftCtl } from './useAiDraft';
 import { tagColor } from '../student/place';
 import { cityOf, LIMITS, slotsText, type Dict, type Draft, type Errors } from './draft';
 import { CheckIcon, CrossIcon, MinusIcon, PlusIcon, SearchIcon } from './icons';
@@ -14,6 +16,8 @@ export interface StepProps {
   dict: Dict;
   /** Десктоп: компактные переключатели, без подсказок-примеров. */
   compact: boolean;
+  /** «Заполнить за меня» на шаге 1: запрос живёт в форме, чтобы пережить смену шага. */
+  ai?: AiDraftCtl;
 }
 
 // ---------- 1. Задача и направления (теги) ----------
@@ -119,7 +123,7 @@ function TitleField({ className, value, ariaLabel, invalid, onChange }: {
   );
 }
 
-export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
+export function TaskStep({ draft, update, errors, dict, compact, ai }: StepProps) {
   const full = draft.tags.length >= LIMITS.tags;
 
   const toggleTag = (tag: Tag) => {
@@ -138,6 +142,8 @@ export function TaskStep({ draft, update, errors, dict, compact }: StepProps) {
 
   return (
     <>
+      {ai && <AiDraft draft={draft} update={update} ai={ai} compact={compact} />}
+
       <div className="pf-group">
         {!compact && (
           <label htmlFor="pf-title" className="lbl">

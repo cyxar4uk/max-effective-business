@@ -12,6 +12,7 @@ import type {
   InternshipPatch,
   Items,
   Me,
+  PlaceDraftSuggestion,
   Skills,
   StudentProfile,
   Tag,
@@ -110,6 +111,8 @@ export const api = {
   saveEmployerProfile: (profile: EmployerProfile) => put<EmployerProfile>('/employer/profile', profile),
   employerInternships: () => get<Items<Internship>>('/employer/internships'),
   createInternship: (input: InternshipInput) => post<Internship>('/internships', input),
+  /** Черновик карточки из текста своими словами (ИИ или ключевые слова). Лимит — 10 в час на пользователя. */
+  placeDraft: (text: string) => post<PlaceDraftSuggestion>('/internships/draft', { text }),
   updateInternship: (id: number, change: InternshipPatch) => patch<Internship>(`/internships/${id}`, change),
 
   internship: (id: number) => get<Internship>(`/internships/${id}`),

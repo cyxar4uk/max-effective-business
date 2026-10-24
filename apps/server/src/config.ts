@@ -39,6 +39,18 @@ const schema = z.object({
   MATCH_NOTIFY_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
   // Сколько новых мест в день бот присылает студенту, остальное — подборкой; 0 — без лимита (живой показ на защите)
   MATCH_DAILY_LIMIT: z.coerce.number().int().min(0).default(3),
+
+  // GigaChat для ИИ-черновика карточки места (POST /api/internships/draft). Authorization key из Studio —
+  // base64(client_id:client_secret). Пусто — черновик собирается по ключевым словам, без модели.
+  // Ключ иногда копируют вместе с «Basic » из примера запроса — убираем
+  GIGACHAT_AUTH_KEY: z.preprocess(
+    (v) => emptyAsUndefined(typeof v === 'string' ? v.trim().replace(/^Basic\s+/i, '') : v),
+    z.string().regex(/^[A-Za-z0-9+/=_-]{16,512}$/).optional(),
+  ),
+  GIGACHAT_SCOPE: z.preprocess(emptyAsUndefined, z.enum(['GIGACHAT_API_PERS', 'GIGACHAT_API_B2B', 'GIGACHAT_API_CORP']).default('GIGACHAT_API_PERS')),
+  GIGACHAT_MODEL: z.preprocess(emptyAsUndefined, z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/).default('GigaChat-2')),
+  // Сколько черновиков в час можно запросить одному пользователю: защита ключа от выжигания
+  AI_DRAFT_PER_HOUR: z.preprocess(emptyAsUndefined, z.coerce.number().int().positive().default(10)),
   // Минимальное совпадение, %, с которым место попадает в ленту студента. По прямой ссылке и QR место открывается всегда
   FEED_MIN_SCORE: z.preprocess(blankAsUndefined, z.coerce.number().int().min(0).max(100).default(DEFAULT_FEED_MIN_SCORE)),
 

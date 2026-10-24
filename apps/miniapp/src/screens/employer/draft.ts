@@ -2,6 +2,7 @@
 import type {
   InternshipInput,
   InternshipType,
+  PlaceDraftSuggestion,
   SkillCode,
   SkillGroup,
   Tag,
@@ -25,6 +26,8 @@ export interface Draft {
   salary: string;
   slots: number;
   description: string;
+  /** Задача своими словами для «Заполнить за меня» (POST /api/internships/draft); на сервер с местом не уходит. */
+  brief: string;
   /**
    * Когда впервые открыли пустую форму (мс, Date.now): время сборки карточки для экрана «Место опубликовано».
    * Хранится в черновике, при восстановлении не сбрасывается; на сервер не уходит.
@@ -46,6 +49,7 @@ export const EMPTY_DRAFT: Draft = {
   salary: '',
   slots: 1,
   description: '',
+  brief: '',
   startedAt: null,
 };
 
@@ -57,6 +61,8 @@ export const LIMITS = {
   tags: 3,
   salaryMax: 10_000_000,
   slotsMax: 100,
+  /** Текст для черновика — как в API. */
+  brief: 1000,
 } as const;
 
 export type Errors = Record<string, string>;
@@ -266,6 +272,48 @@ export function sanitize(d: Draft, dict: Dict): Draft {
   };
 }
 
+/**
+ * Черновик с сервера → правка формы. Коды проверяем по справочникам ещё раз: форма не должна получить то, что сервер
+ * потом отклонит. Пустое и неизвестное не трогает поле; навыки меняются целиком, если пришли обязательные.
+ */
+export function suggestionPatch(s: PlaceDraftSuggestion, dict: Dict): Partial<Draft> {
+  const known = (c: string) => dict.skillName.has(c);
+  const tagCodes = new Set(dict.tags.map((t) => t.code));
+  const requiredSkills = s.requiredSkills.filter(known).slice(0, LIMITS.skills);
+  const tags = s.tags.filter((t) => tagCodes.has(t)).slice(0, LIMITS.tags);
+  const title = s.title.replace(/\s+/g, ' ').trim().slice(0, LIMITS.title);
+  const type = oneOf(s.type, ['practice', 'internship', 'part_time'] as const);
+  const format = oneOf(s.format, ['office', 'hybrid', 'remote'] as const);
+
+  const patch: Partial<Draft> = {};
+  if (title) patch.title = title;
+  if (tags.length) patch.tags = tags;
+  if (requiredSkills.length) {
+    patch.requiredSkills = requiredSkills;
+    patch.niceSkills = s.niceSkills.filter((c) => known(c) && !requiredSkills.includes(c)).slice(0, LIMITS.skills);
+  }
+  if (type) patch.type = type;
+  if (format) patch.format = format;
+  return patch;
+}
+
+/** Поля, которые черновик меняет вместе: навыки — парой, иначе навык может оказаться в обоих списках. */
+const SUGGESTION_GROUPS: (keyof Draft)[][] = [['title'], ['tags'], ['requiredSkills', 'niceSkills'], ['type'], ['format']];
+
+/**
+ * Из правки черновика — только поля, которые работодатель не менял, пока ждал ответа: before — черновик в момент
+ * нажатия, now — сейчас. Его собственный выбор важнее подсказки.
+ */
+export function untouchedOnly(patch: Partial<Draft>, before: Draft, now: Draft): Partial<Draft> {
+  const same = (k: keyof Draft) => JSON.stringify(before[k]) === JSON.stringify(now[k]);
+  const out: Partial<Draft> = {};
+  for (const group of SUGGESTION_GROUPS) {
+    if (!group.some((k) => k in patch) || !group.every(same)) continue;
+    for (const k of group) if (k in patch) Object.assign(out, { [k]: patch[k] });
+  }
+  return out;
+}
+
 // ---------- хранение ----------
 
 const storageKey = (userId: number) => `tandem.employer.placeDraft.v1.${userId}`;
@@ -294,6 +342,7 @@ function parseDraft(raw: unknown): Draft | null {
     salary: str(o.salary).replace(/\D/g, '').slice(0, 8),
     slots: Math.min(Math.max(slots, 1), LIMITS.slotsMax),
     description: str(o.description).slice(0, LIMITS.description),
+    brief: str(o.brief).slice(0, LIMITS.brief),
     startedAt: typeof o.startedAt === 'number' && Number.isFinite(o.startedAt) ? o.startedAt : null,
   };
 }
