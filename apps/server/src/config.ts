@@ -6,6 +6,13 @@ const bool = z
 
 // Пустая переменная (compose подставляет "" для незаданных) — то же, что её отсутствие
 const emptyAsUndefined = (v: unknown) => (v === '' ? undefined : v);
+// Для чисел и строка из пробелов — пусто: иначе Number(' ') = 0 молча выключил бы порог или кулдаун
+const blankAsUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+
+/** Минимальное совпадение для ленты студента по умолчанию, % (FEED_MIN_SCORE). */
+export const DEFAULT_FEED_MIN_SCORE = 40;
+/** Демо-режим: не чаще одного приглашения от демо-компании студенту за столько часов по умолчанию. */
+export const DEFAULT_DEMO_INVITE_COOLDOWN_HOURS = 24;
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -44,6 +51,14 @@ const schema = z.object({
   GIGACHAT_MODEL: z.preprocess(emptyAsUndefined, z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/).default('GigaChat-2')),
   // Сколько черновиков в час можно запросить одному пользователю: защита ключа от выжигания
   AI_DRAFT_PER_HOUR: z.preprocess(emptyAsUndefined, z.coerce.number().int().positive().default(10)),
+  // Минимальное совпадение, %, с которым место попадает в ленту студента. По прямой ссылке и QR место открывается всегда
+  FEED_MIN_SCORE: z.preprocess(blankAsUndefined, z.coerce.number().int().min(0).max(100).default(DEFAULT_FEED_MIN_SCORE)),
+
+  // Демо-режим: не чаще одного приглашения от демо-компании студенту за столько часов (до года); 0 — без ограничения
+  DEMO_INVITE_COOLDOWN_HOURS: z.preprocess(
+    blankAsUndefined,
+    z.coerce.number().int().min(0).max(24 * 365).default(DEFAULT_DEMO_INVITE_COOLDOWN_HOURS),
+  ),
 });
 
 export type Config = z.infer<typeof schema>;

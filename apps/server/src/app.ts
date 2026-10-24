@@ -105,7 +105,7 @@ export function createApp({ config, log, repos, events, domain, onBotUpdate, dra
     requireMaxUser({ botToken: config.MAX_BOT_TOKEN, maxAgeSec: config.INIT_DATA_MAX_AGE_SEC, users: repos.users }),
     apiRouter(repos, config),
     ...(draft ? [draftRouter({ ...draft, perHour: config.AI_DRAFT_PER_HOUR })] : []),
-    ...(domain ? [profilesRouter({ ...domain, events }), internshipsRouter({ ...domain, events })] : []),
+    ...(domain ? [profilesRouter({ ...domain, events }), internshipsRouter({ ...domain, events, feedMinScore: config.FEED_MIN_SCORE })] : []),
   );
 
   app.use(notFoundHandler);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_FEED_MIN_SCORE } from '../config.js';
 import { matchStudentToInternship } from '../matching/index.js';
 import { DEMO_EMPLOYERS, DEMO_INTERNSHIPS, DEMO_INVITE_KEYS, DEMO_STUDENTS } from './demo/data.js';
 import { INTERESTS_PER_INTERNSHIP, planDemoInterests } from './demo/plan.js';
@@ -10,6 +11,12 @@ const skillCodes = new Set(skillRows().map((r) => r.code));
 const unique = <T>(xs: T[]) => new Set(xs).size === xs.length;
 const PHONE = /^\+7000000\d{4}$/;
 const KZN = 'Казань';
+
+/** Что студент увидит в ленте: открытые места, фильтры пройдены, совпадение не ниже FEED_MIN_SCORE (как в GET /student/feed). */
+const feedOf = (student: Parameters<typeof matchStudentToInternship>[0]) =>
+  DEMO_INTERNSHIPS.filter((i) => !i.closed)
+    .map((i) => ({ i, r: matchStudentToInternship(student, i) }))
+    .filter(({ r }) => r.passesFilters && r.score > 0 && r.score >= DEFAULT_FEED_MIN_SCORE);
 
 describe('демо-данные: объём и ключи', () => {
   it('объём по плану: Москва и Казань (#99)', () => {
@@ -91,6 +98,8 @@ describe('демо-данные: разный процент у каждой с�
     const newcomer = { skills: ['excel', 'copywriting', 'smm'], formats: ['remote' as const], city: 'Москва' };
     const feed = DEMO_INTERNSHIPS.map((i) => matchStudentToInternship(newcomer, i)).filter((r) => r.passesFilters);
     expect(feed.length).toBeGreaterThanOrEqual(10);
+    // С порогом ленты (FEED_MIN_SCORE) остаются только подходящие — но лента не пустая
+    expect(feedOf(newcomer).length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -143,6 +152,18 @@ describe('Казань (#99): финал там, и проверяющий из 
       .map((i) => matchStudentToInternship(newcomer, i))
       .filter((r) => r.passesFilters && r.score > 0);
     expect(feed.length).toBeGreaterThanOrEqual(4);
+    // С порогом ленты (FEED_MIN_SCORE) места с 15–35 % уходят, подходящие казанские остаются
+    expect(feedOf(newcomer).filter(({ i }) => i.city === KZN).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('студент из Казани с типовой анкетой маркетплейсов видит казанские места и с порогом ленты', () => {
+    const marketplaces = TASK_TAGS.find((t) => t.code === 'marketplaces')!;
+    for (const formats of [['office', 'hybrid'], ['office', 'hybrid', 'remote']] as const) {
+      const student = { skills: marketplaces.skills.slice(0, 3), formats: [...formats], city: KZN };
+      const feed = feedOf(student);
+      expect(feed.filter(({ i }) => i.city === KZN).length, formats.join()).toBeGreaterThanOrEqual(1);
+      for (const { r } of feed) expect(r.score).toBeGreaterThanOrEqual(DEFAULT_FEED_MIN_SCORE);
+    }
   });
 
   it('студенты в Казани — из КФУ, КНИТУ-КАИ и КГЭУ; в Москве есть ВШЭ и МГУ', () => {

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   digestMessage,
+  EMPLOYER_NEXT_STEPS,
   employerInvitedMessage,
+  employerNextStepsFor,
   fallbackMessage,
   internshipMatchMessage,
   placeTerms,
@@ -20,17 +22,24 @@ describe('тексты бота', () => {
     const demo = welcomeMessage({ firstName: 'Анна', demo: true });
     expect(demo.text).toContain('Здравствуйте, Анна! Это «Тандем».');
     expect(demo.text).toContain('демо-режим');
-    expect(params(demo)).toEqual(['student', 'employer']);
+    expect(params(demo)).toEqual(['employer', 'student']);
     expect(welcomeMessage({ demo: false }).text).not.toContain('демо');
   });
 
+  it('приветствие: работодатель первым — в тексте и в кнопках', () => {
+    const m = welcomeMessage({ demo: false });
+    expect(m.text.indexOf('Работодател')).toBeGreaterThan(-1);
+    expect(m.text.indexOf('Работодател')).toBeLessThan(m.text.indexOf('Студент'));
+    expect(m.buttons[0]!.map((b) => b.text)).toEqual(['Я работодатель', 'Я студент']);
+  });
+
   it('приветствие по диплинку стажировки добавляет кнопку этой стажировки', () => {
-    expect(params(welcomeMessage({ demo: false, startPayload: 'internship_12' }))).toEqual(['internship_12', 'student', 'employer']);
-    expect(params(welcomeMessage({ demo: false, startPayload: 'что-то<script>' }))).toEqual(['student', 'employer']);
+    expect(params(welcomeMessage({ demo: false, startPayload: 'internship_12' }))).toEqual(['internship_12', 'employer', 'student']);
+    expect(params(welcomeMessage({ demo: false, startPayload: 'что-то<script>' }))).toEqual(['employer', 'student']);
   });
 
   it('на прочие сообщения — подсказка и те же кнопки, без тупика', () => {
-    expect(params(fallbackMessage())).toEqual(['student', 'employer']);
+    expect(params(fallbackMessage())).toEqual(['employer', 'student']);
   });
 
   it('новая стажировка: процент, не больше трёх навыков, кнопка на карточку', () => {
@@ -54,6 +63,43 @@ describe('тексты бота', () => {
     const m = studentInvitedMessage({ internshipId: 3, title: 'Юрист', company: 'Бюро', contactName: 'Павел Родионов', phone: '+70000001004' });
     expect(m.text).toContain('Контакт: Павел Родионов, +70000001004.');
     NEXT_STEPS.job.forEach((s, i) => expect(m.text).toContain(`${i + 1}. ${s}`));
+    // Кнопка ведёт на то же место, но называется по смыслу сообщения
+    expect(m.buttons).toEqual([[{ text: 'Открыть приглашение', startapp: 'internship_3' }]]);
+  });
+
+  it('приглашение работодателю: следующие шаги, для практики — договор через центр карьеры вуза', () => {
+    const job = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария', phone: '+79990000000', score: 70, type: 'internship' });
+    expect(job.text).toContain('Что дальше:');
+    expect(job.text).toContain(`1. ${EMPLOYER_NEXT_STEPS.call}`);
+    EMPLOYER_NEXT_STEPS.job.forEach((s, i) => expect(job.text).toContain(`${i + 2}. ${s}`));
+    expect(job.text).toMatch(/в течение двух дней/);
+    expect(job.text).not.toMatch(/центр карьеры/);
+
+    const practice = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария', phone: '+79990000000', score: 70, type: 'practice' });
+    EMPLOYER_NEXT_STEPS.practice.forEach((s, i) => expect(practice.text).toContain(`${i + 2}. ${s}`));
+    expect(practice.text).toMatch(/центр карьеры вуза/);
+    // Без типа — как стажировка; шагов 2–3
+    expect(employerNextStepsFor(null)).toEqual([EMPLOYER_NEXT_STEPS.call, ...EMPLOYER_NEXT_STEPS.job]);
+    for (const type of ['practice', 'internship', 'part_time'] as const) {
+      expect(employerNextStepsFor(type).length).toBeGreaterThanOrEqual(2);
+      expect(employerNextStepsFor(type).length).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('приглашение работодателю без телефона студента: не «созвонитесь», а ответить, когда студент свяжется', () => {
+    for (const employerHasPhone of [true, false]) {
+      const m = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария', phone: null, score: 70, employerHasPhone, type: 'practice' });
+      expect(m.text).toContain(`1. ${EMPLOYER_NEXT_STEPS.wait}`);
+      expect(m.text).not.toContain(EMPLOYER_NEXT_STEPS.call);
+    }
+  });
+
+  it('приглашение тестового студента: работодателю прямо говорим, что номер вымышленный', () => {
+    const m = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария', phone: '+70000001001', score: 90, isDemo: true });
+    expect(m.text.split('\n')[0]).toBe('Вы пригласили тестового студента на «Юрист».');
+    expect(m.text).toContain('номер вымышленные');
+    const real = employerInvitedMessage({ internshipId: 3, title: 'Юрист', studentName: 'Мария', phone: '+79990000000', score: 90 });
+    expect(real.text).not.toMatch(/тестов|вымышлен/);
   });
 
   it('приглашение работодателю без телефона студента: ждать связи, а без номеров у обоих — добавить свой', () => {
@@ -104,6 +150,7 @@ describe('решения Артёма от 27.09', () => {
       internshipMatchMessage({ internshipId: 1, title: 'Аналитик', company: 'Луч', score: 80, matchedSkills: ['Excel'] }).text,
       digestMessage().text,
       studentInvitedMessage({ internshipId: 1, title: 'Аналитик', company: 'Луч', contactName: null, phone: null }).text,
+      employerInvitedMessage({ internshipId: 1, title: 'Аналитик', studentName: 'Мария', phone: null, score: 70, type: 'practice' }).text,
     ].join('\n');
     expect(texts).toContain('Тандем');
     // «место» вместо «стажировки» в уведомлениях; в приветствии «стажировки» — это перечисление типов мест

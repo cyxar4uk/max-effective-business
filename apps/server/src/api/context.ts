@@ -32,7 +32,7 @@ export async function requireEmployer(ds: DataSource, userId: number): Promise<E
 export async function ownInternship(ds: DataSource, userId: number, id: number): Promise<{ internship: Internship; employer: Employer }> {
   const employer = await ds.getRepository(Employer).findOneBy({ ownerUserId: userId });
   const internship = employer ? await ds.getRepository(Internship).findOneBy({ id, employerId: employer.id }) : null;
-  if (!employer || !internship) throw new ApiError('NOT_FOUND', 'Стажировка не найдена');
+  if (!employer || !internship) throw new ApiError('NOT_FOUND', 'Место не найдено');
   return { internship, employer };
 }
 
