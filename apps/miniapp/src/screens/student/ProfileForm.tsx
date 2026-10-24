@@ -366,8 +366,9 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
             {errors.formats && <span className="field-err">{errors.formats}</span>}
           </div>
           <div className="col sf-group">
-            <span className="lbl">Месяц практики — по желанию</span>
-            <div className="chips" role="group" aria-label="Месяц практики">
+            {/* Один месяц, в отличие от форматов выше: подпись говорит об этом, чтобы второй тап не казался ошибкой */}
+            <span className="lbl">Месяц практики — один, по желанию</span>
+            <div className="chips" role="radiogroup" aria-label="Месяц практики">
               {months.map((m) => {
                 const on = draft.practiceMonth === m.value;
                 return (
@@ -375,7 +376,8 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
                     key={m.value}
                     type="button"
                     className={on ? 'chip on' : 'chip'}
-                    aria-pressed={on}
+                    role="radio"
+                    aria-checked={on}
                     onClick={() => set('practiceMonth', on ? null : m.value)}
                   >
                     {m.label}

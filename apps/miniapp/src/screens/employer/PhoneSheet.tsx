@@ -87,6 +87,7 @@ export function PhoneSheet({ onPublish, onClose }: Props) {
           Номер телефона
         </h2>
         <p className="lead m0">Студент сможет позвонить вам только по номеру. Поделитесь номером — MAX подтвердит его одним нажатием.</p>
+        <p className="lbl m0">Номер увидит только студент, которого вы пригласите. В карточке места его нет.</p>
         {!insideMax && <p className="lbl m0">Поделиться номером можно в приложении MAX.</p>}
         {note && (
           <p className="pf-alert" role="alert">

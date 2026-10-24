@@ -193,7 +193,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
             openBot();
           },
         });
-      else showToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
+      else showToast({ kind: 'ok', text: 'Отклик отправлен. Компании обычно отвечают за 1–2 дня — бот напишет в чат' });
     } catch (err) {
       haptic.notify('error');
       setQueue((q) => [place, ...q.filter((p) => p.id !== place.id)]);
@@ -220,6 +220,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
     // Пропуск успел уйти на сервер — карточку не возвращаем: место всё равно пропало бы из ленты
     if (!skips.remove(last.id)) {
       setSkipped((s) => s.filter((p) => p.id !== last.id));
+      showToast({ kind: 'error', text: 'Это место уже скрыто: вернуть можно в течение нескольких секунд после пропуска' });
       return;
     }
     haptic.impact('light');
