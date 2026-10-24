@@ -5,7 +5,7 @@
 // Уведомления бота на импортированные места не рассылаем (событие internship.created не публикуем): иначе спам.
 import type { Logger } from 'pino';
 import type { DataSource } from 'typeorm';
-import { fetchPilotVacancies, mapVacancy, type FetchOptions, type ImportedPlace, type TrudvsemVacancy } from './trudvsem.js';
+import { fetchPilotVacancies, mapVacancy, typographQuotes, type FetchOptions, type ImportedPlace, type TrudvsemVacancy } from './trudvsem.js';
 import { TRUDVSEM_SNAPSHOT } from './trudvsemSnapshot.js';
 import { tagsForSkills } from '../seed/tags.js';
 
@@ -20,6 +20,8 @@ export interface ImportResult {
   tagged: number;
   /** Сколько вакансий не удалось записать (битые данные): они пропущены, остальные записаны. */
   failed: number;
+  /** Скольким уже загруженным местам заменены прямые кавычки на «ёлочки» (backfillTrudvsemQuotes). */
+  quoted: number;
 }
 
 type Query = (sql: string, params?: unknown[]) => Promise<unknown>;
@@ -61,6 +63,24 @@ export async function backfillTrudvsemTags(db: { query: Query }): Promise<number
   return updated;
 }
 
+/**
+ * «Ёлочки» в названиях уже загруженных мест «Работа России» (снимок существующие записи не трогает, а до этой правки
+ * кавычки были прямыми). Возвращает число исправленных мест.
+ */
+export async function backfillTrudvsemQuotes(db: { query: Query }): Promise<number> {
+  const rows = (await db.query(
+    `SELECT id, company_name, title FROM internships WHERE source = 'trudvsem' AND (company_name ~ '["„“”]' OR title ~ '["„“”]')`,
+  )) as { id: number; company_name: string | null; title: string }[];
+  for (const r of rows) {
+    await db.query(`UPDATE internships SET company_name = $2, title = $3 WHERE id = $1`, [
+      r.id,
+      r.company_name === null ? null : typographQuotes(r.company_name),
+      typographQuotes(r.title),
+    ]);
+  }
+  return rows.length;
+}
+
 export async function importTrudvsem(
   db: { query: Query },
   opts: FetchOptions & { log?: Logger; snapshot?: readonly TrudvsemVacancy[] } = {},
@@ -76,7 +96,7 @@ export async function importTrudvsem(
     // которые живой импорт уже закрыл, и затёр бы свежие данные старыми.
     const [row] = (await db.query(`SELECT count(*)::int AS n FROM internships WHERE source = 'trudvsem'`)) as { n: number }[];
     if ((row?.n ?? 0) > 0) {
-      return { from: 'none', vacancies: 0, imported: 0, skipped: 0, closed: 0, tagged: await backfillTrudvsemTags(db), failed: 0 };
+      return { from: 'none', vacancies: 0, imported: 0, skipped: 0, closed: 0, tagged: await backfillTrudvsemTags(db), failed: 0, quoted: await backfillTrudvsemQuotes(db) };
     }
     from = 'snapshot';
     vacancies = opts.snapshot ?? TRUDVSEM_SNAPSHOT.vacancies;
@@ -108,7 +128,8 @@ export async function importTrudvsem(
   }
 
   const tagged = await backfillTrudvsemTags(db);
-  return { from, vacancies: vacancies.length, imported: places.length - failed, skipped: vacancies.length - places.length, closed, tagged, failed };
+  const quoted = await backfillTrudvsemQuotes(db);
+  return { from, vacancies: vacancies.length, imported: places.length - failed, skipped: vacancies.length - places.length, closed, tagged, failed, quoted };
 }
 
 /** Раз в 6 часов: чаще незачем, API медленный. */

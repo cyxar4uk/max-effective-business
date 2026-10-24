@@ -86,6 +86,46 @@ const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+/gu;
 // +7 или 8 и ровно 10 цифр с любыми разделителями: +7 (495) 123-45-67, +7 (8552) 12-34-56, 8 912 345 67 89
 const PHONE = /(\+7|(?<!\d)8)([\s()-]*\d){10}(?!\d)/g;
 
+/** Перед этим символом кавычка открывается: начало слова, скобка, «, косая черта, тире, двоеточие, дефис. */
+const OPENS_AFTER = /[\s([«/—–:-]/;
+const LETTER = /\p{L}/u;
+const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
+
+/**
+ * Кавычки-«ёлочки» вместо прямых и «лапок» в названиях: `ООО "АРС НЕДВИЖИМОСТЬ"` → `ООО «АРС НЕДВИЖИМОСТЬ»`.
+ * Регистр не трогаем: в капсе бывают аббревиатуры (ООО, ИП, АО, IT).
+ *
+ * Грязные данные «Работа России» (#120): `ООО"Ромашка"`, `Компания:"Альфа"`, `ООО "А"/"Б"`, `ООО —"Х"`, экранирование
+ * из CSV и ЕГРЮЛ `ООО ""РОМАШКА""`. Поэтому идём по строке со счётчиком вложенности: кавычка открывающая, если она
+ * в начале строки или после OPENS_AFTER, либо если между буквой и буквой или цифрой и открытых кавычек нет.
+ * Иначе — закрывающая. Сдвоенные `""` склеиваем, только если сдвоена открывающая: иначе пострадала бы обычная
+ * вложенная пара `"Центр "Север""`. Повторный вызов ничего не меняет: прямых кавычек после него не остаётся.
+ */
+export function typographQuotes(text: string): string {
+  let s = text.replace(/[„“”]/g, '"');
+  if (/(^|[\s([«/—–:-])""/.test(s)) s = s.replace(/""/g, '"');
+  let depth = 0;
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]!;
+    if (ch !== '"') {
+      out += ch;
+      continue;
+    }
+    const prev = i > 0 ? s[i - 1]! : '';
+    const next = s[i + 1] ?? '';
+    const opens = prev === '' || OPENS_AFTER.test(prev) || (depth === 0 && LETTER.test(prev) && LETTER_OR_DIGIT.test(next));
+    if (opens) {
+      depth++;
+      out += '«';
+    } else {
+      depth = Math.max(0, depth - 1);
+      out += '»';
+    }
+  }
+  return out;
+}
+
 /** Телефоны и почта из свободного текста обязанностей и требований — не храним. */
 export function stripContacts(text: string | undefined): string | undefined {
   return text?.replace(EMAIL, '[контакт скрыт]').replace(PHONE, '[контакт скрыт]');
@@ -153,8 +193,8 @@ export function mapVacancy(v: TrudvsemVacancy): ImportedPlace | null {
   return {
     sourceId: v.id,
     sourceUrl: safeSourceUrl(v.vac_url),
-    title: title.trim().slice(0, 200),
-    companyName: (v.company?.name ?? 'Работодатель с «Работа России»').trim().slice(0, 200),
+    title: typographQuotes(title.trim()).slice(0, 200),
+    companyName: typographQuotes((v.company?.name ?? 'Работодатель с «Работа России»').trim()).slice(0, 200),
     description: description.length > MAX_DESCRIPTION ? `${description.slice(0, MAX_DESCRIPTION - 1)}…` : description,
     requiredSkills: skills,
     format,
