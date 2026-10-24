@@ -74,6 +74,27 @@ describe('sender', () => {
     expect(log).toEqual([`retry 1 ${retryDelaySec(1)}`, `retry 2 ${retryDelaySec(3)}`, 'failed 3']);
   });
 
+  it('повторы покрывают сбой MAX до 45 минут, а не 75 секунд', () => {
+    // Попытка n (attempts = n) после ошибки ставит следующую через retryDelaySec(n); последняя — failed
+    const waitSec = Array.from({ length: MAX_ATTEMPTS - 1 }, (_, i) => retryDelaySec(i + 1)).reduce((a, b) => a + b, 0);
+    expect(waitSec).toBeGreaterThanOrEqual(45 * 60);
+    expect(waitSec).toBeLessThan(60 * 60);
+  });
+
+  it('после таймаута ответ на /start не повторяем, уведомление — повторяем', async () => {
+    const errors = [
+      new MaxApiError(0, 'timeout', ''), // welcome: мог дойти — второй раз не шлём
+      new MaxApiError(0, 'network', ''), // fallback: не достучались — повтор
+      new MaxApiError(0, 'timeout', ''), // приглашение: потерять хуже, чем прислать дважды
+    ];
+    let i = 0;
+    const { sender, log } = setup([row(1, 501, { kind: 'welcome' }), row(2, 502, { kind: 'fallback' }), row(3, 503, { kind: 'invited_student' })], async () => {
+      throw errors[i++]!;
+    });
+    await sender.tick();
+    expect(log).toEqual(['failed 1', `retry 2 ${retryDelaySec(1)}`, `retry 3 ${retryDelaySec(1)}`]);
+  });
+
   it('403 (пользователь остановил бота) — сразу failed, без повторов', async () => {
     const { sender, log } = setup([row(1, 501)], async () => {
       throw new MaxApiError(403, 'chat.denied', 'bot stopped');
