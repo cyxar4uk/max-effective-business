@@ -19,6 +19,9 @@ function fakeFetch(opts: { oauthStatus?: number; chatStatus?: number; expiresIn?
       if (opts.chatStatus) return json({ message: 'nope' }, opts.chatStatus);
       return json({ choices: [{ message: { role: 'assistant', content: '{"ok":true}' } }] });
     }
+    if (u === `${GIGACHAT_API_BASE}/models`) {
+      return json({ object: 'list', data: [{ id: 'GigaChat-2', object: 'model' }, { id: 'GigaChat-2-Pro', object: 'model' }, { object: 'model' }] });
+    }
     throw new Error(`unexpected ${u}`);
   });
 }
@@ -94,6 +97,22 @@ describe('GigaChat', () => {
     await expect(ai.chat([{ role: 'user', content: '1' }], { signal: signal() })).rejects.toMatchObject({ status: 401, stage: 'chat' });
     await expect(ai.chat([{ role: 'user', content: '2' }], { signal: signal() })).rejects.toMatchObject({ stage: 'chat' });
     expect(f.mock.calls.filter(([u]) => String(u) === GIGACHAT_OAUTH_URL)).toHaveLength(2);
+  });
+
+  it('список моделей: id с тем же токеном, отклонённый ключ — ошибка на шаге oauth', async () => {
+    const t = 1_000_000;
+    const f = fakeFetch({ now: () => t });
+    const ai = createGigaChat({ authKey: KEY, scope: 'GIGACHAT_API_PERS', model: 'GigaChat-2', fetch: f, now: () => t });
+    expect(await ai.models(signal())).toEqual(['GigaChat-2', 'GigaChat-2-Pro']);
+    const [url, init] = f.mock.calls[1]!;
+    expect(String(url)).toBe(`${GIGACHAT_API_BASE}/models`);
+    expect(((init as RequestInit).headers as Record<string, string>).Authorization).toBe('Bearer token-1');
+    // Токен из проверки достаётся первому черновику
+    await ai.chat([{ role: 'user', content: '1' }], { signal: signal() });
+    expect(f.mock.calls.filter(([u]) => String(u) === GIGACHAT_OAUTH_URL)).toHaveLength(1);
+
+    const broken = createGigaChat({ authKey: KEY, scope: 'GIGACHAT_API_PERS', model: 'GigaChat-2', fetch: fakeFetch({ now: () => t, oauthStatus: 401 }), now: () => t });
+    await expect(broken.models(signal())).rejects.toMatchObject({ status: 401, stage: 'oauth' });
   });
 
   it('сеть или таймаут — GigaChatError со статусом 0', async () => {

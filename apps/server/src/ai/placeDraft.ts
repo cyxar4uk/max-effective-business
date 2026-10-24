@@ -24,8 +24,10 @@ export interface DrafterOptions {
   timeoutMs?: number;
   groups?: readonly SkillGroupSeed[];
   tags?: readonly TaskTag[];
-  /** Сколько запросов к модели одновременно; сверх — правила. */
+  /** Сколько запросов к модели одновременно; остальные ждут в очереди. У физлица GigaChat — 1 (ai/index.ts). */
   maxInFlight?: number;
+  /** Сколько запросов может ждать в очереди; сверх — правила. Ожидание входит в timeoutMs. */
+  maxQueue?: number;
   /** Сколько запросов к модели в час на весь сервер; сверх — правила. */
   maxPerHour?: number;
   now?: () => number;
@@ -33,6 +35,7 @@ export interface DrafterOptions {
 
 export const DRAFT_TIMEOUT_MS = 12_000;
 export const DRAFT_MAX_IN_FLIGHT = 4;
+export const DRAFT_MAX_QUEUE = 4;
 export const DRAFT_MAX_PER_HOUR = 300;
 /** Пауза после сетевой ошибки, таймаута или 5xx GigaChat. */
 export const DRAFT_DOWN_PAUSE_MS = 60_000;
@@ -52,10 +55,11 @@ export function buildSystemPrompt(groups: readonly SkillGroupSeed[], tags: reado
     'Верни ровно один JSON-объект без пояснений и без markdown, с полями:',
     '- "title": задача для студента коротко, 3–12 слов, с глагола в инфинитиве («Вести соцсети кофейни…»), без названия компании, до 120 символов;',
     '- "tag": код одного направления из списка ниже или null, если ни одно не подходит;',
-    '- "requiredSkills": 1–3 кода навыков, без которых студент не справится (не больше 5);',
-    '- "niceSkills": 0–4 кода навыков, которые будут плюсом (не больше 6), без повторов из requiredSkills;',
-    '- "type": "practice" (практика от вуза), "internship" (стажировка), "part_time" (подработка) или null, если из текста не понять;',
-    '- "format": "office" (на месте), "remote" (удалённо), "hybrid" или null, если из текста не понять.',
+    '- "requiredSkills": 1–3 кода навыков, без которых студент не справится;',
+    '- "niceSkills": 0–4 кода навыков, которые будут плюсом, без повторов из requiredSkills;',
+    '- "type": "practice" (практика от вуза), "internship" (стажировка), "part_time" (подработка) или null;',
+    '- "format": "office" (на месте), "remote" (удалённо), "hybrid" (частично на месте, частично удалённо) или null.',
+    'Тип и формат ставь, только если они прямо следуют из текста. Не угадывай: не сказано — null.',
     'Коды бери только из списков ниже, не придумывай новые и не пиши названия вместо кодов.',
     '',
     'Направления (код — название — типичные навыки):',
@@ -64,8 +68,13 @@ export function buildSystemPrompt(groups: readonly SkillGroupSeed[], tags: reado
     'Навыки по группам (код = название):',
     skillLines,
     '',
-    'Пример ответа:',
+    // Два примера: с типом и форматом и без них. С одним модель копирует его part_time и office в каждый ответ
+    'Примеры:',
+    `${OPEN}\nПодработка у нас в магазине: завести остатки склада в Google Таблицы\n${CLOSE}`,
     '{"title":"Завести остатки склада в Google Таблицы","tag":"spreadsheets","requiredSkills":["google_sheets","warehouse"],"niceSkills":["excel"],"type":"part_time","format":"office"}',
+    '',
+    `${OPEN}\nПомочь разобраться с карточками товаров на Wildberries\n${CLOSE}`,
+    '{"title":"Оформить карточки товаров на Wildberries","tag":"marketplaces","requiredSkills":["marketplace_cards","wildberries"],"niceSkills":["product_photo"],"type":null,"format":null}',
   ].join('\n');
 }
 
@@ -162,6 +171,7 @@ export function createPlaceDrafter({
   groups = SKILL_GROUPS,
   tags = TASK_TAGS,
   maxInFlight = DRAFT_MAX_IN_FLIGHT,
+  maxQueue = DRAFT_MAX_QUEUE,
   maxPerHour = DRAFT_MAX_PER_HOUR,
   now = Date.now,
 }: DrafterOptions): PlaceDrafter {
@@ -169,45 +179,84 @@ export function createPlaceDrafter({
   const rules = (text: string): PlaceDraft => ({ source: 'rules', ...rulesDraft(text, groups, tags) });
 
   let inFlight = 0;
+  // Ждут места к модели по порядку: лишний параллельный запрос GigaChat отклонит с 429, а подождать пару секунд
+  // лучше, чем получить черновик по ключевым словам
+  const waiting: (() => void)[] = [];
   // Бюджет запросов к модели на весь сервер: лимит на пользователя не спасает от сотни новых аккаунтов
   let hourStart = 0;
   let usedThisHour = 0;
   // GigaChat не отвечает (сеть, таймаут, 5xx) — не ждём по 12 с на каждом запросе, сразу правила
   let downUntil = 0;
 
-  /** Можно ли сейчас идти в модель; если да — место в бюджете и в очереди занято. */
-  function take(): string | null {
+  /** Почему сейчас нельзя идти в модель; null — можно. */
+  function blocked(): string | null {
     const t = now();
     if (t < downUntil) return 'недоступен недавно';
-    if (inFlight >= maxInFlight) return 'много одновременных запросов';
     if (t - hourStart >= 3_600_000) {
       hourStart = t;
       usedThisHour = 0;
     }
     if (usedThisHour >= maxPerHour) return 'исчерпан бюджет на час';
-    usedThisHour += 1;
-    inFlight += 1;
     return null;
+  }
+
+  /** Место к модели: сразу или в очереди до срока. null — место занято, иначе — почему не вышло. */
+  function slot(signal: AbortSignal): Promise<string | null> {
+    if (inFlight < maxInFlight) {
+      inFlight += 1;
+      return Promise.resolve(null);
+    }
+    if (waiting.length >= maxQueue) return Promise.resolve('очередь к модели полна');
+    if (signal.aborted) return Promise.resolve('не дождались очереди к модели');
+    return new Promise((resolve) => {
+      const go = () => {
+        signal.removeEventListener('abort', giveUp);
+        inFlight += 1;
+        resolve(null);
+      };
+      const giveUp = () => {
+        const i = waiting.indexOf(go);
+        if (i >= 0) waiting.splice(i, 1);
+        resolve('не дождались очереди к модели');
+      };
+      waiting.push(go);
+      signal.addEventListener('abort', giveUp, { once: true });
+    });
+  }
+
+  /** Место освободилось — сразу отдаём первому в очереди. */
+  function release(): void {
+    inFlight -= 1;
+    waiting.shift()?.();
   }
 
   return {
     ai: ai !== null,
     async draft(text, opts = {}) {
       if (!ai) return rules(text);
-      const busy = take();
-      if (busy) {
-        log.warn({ reason: busy }, 'ИИ-черновик: модель пропущена, черновик по ключевым словам');
+      const started = now();
+      // Срок на очередь, токен и ответ модели или клиент ушёл — что раньше
+      const timeout = AbortSignal.timeout(timeoutMs);
+      const signal = opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout;
+      const skip = blocked() ?? (await slot(signal));
+      if (skip) {
+        log.warn({ reason: skip }, 'ИИ-черновик: модель пропущена, черновик по ключевым словам');
         return rules(text);
       }
-      const started = now();
+      // Пока стояли в очереди, модель могла лечь, кончиться бюджет или уйти клиент
+      const late = blocked() ?? (signal.aborted ? 'клиент ушёл или вышел срок' : null);
+      if (late) {
+        release();
+        log.warn({ reason: late }, 'ИИ-черновик: модель пропущена, черновик по ключевым словам');
+        return rules(text);
+      }
+      usedThisHour += 1;
+      const chatStarted = now();
       try {
         const messages: ChatMessage[] = [
           { role: 'system', content: system },
           { role: 'user', content: userMessage(text) },
         ];
-        // Срок ответа или клиент ушёл — что раньше
-        const timeout = AbortSignal.timeout(timeoutMs);
-        const signal = opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout;
         const raw = await ai.chat(messages, { signal });
         const draft = parseModelAnswer(raw, groups, tags);
         if (!draft) {
@@ -221,13 +270,15 @@ export function createPlaceDrafter({
         return { source: 'ai', ...draft, title };
       } catch (err) {
         const e = err instanceof GigaChatError ? { status: err.status, stage: err.stage, reason: err.message } : { reason: err instanceof Error ? err.name : 'unknown' };
-        // Сеть, таймаут и 5xx — сервис лёг: пауза. Ушедший клиент — не повод считать GigaChat недоступным
-        const down = err instanceof GigaChatError && (err.status === 0 || err.status >= 500) && !opts.signal?.aborted;
+        // Сеть, таймаут и 5xx — сервис лёг: пауза. Не повод считать GigaChat недоступным: ушедший клиент и срок,
+        // который съела очередь, — модели досталось меньше половины времени
+        const starved = timeout.aborted && now() - chatStarted < timeoutMs / 2;
+        const down = err instanceof GigaChatError && (err.status === 0 || err.status >= 500) && !opts.signal?.aborted && !starved;
         if (down) downUntil = now() + DRAFT_DOWN_PAUSE_MS;
         log.warn({ ms: now() - started, ...e }, 'ИИ-черновик: GigaChat недоступен, откат на ключевые слова');
         return rules(text);
       } finally {
-        inFlight -= 1;
+        release();
       }
     },
   };
