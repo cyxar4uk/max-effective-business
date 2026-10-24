@@ -81,6 +81,32 @@ describe.skipIf(!url)('демо-тандем', () => {
     expect(await statusOf(second)).toBe('interested');
   });
 
+  it('DEMO_INVITE_COOLDOWN_HOURS: 0 — без ограничения, иначе считается от заданного числа часов', async () => {
+    const s = await newStudent();
+    const first = await interest(s, demoPlaces[0]!, 90);
+    expect(await inviteForDemoEmployer(ds, first)).toBe(true);
+    // Без кулдауна второе приглашение сразу проходит
+    expect(await inviteForDemoEmployer(ds, await interest(s, demoPlaces[1]!, 90), { cooldownHours: 0 })).toBe(true);
+
+    const s2 = await newStudent();
+    expect(await inviteForDemoEmployer(ds, await interest(s2, demoPlaces[0]!, 90))).toBe(true);
+    // Первое приглашение было 2 часа назад: при кулдауне 1 ч второе проходит, при 24 ч по умолчанию — нет
+    await ds.query(`UPDATE interests SET updated_at = now() - interval '2 hours' WHERE student_user_id = $1 AND status = 'invited'`, [s2]);
+    const second = await interest(s2, demoPlaces[1]!, 90);
+    expect(await inviteForDemoEmployer(ds, second)).toBe(false);
+    expect(await inviteForDemoEmployer(ds, second, { cooldownHours: 3 })).toBe(false);
+    expect(await inviteForDemoEmployer(ds, second, { cooldownHours: 1 })).toBe(true);
+  });
+
+  it('догоняющий проход тоже берёт кулдаун из параметра', async () => {
+    const s = await newStudent();
+    expect(await inviteForDemoEmployer(ds, await interest(s, demoPlaces[0]!, 90))).toBe(true);
+    const pending = await interest(s, demoPlaces[2]!, 90, 'interested', `now() - interval '1 minute'`);
+    expect((await inviteRecentForDemoEmployers(ds)).map((e) => e.interestId)).not.toContain(pending);
+    expect((await inviteRecentForDemoEmployers(ds, { cooldownHours: 0 })).map((e) => e.interestId)).toContain(pending);
+    expect(await statusOf(pending)).toBe('invited');
+  });
+
   it('ниже 70 %, пропуск, закрытое, не демо-место или демо-студент — не приглашает', async () => {
     const s = await newStudent();
     expect(await inviteForDemoEmployer(ds, await interest(s, demoPlaces[0]!, 65))).toBe(false);
@@ -143,5 +169,21 @@ describe.skipIf(!url)('демо-тандем', () => {
     expect(responses).toHaveLength(1);
     expect(responses[0]!.internshipId).toBe(Number(mine.id));
     expect(responses[0]!.count).toBeGreaterThan(0);
+  });
+
+  it('подписки: inviteCooldownHours из окружения доходит до приглашения', async () => {
+    // Первое приглашение — до подписки: догоняющий проход при старте (тоже без кулдауна) не должен его перехватить
+    const s = await newStudent();
+    expect(await inviteForDemoEmployer(ds, await interest(s, demoPlaces[0]!, 90))).toBe(true);
+
+    const events = new EventBus(pino({ level: 'silent' }));
+    const invited: AppEvents['interest.invited'][] = [];
+    events.on('interest.invited', (e) => void invited.push(e));
+    registerDemoResponder({ events, ds, log: pino({ level: 'silent' }), threshold: 60, inviteDelayMs: 50, inviteCooldownHours: 0 });
+
+    const second = await interest(s, demoPlaces[1]!, 90);
+    events.emit('interest.created', { interestId: second, internshipId: demoPlaces[1]!, studentUserId: s, status: 'interested' });
+    await until(() => invited.some((e) => e.interestId === second));
+    expect(await statusOf(second)).toBe('invited');
   });
 });

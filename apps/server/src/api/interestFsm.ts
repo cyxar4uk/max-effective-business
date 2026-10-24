@@ -14,13 +14,13 @@ export function studentAction(current: InterestStatus | null, action: 'intereste
   if (current === null || current === 'skipped' || current === 'interested') return { ok: true, next: action, changed: true };
   return {
     ok: false,
-    message: current === 'invited' ? 'Работодатель уже пригласил вас на эту стажировку' : 'Работодатель уже ответил на этот отклик',
+    message: current === 'invited' ? 'Работодатель уже пригласил вас на это место' : 'Работодатель уже ответил на этот отклик',
   };
 }
 
 export function employerAction(current: InterestStatus, action: 'invited' | 'declined'): Transition {
   if (current === action) return { ok: true, next: action, changed: false };
   if (current === 'interested') return { ok: true, next: action, changed: true };
-  if (current === 'skipped') return { ok: false, message: 'Студент не откликался на эту стажировку' };
+  if (current === 'skipped') return { ok: false, message: 'Студент не откликался на это место' };
   return { ok: false, message: current === 'invited' ? 'Студент уже приглашён' : 'Студенту уже отказано' };
 }

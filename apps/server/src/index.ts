@@ -29,7 +29,9 @@ if (config.SEED_DEMO) log.info(await seedDemo(ds), 'Демо-данные заг
 
 const events = new EventBus(log);
 // Демо-режим: на стажировку проверяющего сразу откликаются подходящие демо-студенты (см. src/seed/demo/responder.ts)
-if (config.SEED_DEMO) registerDemoResponder({ events, ds, log, threshold: config.MATCH_NOTIFY_THRESHOLD });
+if (config.SEED_DEMO) {
+  registerDemoResponder({ events, ds, log, threshold: config.MATCH_NOTIFY_THRESHOLD, inviteCooldownHours: config.DEMO_INVITE_COOLDOWN_HOURS });
+}
 const bot = registerBot({ events, ds, config, log });
 // Места из «Работа России»: фоном при старте и раз в 6 часов; при недоступном API — сохранённый снимок
 const trudvsem = registerTrudvsemImport({ ds, log });

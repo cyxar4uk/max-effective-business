@@ -36,7 +36,7 @@ export interface DemoInternship {
   salary: number | null;
   /**
    * Набор уже закрыт: места нет в ленте и в подборе. Отклик на него по прямой ссылке (`internship_<id>`, id —
-   * `SELECT id FROM internships WHERE source_id = 'demo_<key>'`) получает ответ «Стажировка закрыта».
+   * `SELECT id FROM internships WHERE source_id = 'demo_<key>'`) получает ответ «Набор на это место закрыт».
    */
   closed?: boolean;
 }
