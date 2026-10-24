@@ -7,6 +7,7 @@ import { useLoad } from '../../api/useLoad';
 import { ABOUT } from '../../app/about';
 import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
+import { useEdgeFade } from '../../components/useEdgeFade';
 import { DeckButton, SwipeDeck, type SwipeDeckHandle, type SwipeDir } from '../../components/SwipeDeck';
 import { haptic, openMaxLink } from '../../max/bridge';
 import { fade, spring, useReduced } from '../../motion/springs';
@@ -376,6 +377,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
 export function StudentFeed() {
   const { me } = useMe();
   const scanner = useScanPlace();
+  const chipsRef = useEdgeFade<HTMLDivElement>();
   const [tags, setTags] = useState<string[]>([]);
   const [tagsState] = useLoad(loadTags, []);
   const [state, retry] = useLoad(async () => {
@@ -416,7 +418,7 @@ export function StudentFeed() {
         </button>
       </div>
       {tagsState.status === 'ok' && tagsState.data.items.length > 0 && (
-        <div className="chips feed-chips" role="group" aria-label="Фильтр по задачам">
+        <div ref={chipsRef} className="chips feed-chips" role="group" aria-label="Фильтр по задачам">
           <button type="button" className={tags.length === 0 ? 'chip on' : 'chip'} onClick={() => setTags([])} aria-pressed={tags.length === 0}>
             Все
           </button>
