@@ -14,7 +14,7 @@ import { createUpdateHandler } from './updates.js';
 export interface BotDeps {
   events: EventBus;
   ds: DataSource;
-  config: Pick<Config, 'MAX_BOT_TOKEN' | 'MATCH_NOTIFY_THRESHOLD' | 'SEED_DEMO'>;
+  config: Pick<Config, 'MAX_BOT_TOKEN' | 'MATCH_NOTIFY_THRESHOLD' | 'MATCH_DAILY_LIMIT' | 'SEED_DEMO'>;
   log: Logger;
   api?: MaxApi;
 }
@@ -42,6 +42,7 @@ export function registerBot({ events, ds, config, log, api = createMaxApi({ toke
   const notify: NotifyDeps = {
     data,
     threshold: config.MATCH_NOTIFY_THRESHOLD,
+    dailyLimit: config.MATCH_DAILY_LIMIT,
     async skillNames() {
       const rows: { code: string; name: string }[] = await ds.query('SELECT code, name FROM skills');
       return new Map(rows.map((r) => [r.code, r.name]));
