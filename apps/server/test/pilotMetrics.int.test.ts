@@ -37,12 +37,25 @@ describe.skipIf(!url)('метрики пилота', () => {
         [source === 'employer' ? employerId : null, source, source === 'employer' ? null : `t_${createdAt}`, createdAt],
       )
     )[0].id as number;
-  const interest = async (studentId: number, placeId: number, score: number, interestedAt: string | null, status = 'interested', updatedAt?: string) =>
+  const interest = async (
+    studentId: number,
+    placeId: number,
+    score: number,
+    interestedAt: string | null,
+    status = 'interested',
+    updatedAt?: string,
+    match: object = {},
+  ) =>
     ds.query(
       `INSERT INTO interests (student_user_id, internship_id, status, match_score, match, interested_at, updated_at)
-       VALUES ($1, $2, $3, $4, '{}'::jsonb, $5, COALESCE($6::timestamptz, now()))`,
-      [studentId, placeId, status, score, interestedAt, updatedAt ?? null],
+       VALUES ($1, $2, $3, $4, $7::jsonb, $5, COALESCE($6::timestamptz, now()))`,
+      [studentId, placeId, status, score, interestedAt, updatedAt ?? null, JSON.stringify(match)],
     );
+  // Аккаунт команды: его анкета и отклики в метрики не идут (METRICS_EXCLUDE_MAX_IDS)
+  const TEAM = 999;
+  // «Сейчас» для расчёта — после всех событий: у всех мест 2 рабочих дня прошли, всем откликам больше суток
+  const NOW = new Date('2026-11-20T12:00:00+03:00');
+  const opts = { excludeMaxIds: [TEAM], now: NOW };
 
   beforeAll(async () => {
     const admin = createDataSource(url!);
@@ -84,6 +97,16 @@ describe.skipIf(!url)('метрики пилота', () => {
     // ни в отклики, ни в приглашения, ни во время ответа работодателя
     const [demo] = await ds.query(`SELECT id FROM internships WHERE source = 'demo' ORDER BY id LIMIT 1`);
     await interest(s1, demo.id, 85, '2026-10-06T12:00:00+03:00', 'invited', '2026-10-06T12:00:20+03:00');
+
+    // #125. Самоотзыв: владелец откликнулся на своё место раньше всех (так проверяют сценарий одним аккаунтом) —
+    // не подходящий отклик и не отклик вообще
+    await interest(owner, p1, 100, '2026-10-05T10:30:00+03:00');
+    // Аккаунт команды откликнулся на p2 через час — при исключении не считается
+    const team = await student(TEAM, '2026-10-03T12:00:00+03:00');
+    await interest(team, p2, 100, '2026-10-09T16:00:00+03:00');
+    // 70 %, но без обязательного навыка — не «подходящий» (бот такому не пишет); как отклик и «без решения» считается
+    const s3 = (await ds.query('SELECT id FROM users WHERE max_user_id = 903'))[0].id as number;
+    await interest(s3, p3, 70, '2026-10-06T10:00:00+03:00', 'interested', undefined, { mustMissing: ['sql'] });
   });
 
   afterAll(async () => {
@@ -92,33 +115,50 @@ describe.skipIf(!url)('метрики пилота', () => {
   });
 
   it('за октябрь: без демо, импорта и записей вне периода', async () => {
-    const m = await collectPilotMetrics(ds, parsePeriod(['--from', '2026-10-01', '--to', '2026-10-31']));
+    const m = await collectPilotMetrics(ds, parsePeriod(['--from', '2026-10-01', '--to', '2026-10-31']), opts);
     expect(m).toEqual({
       places: 3,
-      firstMatch: { withResponse: 2, medianHours: 49, withinTarget: 2 },
-      // employer — без отклика на место «Работа России»: там решений в сервисе нет (#102)
-      interests: { total: 4, strong: 2, employer: 3, declined: 0 },
-      // Приглашение s1 на p1: «Интересно» 05.10 15:00, решение 08.10 12:00 — 69 ч
-      employerResponseMedianHours: 69,
-      funnel: { profiles: 3, interested: 2 },
+      // p1 — 5 ч (самоотзыв в 10:30 не в счёт), p2 — 93 ч (команда через час не в счёт), p3 — подходящего нет:
+      // 70 % без обязательного. У всех трёх 2 рабочих дня прошли — главная доля 2 из 3, а не 2 из 2
+      firstMatch: { eligible: 3, withinTarget: 2, withResponse: 2, medianHours: 49 },
+      // s1-p1 90, s2-p1 50, s1-p2 65, s2-«Работа России» 75, s3-p3 70; без самоотзыва, команды и демо
+      interests: { total: 5, strong: 3 },
+      // Только места работодателей: приглашён s1-p1 через 69 ч; без решения больше суток — s2-p1, s1-p2, s3-p3
+      decisions: { invited: 1, declined: 0, olderThan24h: 4, pendingOver24h: 3, decidedWithin24h: 0, medianHours: 69 },
+      // Анкеты s1, s2, s3 (команда исключена); у всех троих есть «Интересно»
+      funnel: { profiles: 3, interested: 3 },
       invitations: 1,
       bands: [
         { band: '80+', interested: 1, invited: 1 },
-        // Отклик на 75 % — на место «Работа России», в разрез решений работодателя он не входит
-        { band: '70–79', interested: 0, invited: 0 },
+        // 70 % у s3-p3; отклик на 75 % — на место «Работа России», в разрез решений работодателя не входит
+        { band: '70–79', interested: 1, invited: 0 },
         { band: '60–69', interested: 1, invited: 0 },
         { band: '<60', interested: 1, invited: 0 },
       ],
     });
   });
 
+  it('без исключения команды её отклик становится первым подходящим — поэтому её и исключаем', async () => {
+    const m = await collectPilotMetrics(ds, parsePeriod(['--from', '2026-10-01', '--to', '2026-10-31']), { now: NOW });
+    // p2: команда через 1 ч вместо студента через 93 ч → медиана (5 + 1) / 2
+    expect(m.firstMatch.medianHours).toBe(3);
+    expect(m.funnel.profiles).toBe(4);
+  });
+
+  it('порог «подходящего» — из настроек: при 70 % отклик на 65 % уже не подходящий', async () => {
+    const m = await collectPilotMetrics(ds, parsePeriod(['--from', '2026-10-01', '--to', '2026-10-31']), { ...opts, threshold: 70 });
+    expect(m.firstMatch).toEqual({ eligible: 3, withinTarget: 1, withResponse: 1, medianHours: 5 });
+  });
+
   it('без периода — всё настоящее, демо по-прежнему не считается', async () => {
-    const m = await collectPilotMetrics(ds, parsePeriod([]));
+    const m = await collectPilotMetrics(ds, parsePeriod([]), opts);
     expect(m.places).toBe(4);
-    expect(m.interests.total).toBe(5);
-    // + приглашение на p4 через 24 ч: медиана (69 + 24) / 2
-    expect(m.employerResponseMedianHours).toBe(46.5);
-    expect(m.funnel).toEqual({ profiles: 4, interested: 3 });
+    // + p4: подходящий отклик через 2 ч
+    expect(m.firstMatch).toEqual({ eligible: 4, withinTarget: 3, withResponse: 3, medianHours: 5 });
+    expect(m.interests.total).toBe(6);
+    // + приглашение на p4 через 24 ч: медиана (69 + 24) / 2, решено за сутки — одно
+    expect(m.decisions).toMatchObject({ invited: 2, declined: 0, decidedWithin24h: 1, medianHours: 46.5 });
+    expect(m.funnel).toEqual({ profiles: 4, interested: 4 });
     expect(m.invitations).toBe(2);
     expect(m.bands[0]).toEqual({ band: '80+', interested: 2, invited: 2 });
   });
