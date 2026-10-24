@@ -115,14 +115,19 @@ export function UndoToast({ action, name, onCancel }: { action: Decision; name: 
 export interface NoticeValue {
   text: string;
   tone: 'ok' | 'error';
+  /** Кнопка в сообщении: «Открыть» тандем, когда сразу перейти нельзя. */
+  action?: { label: string; onClick: () => void };
   /** Номер сообщения: одинаковый текст подряд тоже показывается заново. */
   n: number;
 }
 
-/** Короткое сообщение внизу: «Отказ отправлен», ошибка сервера. Подтверждение скрывается через 3 с, ошибка — через 6 с. */
+/**
+ * Короткое сообщение внизу: «Отказ отправлен», ошибка сервера. Подтверждение скрывается через 3 с, ошибка и сообщение
+ * с кнопкой — через 6 с: кнопку надо успеть нажать.
+ */
 export function Notice({ notice, onClose }: { notice: NoticeValue; onClose: () => void }) {
   useEffect(() => {
-    const t = window.setTimeout(onClose, notice.tone === 'error' ? 6000 : 3000);
+    const t = window.setTimeout(onClose, notice.tone === 'error' || notice.action ? 6000 : 3000);
     return () => window.clearTimeout(t);
   }, [notice, onClose]);
 
@@ -134,6 +139,11 @@ export function Notice({ notice, onClose }: { notice: NoticeValue; onClose: () =
         </span>
       )}
       <span className="grow">{notice.text}</span>
+      {notice.action && (
+        <button type="button" className="cd-toast-btn" onClick={notice.action.onClick}>
+          {notice.action.label}
+        </button>
+      )}
       <button type="button" className="cd-toast-x" aria-label="Скрыть сообщение" onClick={onClose}>
         <CrossIcon />
       </button>
