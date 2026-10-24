@@ -143,16 +143,19 @@ export function Places() {
           </button>
         )}
       </header>
-      <button type="button" className="pl-howto" onClick={() => navigate('/', { state: { guide: true } satisfies GuideState })}>
-        <span className="pl-howto-ic" aria-hidden="true">
-          <RouteIcon />
-        </span>
-        <span className="col grow">
-          <span className="pl-howto-t">Как проверить за 5 минут</span>
-          <span className="lbl">Для проверяющих: компания и студент одним аккаунтом</span>
-        </span>
-        <ChevronIcon />
-      </button>
+      {/* Сценарий для проверяющих — пока опубликованных мест нет; дальше он на главном */}
+      {state.status === 'ok' && open.length === 0 && (
+        <button type="button" className="pl-howto" onClick={() => navigate('/', { state: { guide: true } satisfies GuideState })}>
+          <span className="pl-howto-ic" aria-hidden="true">
+            <RouteIcon />
+          </span>
+          <span className="col grow">
+            <span className="pl-howto-t">Как проверить за 5 минут</span>
+            <span className="lbl">Для проверяющих: компания и студент одним аккаунтом</span>
+          </span>
+          <ChevronIcon />
+        </button>
+      )}
 
       {state.status === 'loading' ? (
         <TilesSkeleton />

@@ -54,6 +54,9 @@ interface CardsState {
 
 const TABS: Tab[] = ['waiting', 'invited', 'declined'];
 
+/** Как часто перезапрашивать кандидатов, пока экран открыт, мс. */
+const CANDIDATES_POLL_MS = 5000;
+
 /** Состояние перехода на «Это тандем!». */
 export interface TandemState {
   justInvited?: boolean;
@@ -174,6 +177,25 @@ function Loaded({ data, names, update, refresh, reload }: LoadedProps) {
   const { pending, sending } = decision;
   // Решение в отсчёте или в пути — кнопки этого кандидата недоступны
   const busy = pending ?? sending;
+
+  // Новые отклики появляются сами: раз в 5 секунд, пока экран виден, и сразу при возврате в приложение.
+  // Обновление тихое (без скелетона), позиция — в адресе (?tab, ?c) и не сбрасывается. Пока решение в отсчёте
+  // или в пути, не спрашиваем: ответ, ушедший до решения, вернул бы кандидату прежний статус
+  const busyRef = useRef(busy);
+  useEffect(() => {
+    busyRef.current = busy;
+  });
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === 'visible' && !busyRef.current) refresh();
+    };
+    const timer = window.setInterval(poll, CANDIDATES_POLL_MS);
+    document.addEventListener('visibilitychange', poll);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', poll);
+    };
+  }, [refresh]);
 
   const setQuery = (next: { tab?: Tab; view?: View; c?: number | 'end' | null }, push = false) => {
     const q = new URLSearchParams(params);

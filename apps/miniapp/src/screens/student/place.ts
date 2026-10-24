@@ -17,9 +17,8 @@ export const FORMAT_LABEL: Record<WorkFormat, string> = {
 /** Порядок форматов в анкете. */
 export const FORMATS: WorkFormat[] = ['office', 'hybrid', 'remote'];
 
-/** Мягкий перенос и неразрывный пробел — кодами, чтобы в исходнике не было невидимых символов. */
+/** Мягкий перенос — кодом, чтобы в исходнике не было невидимых символов. */
 const SHY = String.fromCharCode(0xad);
-const NBSP = String.fromCharCode(0xa0);
 
 /** Обложка по тегу места: класс фона и надпись (мягкие переносы — чтобы крупный шрифт не вылезал). */
 const COVERS: Record<string, { cls: string; label: string }> = {
@@ -168,16 +167,24 @@ export function typeChip(place: Pick<Internship, 'type' | 'paid'>): string {
 export const matchLevel = (score: number): 'hi' | 'md' | 'lo' => (score >= 80 ? 'hi' : score >= 60 ? 'md' : 'lo');
 
 /**
- * «70 % × 2 из 2 обязательных + 30 % × 2 из 3 желательных». Без желательных считаются только обязательные.
- * Близкий навык — половина: «1,5 из 2», чтобы формула сходилась с процентом.
+ * Откуда процент, человеческой фразой: «Есть 2 из 2 обязательных и 1 из 3 желательных навыков».
+ * Близкий навык — половина: «1,5 из 2», чтобы фраза сходилась с процентом. Нет обязательных или желательных —
+ * только та часть, что есть; нет никаких — «Особых навыков место не требует».
  */
-export function matchFormula(match: Match): string[] {
+export function matchFormula(match: Match): string {
   const mustAll = match.mustMatched.length + match.mustMissing.length;
   const niceAll = match.niceMatched.length + match.niceMissing.length;
-  const must = `${closedCount(match.mustMatched.length, match.mustClose?.length ?? 0)} из ${mustAll} ${plural(mustAll, ['обязательного', 'обязательных', 'обязательных'])}`;
-  if (niceAll === 0) return [must];
-  const nice = `${closedCount(match.niceMatched.length, match.niceClose?.length ?? 0)} из ${niceAll} ${plural(niceAll, ['желательного', 'желательных', 'желательных'])}`;
-  return [`70${NBSP}% × ${must}`, `+ 30${NBSP}% × ${nice}`];
+  if (mustAll === 0 && niceAll === 0) return 'Особых навыков место не требует';
+  const part = (matched: number, close: number, all: number, forms: [string, string, string]) =>
+    `${closedCount(matched, close)} из ${all} ${plural(all, forms)}`;
+  const parts: string[] = [];
+  if (mustAll > 0)
+    parts.push(part(match.mustMatched.length, match.mustClose?.length ?? 0, mustAll, ['обязательного', 'обязательных', 'обязательных']));
+  if (niceAll > 0)
+    parts.push(part(match.niceMatched.length, match.niceClose?.length ?? 0, niceAll, ['желательного', 'желательных', 'желательных']));
+  // «навыка» / «навыков» — по последнему числу: «из 1 желательного навыка», «из 3 желательных навыков»
+  const last = niceAll > 0 ? niceAll : mustAll;
+  return `Есть ${parts.join(' и ')} ${plural(last, ['навыка', 'навыков', 'навыков'])}`;
 }
 
 /** Названия навыков по коду из /api/skills; неизвестный код показываем как есть. */

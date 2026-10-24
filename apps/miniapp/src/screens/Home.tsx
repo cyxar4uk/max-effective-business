@@ -33,6 +33,7 @@ export function Home() {
         </div>
         <div className="home-text">
           <h1 className="d m0 home-h1">Найдите свой тандем</h1>
+          <p className="m0 home-sub">Практиканты для малого бизнеса в MAX</p>
           <p className="m0 home-lead">
             Практика, стажировки и подработка в малом бизнесе. Бесплатно для компаний и студентов, подбор по навыкам, контакты —
             после взаимного интереса.
@@ -47,6 +48,7 @@ export function Home() {
           </svg>
           Я работодатель
         </button>
+        <p className="m0 lbl home-role">Опишите задачу — бот приведёт подходящих студентов</p>
         <button type="button" className="btn sec home-student" onClick={() => go('/student')}>
           <svg className="ic sm" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M2.5 9L12 4.5 21.5 9 12 13.5z" />
@@ -54,6 +56,7 @@ export function Home() {
           </svg>
           Я студент
         </button>
+        <p className="m0 lbl home-role">Места под ваши навыки, отклик одним свайпом</p>
         <p className="m0 lbl home-note">Роль можно сменить в профиле. Тестовые данные помечены жёлтой плашкой.</p>
       </div>
       <CheckGuide />

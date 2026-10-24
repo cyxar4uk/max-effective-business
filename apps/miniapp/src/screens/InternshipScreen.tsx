@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { api, ApiError } from '../api/client';
-import type { InterestAction, InterestStatus } from '../api/types';
+import type { Interest, InterestAction, InterestStatus } from '../api/types';
 import { useLoad } from '../api/useLoad';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -18,7 +18,8 @@ import { haptic, shareMaxContent } from '../max/bridge';
 import { loadSkills } from './student/dict';
 import { companyInitial, coverOf, placeWhere, skillNames, TYPE_LABEL } from './student/place';
 import { PlaceDetails } from './student/PlaceDetails';
-import { tandemPath } from './student/tandem';
+import { useInviteWatch } from './student/inviteWatch';
+import { inviteSeen, tandemPath, type TandemState } from './student/tandem';
 import { Cover, Icon } from './student/ui';
 import { DemoBadge } from '../components/DemoBadge';
 
@@ -58,6 +59,29 @@ export function InternshipScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useToast();
+  // Приглашение пришло, пока экран открыт: статус и плашка с переходом на «Это тандем!»
+  const [invited, setInvited] = useState<Interest | null>(null);
+  const watchInvite = useInviteWatch((interest) => {
+    haptic.notify('success');
+    setSent({ id: interest.internship.id, status: 'invited' });
+    setInvited(interest);
+  });
+  useEffect(() => {
+    if (!invited) return;
+    const t = window.setTimeout(() => setInvited(null), 10000);
+    return () => window.clearTimeout(t);
+  }, [invited]);
+  // Кнопка бота «Открыть приглашение» ведёт сюда: непросмотренное приглашение — сразу «Это тандем!»,
+  // заменой записи, чтобы «Назад» не возвращал на карточку места
+  const toTandem =
+    state.status === 'ok' &&
+    !asStudent &&
+    state.data[0].match !== undefined &&
+    state.data[0].myInterest === 'invited' &&
+    !inviteSeen(id);
+  useEffect(() => {
+    if (toTandem) navigate(tandemPath(id), { replace: true });
+  }, [toTandem, id, navigate]);
 
   useEffect(() => {
     if (!isOwner) return;
@@ -77,7 +101,7 @@ export function InternshipScreen() {
 
   if (!valid) return <Navigate to="/" replace />;
 
-  if (state.status === 'loading' || isOwner) {
+  if (state.status === 'loading' || isOwner || toTandem) {
     return (
       <main className="screen">
         <Skeleton lines={3} height={120} />
@@ -115,8 +139,11 @@ export function InternshipScreen() {
     try {
       const res = await api.interest(place.id, action);
       setSent({ id: place.id, status: res.status });
-      if (action === 'interested') haptic.notify('success');
-      else haptic.impact('light');
+      if (action === 'interested') {
+        haptic.notify('success');
+        if (place.source !== 'trudvsem') watchInvite(place.id);
+        if (place.isDemo) setToast({ kind: 'ok', text: 'Тестовая компания ответит примерно через 20 секунд' });
+      } else haptic.impact('light');
     } catch (err) {
       haptic.notify('error');
       setError(err instanceof ApiError ? err.message : 'Не получилось отправить. Повторите.');
@@ -242,7 +269,19 @@ export function InternshipScreen() {
         )}
         {bar}
       </div>
-      <Toast toast={toast} />
+      <Toast toast={invited ? null : toast} />
+      {invited && (
+        <div className="bot-hint" role="status">
+          <span className="grow">{invited.internship.company.name} пригласила вас</span>
+          <button
+            type="button"
+            className="btn sm sec"
+            onClick={() => navigate(tandemPath(invited.internship.id), { state: { interest: invited } satisfies TandemState })}
+          >
+            Открыть
+          </button>
+        </div>
+      )}
     </main>
   );
 }

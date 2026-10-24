@@ -66,7 +66,6 @@
 .sd-title{font-size:22px;line-height:1.15}
 .sd-where{color:var(--ink2)}
 .sd-match{padding:16px;gap:12px}
-.sd-formula{display:block}
 .sd-skill{gap:10px}
 .sd-mark{width:26px;padding:0;justify-content:center;flex-shrink:0}
 .sd-miss{color:var(--ink3)}

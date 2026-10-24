@@ -53,8 +53,16 @@ export function inviteSeen(id: number): boolean {
   return seen.has(id);
 }
 
+const seenListeners = new Set<() => void>();
+
+/** Подписка на «приглашение просмотрели» — для бейджа на «Откликах» (inviteWatch.ts). */
+export function onInviteSeen(listener: () => void): void {
+  seenListeners.add(listener);
+}
+
 export function markInviteSeen(id: number): void {
   seen.add(id);
+  for (const l of seenListeners) l();
   try {
     localStorage.setItem(SEEN_KEY, JSON.stringify([...seen].slice(-200)));
   } catch {

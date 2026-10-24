@@ -17,7 +17,9 @@ import { PlaceCardFace } from './PlaceCard';
 import { PlaceDetails } from './PlaceDetails';
 import { plural, skillNames, tagColor, type SkillNames } from './place';
 import { ScanNotice } from './ScanNotice';
+import { useInviteWatch } from './inviteWatch';
 import { createSkipQueue } from './skipQueue';
+import { tandemPath, type TandemState } from './tandem';
 import { Icon } from './ui';
 import { useScanPlace } from './useScanPlace';
 
@@ -75,6 +77,9 @@ interface DeckProps {
 
 type Toast = { text: string; kind: 'ok' | 'error' };
 
+/** Плашка с кнопкой: подсказка про бота или «Компания пригласила вас · Открыть». */
+type Hint = { text: string; label: string; onClick: () => void; ms: number };
+
 const STAMPS = { like: 'Интересно', nope: 'Не интересно' };
 
 /** Подсказка про бота — после первого успешного «Интересно», не чаще раза за сессию. */
@@ -113,7 +118,7 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   const [queue, setQueue] = useState(items);
   const [skipped, setSkipped] = useState<Internship[]>([]);
   const [toast, setToast] = useState<Toast | null>(null);
-  const [botHint, setBotHint] = useState(false);
+  const [hint, setHint] = useState<Hint | null>(null);
   const top = queue[0];
 
   useEffect(() => {
@@ -123,16 +128,34 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   }, [toast]);
 
   useEffect(() => {
-    if (!botHint) return;
-    const t = window.setTimeout(() => setBotHint(false), 4000);
+    if (!hint) return;
+    const t = window.setTimeout(() => setHint(null), hint.ms);
     return () => window.clearTimeout(t);
-  }, [botHint]);
+  }, [hint]);
 
-  // Подсказка про бота и тост — в одной точке сверху: показываем что-то одно, новое сменяет старое
+  // Плашка с кнопкой и тост — в одной точке сверху: показываем что-то одно, новое сменяет старое
   const showToast = (t: Toast) => {
-    setBotHint(false);
+    setHint(null);
     setToast(t);
   };
+  const showHint = (h: Hint) => {
+    setToast(null);
+    setHint(h);
+  };
+
+  // Компания пригласила, пока студент листает колоду, — сразу сказать и открыть «Это тандем!» одним нажатием
+  const watchInvite = useInviteWatch((interest) => {
+    haptic.notify('success');
+    showHint({
+      text: `${interest.internship.company.name} пригласила вас`,
+      label: 'Открыть',
+      ms: 10000,
+      onClick: () => {
+        setHint(null);
+        navigate(tandemPath(interest.internship.id), { state: { interest } satisfies TandemState });
+      },
+    });
+  });
 
   // Отправленный пропуск вернуть уже нельзя: сервер исключит место из ленты, а отменить пропуск API не умеет.
   // Колоду закрыли, мини-приложение свернули или закрывают — отложенные пропуски уходят сразу и доживают до сервера
@@ -156,10 +179,21 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
     try {
       await api.interest(place.id, 'interested');
       haptic.notify('success');
-      if (takeBotHint()) {
-        setToast(null);
-        setBotHint(true);
-      } else showToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
+      // Вакансии «Работы России» отвечают на портале — ждать приглашения здесь нечего
+      if (place.source !== 'trudvsem') watchInvite(place.id);
+      // Демо-компания приглашает сама через ~20 секунд: подсказку про бота оставляем до обычного места
+      if (place.isDemo) showToast({ kind: 'ok', text: 'Тестовая компания ответит примерно через 20 секунд' });
+      else if (takeBotHint())
+        showHint({
+          text: 'Отклик отправлен. Когда компания ответит, бот напишет в чат. Не нажимали «Начать»?',
+          label: 'Открыть бота',
+          ms: 4000,
+          onClick: () => {
+            setHint(null);
+            openBot();
+          },
+        });
+      else showToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
     } catch (err) {
       haptic.notify('error');
       setQueue((q) => [place, ...q.filter((p) => p.id !== place.id)]);
@@ -316,8 +350,9 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {botHint && (
+        {hint && (
           <motion.div
+            key={hint.text}
             className="bot-hint"
             role="status"
             initial={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
@@ -325,18 +360,9 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
             exit={reduced ? { opacity: 0 } : { opacity: 0, y: -8 }}
             transition={reduced ? fade : spring}
           >
-            <span className="grow">
-              Отклик отправлен. Когда компания ответит, бот напишет в чат. Не нажимали «Начать»?
-            </span>
-            <button
-              type="button"
-              className="btn sm sec"
-              onClick={() => {
-                setBotHint(false);
-                openBot();
-              }}
-            >
-              Открыть бота
+            <span className="grow">{hint.text}</span>
+            <button type="button" className="btn sm sec" onClick={hint.onClick}>
+              {hint.label}
             </button>
           </motion.div>
         )}
