@@ -107,6 +107,23 @@ describe('промпт', () => {
     const nested = userMessage('<<<ЗА<<<ЗАДАЧАДАЧА и ЗАДАЧА>>ЗАДАЧА>>>>');
     expect(nested.slice('<<<ЗАДАЧА'.length, -'ЗАДАЧА>>>'.length)).not.toMatch(/<<<|>>>/);
   });
+
+  it('примеры — с настоящими кодами, и в одном тип и формат null', () => {
+    const examples = system.split('\n').filter((l) => l.startsWith('{'));
+    expect(examples).toHaveLength(2);
+    for (const raw of examples) {
+      const a = JSON.parse(raw) as { tag: string; requiredSkills: string[]; niceSkills: string[]; type: string | null; format: string | null };
+      // Пример проходит проверку по справочникам без потерь
+      expect(parse(raw)).toMatchObject({ tags: [a.tag], requiredSkills: a.requiredSkills, niceSkills: a.niceSkills, type: a.type, format: a.format });
+    }
+    expect(examples.map((raw) => JSON.parse(raw) as { type: unknown; format: unknown }).some((a) => a.type === null && a.format === null)).toBe(true);
+  });
+
+  it('модели — одни и те же числа навыков: потолки сервера в промпт не попадают', () => {
+    expect(system).toContain('1–3 кода навыков');
+    expect(system).toContain('0–4 кода навыков');
+    expect(system).not.toMatch(/не больше [56]/);
+  });
 });
 
 describe('rulesDraft: по ключевым словам', () => {
@@ -193,7 +210,7 @@ describe('rulesDraft: по ключевым словам', () => {
 
 describe('createPlaceDrafter', () => {
   const ok = '{"title":"Вести соцсети кофейни","tag":"social_ads","requiredSkills":["smm"],"niceSkills":["canva"],"type":null,"format":"office"}';
-  const fakeAi = (chat: GigaChat['chat']): GigaChat => ({ chat: vi.fn(chat) });
+  const fakeAi = (chat: GigaChat['chat']): GigaChat => ({ chat: vi.fn(chat), models: vi.fn(async () => []) });
 
   it('ответ модели — source: ai', async () => {
     const ai = fakeAi(async () => ok);
@@ -243,18 +260,96 @@ describe('createPlaceDrafter', () => {
     expect(ai.chat).toHaveBeenCalledTimes(3);
   });
 
-  it('одновременно к модели — не больше maxInFlight, остальным правила', async () => {
+  it('одновременно к модели — не больше maxInFlight, остальные ждут очереди и тоже получают ответ модели', async () => {
+    let active = 0;
+    let peak = 0;
+    const order: string[] = [];
+    const ai = fakeAi(async (messages) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      order.push(messages[1]!.content);
+      await new Promise((r) => setTimeout(r, 20));
+      active -= 1;
+      return ok;
+    });
+    const drafter = createPlaceDrafter({ ai, log, maxInFlight: 1 });
+    const results = await Promise.all(['кофейня 1', 'кофейня 2', 'кофейня 3'].map((t) => drafter.draft(t)));
+    expect(results.map((d) => d.source)).toEqual(['ai', 'ai', 'ai']);
+    expect(peak).toBe(1);
+    // По порядку прихода
+    expect(order).toEqual(['<<<ЗАДАЧА\nкофейня 1\nЗАДАЧА>>>', '<<<ЗАДАЧА\nкофейня 2\nЗАДАЧА>>>', '<<<ЗАДАЧА\nкофейня 3\nЗАДАЧА>>>']);
+  });
+
+  it('очередь полна — сразу правила', async () => {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
     const ai = fakeAi(async () => {
       await gate;
       return ok;
     });
-    const drafter = createPlaceDrafter({ ai, log, maxInFlight: 1 });
+    const drafter = createPlaceDrafter({ ai, log, maxInFlight: 1, maxQueue: 1 });
     const first = drafter.draft('вести инсту кофейни');
+    const second = drafter.draft('вести инсту кофейни');
     expect((await drafter.draft('вести инсту кофейни')).source).toBe('rules');
     release();
     expect((await first).source).toBe('ai');
+    expect((await second).source).toBe('ai');
+    expect(ai.chat).toHaveBeenCalledTimes(2);
+  });
+
+  it('не дождался очереди или клиент ушёл — правила, очередь не застревает, паузы нет', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const ai = fakeAi(async () => {
+      await gate;
+      return ok;
+    });
+    const drafter = createPlaceDrafter({ ai, log, maxInFlight: 1, timeoutMs: 50 });
+    const first = drafter.draft('вести инсту кофейни');
+    const gone = new AbortController();
+    const leaving = drafter.draft('вести инсту кофейни', { signal: gone.signal });
+    const slow = drafter.draft('вести инсту кофейни');
+    gone.abort();
+    expect((await leaving).source).toBe('rules');
+    expect((await slow).source).toBe('rules');
+    release();
+    expect((await first).source).toBe('ai');
+    expect((await drafter.draft('вести инсту кофейни')).source).toBe('ai');
+    expect(ai.chat).toHaveBeenCalledTimes(2);
+  });
+
+  it('пока ждал очереди, GigaChat лёг — в модель не идём', async () => {
+    const ai = fakeAi(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+      throw new GigaChatError(503, 'chat', 'Ответ GigaChat: HTTP 503');
+    });
+    const drafter = createPlaceDrafter({ ai, log, maxInFlight: 1 });
+    const results = await Promise.all([drafter.draft('вести инсту кофейни'), drafter.draft('вести инсту кофейни')]);
+    expect(results.map((d) => d.source)).toEqual(['rules', 'rules']);
+    expect(ai.chat).toHaveBeenCalledTimes(1);
+  });
+
+  it('таймаут модели: за весь срок — пауза; срок съела очередь — не пауза', async () => {
+    const hang: GigaChat['chat'] = (_messages, { signal }) =>
+      new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new GigaChatError(0, 'chat', 'Сеть: TimeoutError'))));
+
+    // Модель молчала весь срок — GigaChat лёг, минуту в модель не ходим
+    const slowAi = fakeAi(hang);
+    const slowDrafter = createPlaceDrafter({ ai: slowAi, log, timeoutMs: 50 });
+    expect((await slowDrafter.draft('вести инсту кофейни')).source).toBe('rules');
+    expect((await slowDrafter.draft('вести инсту кофейни')).source).toBe('rules');
+    expect(slowAi.chat).toHaveBeenCalledTimes(1);
+
+    // Первый держит место 80 из 100 мс, второму остаётся ~20 мс: его таймаут — не падение GigaChat
+    let calls = 0;
+    const ai = fakeAi((messages, opts) => {
+      calls += 1;
+      return calls === 1 ? new Promise((resolve) => setTimeout(() => resolve(ok), 80)) : hang(messages, opts);
+    });
+    const drafter = createPlaceDrafter({ ai, log, maxInFlight: 1, timeoutMs: 100 });
+    const [first, second] = await Promise.all([drafter.draft('вести инсту кофейни'), drafter.draft('вести инсту кофейни')]);
+    expect([first.source, second.source]).toEqual(['ai', 'rules']);
+    vi.mocked(ai.chat).mockImplementation(async () => ok);
     expect((await drafter.draft('вести инсту кофейни')).source).toBe('ai');
   });
 

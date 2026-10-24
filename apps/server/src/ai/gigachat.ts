@@ -18,8 +18,8 @@ export class GigaChatError extends Error {
   constructor(
     /** Код HTTP; 0 — сеть или таймаут. */
     readonly status: number,
-    /** На каком шаге: токен или ответ модели. */
-    readonly stage: 'oauth' | 'chat',
+    /** На каком шаге: токен, ответ модели или список моделей. */
+    readonly stage: 'oauth' | 'chat' | 'models',
     message: string,
   ) {
     super(message);
@@ -30,6 +30,8 @@ export class GigaChatError extends Error {
 export interface GigaChat {
   /** Текст ответа модели. signal — общий срок на токен и ответ. */
   chat(messages: ChatMessage[], opts: { signal: AbortSignal; temperature?: number; maxTokens?: number }): Promise<string>;
+  /** id доступных моделей (GET /models). Заодно проверяет ключ: без токена список не получить. */
+  models(signal: AbortSignal): Promise<string[]>;
 }
 
 export interface GigaChatOptions {
@@ -118,6 +120,20 @@ export function createGigaChat(opts: GigaChatOptions): GigaChat {
       const content = data?.choices?.[0]?.message?.content;
       if (typeof content !== 'string') throw new GigaChatError(res.status, 'chat', 'Ответ GigaChat без текста');
       return content;
+    },
+
+    async models(signal) {
+      const bearer = await accessToken(signal);
+      let res: Response;
+      try {
+        res = await doFetch(`${apiBase}/models`, { headers: { Accept: 'application/json', Authorization: `Bearer ${bearer}` }, signal });
+      } catch (err) {
+        throw new GigaChatError(0, 'models', `Сеть: ${errName(err)}`);
+      }
+      if (res.status === 401) token = null;
+      if (!res.ok) throw new GigaChatError(res.status, 'models', `Модели GigaChat: HTTP ${res.status}`);
+      const data = (await res.json().catch(() => null)) as { data?: { id?: unknown }[] } | null;
+      return (Array.isArray(data?.data) ? data.data : []).map((m) => m?.id).filter((id): id is string => typeof id === 'string');
     },
   };
 }
