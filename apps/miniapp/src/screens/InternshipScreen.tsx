@@ -6,7 +6,9 @@ import { useLoad } from '../api/useLoad';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
+import { backTo, STUDENT_TABS } from '../app/history';
 import type { AsStudentState, LaunchState, OwnLinkState } from '../app/launchState';
+import { useMe } from '../app/me';
 import { parsePlaceId } from '../app/placeParam';
 import { copyText } from '../app/clipboard';
 import { placeLink, placeLinkText, placeShareText } from '../app/placeLink';
@@ -40,6 +42,7 @@ export function InternshipScreen() {
   const valid = parsed !== null;
   const id = parsed ?? 0;
   const navigate = useNavigate();
+  const { me } = useMe();
   // Своё место из колоды студента («Ваше место»), сканера или «Посмотреть как студент» — глазами студента,
   // а не списком кандидатов
   const nav = useLocation().state as (AsStudentState & LaunchState) | null;
@@ -63,6 +66,15 @@ export function InternshipScreen() {
     navigate(`/employer/internships/${id}/candidates`, { replace: true, state });
   }, [isOwner, fromLaunch, id, navigate]);
 
+  /**
+   * «К местам для вас»: в колоду студента, а без анкеты студента (работодатель открыл ссылку на чужое место) — на выбор
+   * роли, а не в онбординг. Раздел студента уже позади («Подробнее», сканер, «Отклики») — возвращаемся в него,
+   * а не кладём ленту второй записью поверх
+   */
+  const student = me.roles.student || (state.status === 'ok' && state.data[0].match !== undefined);
+  const toPlaces = () => (student ? backTo(navigate, '/student', STUDENT_TABS) : backTo(navigate, '/'));
+  const placesLabel = student ? 'К местам для вас' : 'На главный';
+
   if (!valid) return <Navigate to="/" replace />;
 
   if (state.status === 'loading' || isOwner) {
@@ -80,8 +92,8 @@ export function InternshipScreen() {
           <EmptyState
             title="Место не найдено"
             text="Возможно, его уже закрыли. Посмотрите другие подходящие места."
-            actionLabel="К местам для вас"
-            onAction={() => navigate('/student', { replace: true })}
+            actionLabel={placesLabel}
+            onAction={toPlaces}
           />
         ) : (
           <ErrorState error={state.error} onRetry={retry} />
@@ -156,8 +168,8 @@ export function InternshipScreen() {
             Всё-таки интересно
           </button>
         ) : (
-          <button type="button" className="btn sec" onClick={() => navigate('/student')}>
-            К местам для вас
+          <button type="button" className="btn sec" onClick={toPlaces}>
+            {placesLabel}
           </button>
         )}
       </>
@@ -166,8 +178,8 @@ export function InternshipScreen() {
     bar = (
       <>
         <p className="m0 lbl pd-note">Место закрыто — отклики больше не принимаются.</p>
-        <button type="button" className="btn sec" onClick={() => navigate('/student')}>
-          К местам для вас
+        <button type="button" className="btn sec" onClick={toPlaces}>
+          {placesLabel}
         </button>
       </>
     );

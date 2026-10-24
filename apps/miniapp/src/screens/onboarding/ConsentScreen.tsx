@@ -2,7 +2,9 @@ import { useState, type ReactNode } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import { LEGAL } from '../../app/about';
+import { backTo } from '../../app/history';
 import { useMe } from '../../app/me';
+import { parsePlaceId } from '../../app/placeParam';
 import { DocLink } from '../../components/DocLink';
 import { haptic, requestContact, type MaxContact } from '../../max/bridge';
 import './onboarding.css';
@@ -77,6 +79,26 @@ export function ConsentScreen() {
 
   const [step, setStep] = useState<Step>(() => (!me.consent ? 'consent' : !me.hasPhone ? 'phone' : 'done'));
   const [firstStep] = useState(step);
+  // Шаги, которые остались на момент открытия: «Поделиться номером» из профиля — один шаг, без «потом анкета»
+  const [plan] = useState(() => {
+    const steps: ('consent' | 'phone' | 'profile')[] = [];
+    if (!me.consent) steps.push('consent');
+    if (!me.hasPhone) steps.push('phone');
+    if (!(employer ? me.roles.employer : me.roles.student)) steps.push('profile');
+    return steps;
+  });
+  const stepLabel = (current: 'consent' | 'phone'): string | null => {
+    const at = plan.indexOf(current);
+    if (at < 0 || plan.length < 2) return null;
+    const rest = plan.slice(at + 1).map((s) => (s === 'phone' ? 'номер' : lastStep));
+    return `Шаг ${at + 1} из ${plan.length}${rest.length > 0 ? ` · потом ${rest.join(' и ')}` : ''}`;
+  };
+  const label = step === 'done' ? null : stepLabel(step);
+
+  // «Не сейчас» — туда, откуда пришли: к месту, ради которого начали анкету (QR, ссылка друга), иначе на главный.
+  // Возвратом по истории, если запись позади, — без дубля главного под главным
+  const placeId = parsePlaceId(new URLSearchParams(next.split('?')[1] ?? '').get('place'));
+  const notNow = () => backTo(navigate, placeId !== null ? `/internships/${placeId}` : '/');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,7 +150,7 @@ export function ConsentScreen() {
   if (step === 'consent') {
     content = (
       <>
-        <span className="lbl">Шаг 1 из 3 · потом номер и {lastStep}</span>
+        {label && <span className="lbl">{label}</span>}
         <h1 id="ob-title" className="d m0 ob-h">
           Согласие на обработку данных
         </h1>
@@ -164,7 +186,7 @@ export function ConsentScreen() {
         <button type="button" className="btn pri" onClick={giveConsent} disabled={busy}>
           {busy ? 'Сохраняем…' : 'Даю согласие'}
         </button>
-        <button type="button" className="btn ghost" onClick={() => navigate('/', { replace: true })} disabled={busy}>
+        <button type="button" className="btn ghost" onClick={notNow} disabled={busy}>
           Не сейчас
         </button>
       </>
@@ -172,7 +194,7 @@ export function ConsentScreen() {
   } else {
     content = (
       <>
-        <span className="lbl">Шаг 2 из 3 · потом {lastStep}</span>
+        {label && <span className="lbl">{label}</span>}
         <h1 id="ob-title" className="d m0 ob-h">
           Номер телефона
         </h1>

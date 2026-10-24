@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { backTo } from './history';
 import { ChunkLoadError, reloadApp } from './lazyScreen';
 
 /** Не пришёл чанк экрана. Загрузчики помечают сбой сами (ChunkLoadError); текст — запасной путь для чужих ошибок. */
@@ -72,11 +73,11 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
 
 /**
  * Сбой экрана — не загрузился чанк (пропала сеть, выкатили новую версию) или ошибка при отрисовке: вместо белого экрана —
- * понятный текст, «Повторить» и выход на главный. «На главный» заменяет запись в истории: «Назад» MAX не вернёт
- * на сломанный экран.
+ * понятный текст, «Повторить» и выход на главный. «На главный» возвращает к главному в истории или заменяет запись:
+ * «Назад» MAX не вернёт на сломанный экран и не поведёт с главного снова на главный.
  */
 export function ScreenBoundary({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  return <Boundary onHome={pathname === '/' ? null : () => navigate('/', { replace: true })}>{children}</Boundary>;
+  return <Boundary onHome={pathname === '/' ? null : () => backTo(navigate, '/')}>{children}</Boundary>;
 }
