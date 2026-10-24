@@ -57,12 +57,29 @@ function list(names: string[], max = 2): string {
   return `${names.slice(0, max).join(', ')} и ещё ${names.length - max}`;
 }
 
+/** Недостающий навык → близкий навык студента, которым он закрыт наполовину (#71). */
+export function closeOf(match: Match): ReadonlyMap<SkillCode, SkillCode> {
+  return new Map([...(match.mustClose ?? []), ...(match.niceClose ?? [])].map((c) => [c.need, c.have] as const));
+}
+
+/** Сколько закрыто с половинками за близкие навыки: «2», «1,5». */
+export function closedCount(matched: number, close: number): string {
+  return String(matched + close / 2).replace('.', ',');
+}
+
 /**
  * Одна фраза о совпадении:
  * «Закрывает все навыки» · «Закрывает все обязательные, нет: юнит-экономика» · «Не хватает обязательного: Wildberries».
  */
 export function matchText(match: Match, names: SkillNames): string {
-  const missing = (codes: SkillCode[]) => codes.map((c) => inPhrase(skillName(names, c)));
+  const close = closeOf(match);
+  // «Wildberries (есть Ozon)»: близкий навык засчитан наполовину, но навыка из требований у студента нет
+  const missing = (codes: SkillCode[]) =>
+    codes.map((c) => {
+      const name = inPhrase(skillName(names, c));
+      const have = close.get(c);
+      return have ? `${name} (есть ${inPhrase(skillName(names, have))})` : name;
+    });
   const mustAll = match.mustMatched.length + match.mustMissing.length;
   const niceAll = match.niceMatched.length + match.niceMissing.length;
 
@@ -76,13 +93,13 @@ export function matchText(match: Match, names: SkillNames): string {
   return `Закрывает все обязательные, нет: ${list(missing(match.niceMissing))}`;
 }
 
-/** «обязательные 2/2 · желательные 1/3»; без желательных — только обязательные. */
+/** «обязательные 2/2 · желательные 1/3», близкий навык — половина: «1,5/2»; без желательных — только обязательные. */
 export function matchCounts(match: Match): string {
   const mustAll = match.mustMatched.length + match.mustMissing.length;
   const niceAll = match.niceMatched.length + match.niceMissing.length;
   const parts: string[] = [];
-  if (mustAll > 0) parts.push(`обязательные ${match.mustMatched.length}/${mustAll}`);
-  if (niceAll > 0) parts.push(`желательные ${match.niceMatched.length}/${niceAll}`);
+  if (mustAll > 0) parts.push(`обязательные ${closedCount(match.mustMatched.length, match.mustClose?.length ?? 0)}/${mustAll}`);
+  if (niceAll > 0) parts.push(`желательные ${closedCount(match.niceMatched.length, match.niceClose?.length ?? 0)}/${niceAll}`);
   return parts.join(' · ');
 }
 

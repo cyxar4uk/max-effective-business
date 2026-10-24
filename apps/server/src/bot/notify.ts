@@ -72,7 +72,9 @@ export async function onInternshipCreated(deps: NotifyDeps, { internshipId }: Ap
       if (await enqueue(deps, user, KIND.digest, `digest:${user.userId}:${day}`, digestMessage())) queued++;
       continue;
     }
-    const matchedSkills = [...match.mustMatched, ...match.niceMatched].map((c) => names.get(c) ?? c);
+    const name = (c: string) => names.get(c) ?? c;
+    const matchedSkills = [...match.mustMatched, ...match.niceMatched].map(name);
+    const closeSkills = [...match.mustClose, ...match.niceClose].map(({ need, have }) => `${name(need)} (есть ${name(have)})`);
     const ok = await enqueue(
       deps,
       user,
@@ -84,6 +86,7 @@ export async function onInternshipCreated(deps: NotifyDeps, { internshipId }: Ap
         company,
         score: match.score,
         matchedSkills,
+        closeSkills,
         terms: { type: internship.type, paid: internship.paid, salary: internship.salary },
       }),
     );

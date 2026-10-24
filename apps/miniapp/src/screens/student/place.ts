@@ -1,5 +1,6 @@
 // Подписи и форматирование места для экранов студента. Коды — из docs/api.md.
 import type { Internship, InternshipType, Match, Skills, WorkFormat } from '../../api/types';
+import { closedCount } from '../../app/matchText';
 
 export const TYPE_LABEL: Record<InternshipType, string> = {
   practice: 'Практика',
@@ -166,13 +167,16 @@ export function typeChip(place: Pick<Internship, 'type' | 'paid'>): string {
 /** Уровень совпадения для эквалайзера: ≥ 80 — высокий, 60–79 — средний, ниже — низкий. */
 export const matchLevel = (score: number): 'hi' | 'md' | 'lo' => (score >= 80 ? 'hi' : score >= 60 ? 'md' : 'lo');
 
-/** «70 % × 2 из 2 обязательных + 30 % × 2 из 3 желательных». Без желательных считаются только обязательные. */
+/**
+ * «70 % × 2 из 2 обязательных + 30 % × 2 из 3 желательных». Без желательных считаются только обязательные.
+ * Близкий навык — половина: «1,5 из 2», чтобы формула сходилась с процентом.
+ */
 export function matchFormula(match: Match): string[] {
   const mustAll = match.mustMatched.length + match.mustMissing.length;
   const niceAll = match.niceMatched.length + match.niceMissing.length;
-  const must = `${match.mustMatched.length} из ${mustAll} ${plural(mustAll, ['обязательного', 'обязательных', 'обязательных'])}`;
+  const must = `${closedCount(match.mustMatched.length, match.mustClose?.length ?? 0)} из ${mustAll} ${plural(mustAll, ['обязательного', 'обязательных', 'обязательных'])}`;
   if (niceAll === 0) return [must];
-  const nice = `${match.niceMatched.length} из ${niceAll} ${plural(niceAll, ['желательного', 'желательных', 'желательных'])}`;
+  const nice = `${closedCount(match.niceMatched.length, match.niceClose?.length ?? 0)} из ${niceAll} ${plural(niceAll, ['желательного', 'желательных', 'желательных'])}`;
   return [`70${NBSP}% × ${must}`, `+ 30${NBSP}% × ${nice}`];
 }
 

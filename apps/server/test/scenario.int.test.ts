@@ -50,7 +50,8 @@ describe.skipIf(!url)('основной сценарий', () => {
     await ds.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
     await ds.runMigrations();
     await ds.query(`INSERT INTO skills (code, name, group_name) VALUES
-      ('excel','Excel','Аналитика'), ('sql','SQL','Аналитика'), ('power_bi','Power BI','Аналитика'), ('figma','Figma','Дизайн')`);
+      ('excel','Excel','Аналитика'), ('sql','SQL','Аналитика'), ('power_bi','Power BI','Аналитика'), ('figma','Figma','Дизайн'),
+      ('google_sheets','Google Таблицы','Аналитика')`);
     await ds.query(`INSERT INTO task_tags (code, name, sort, skills) VALUES
       ('spreadsheets','Таблицы и аналитика',20,'{excel,power_bi}'), ('website','Сайт',10,'{figma}')`);
 
@@ -200,7 +201,9 @@ describe.skipIf(!url)('основной сценарий', () => {
     const res = await as(STUDENT).get('/api/student/feed');
     expect(res.status).toBe(200);
     expect(res.body.items).toHaveLength(1);
-    expect(res.body.items[0].match).toEqual({ score: 65, mustMatched: ['excel'], mustMissing: ['sql'], niceMatched: ['power_bi'], niceMissing: [] });
+    expect(res.body.items[0].match).toEqual({
+      score: 65, mustMatched: ['excel'], mustMissing: ['sql'], niceMatched: ['power_bi'], niceMissing: [], mustClose: [], niceClose: [],
+    });
   });
 
   it('отклик идемпотентен', async () => {
@@ -441,7 +444,14 @@ describe.skipIf(!url)('основной сценарий', () => {
     const match = await as(E3).post('/api/internships', { ...PLACE, title: 'Подходит', requiredSkills: ['sql'], format: 'remote' });
     const noSkill = await as(E3).post('/api/internships', { ...PLACE, title: 'Нет навыков', requiredSkills: ['figma'], format: 'remote' });
     const office = await as(E3).post('/api/internships', { ...PLACE, title: 'Очно', requiredSkills: ['sql'], format: 'office', city: 'Москва' });
-    const feed = (await as(STUDENT).get('/api/student/feed')).body.items.map((i: { id: number }) => i.id);
+    // Только близкий навык: Google Таблицы, а у студента Excel (#71) — место в ленте, засчитано наполовину
+    const close = await as(E3).post('/api/internships', { ...PLACE, title: 'Близкий', requiredSkills: ['google_sheets'], format: 'remote' });
+    expect(close.status).toBe(201);
+    const items: { id: number; match: unknown }[] = (await as(STUDENT).get('/api/student/feed')).body.items;
+    const feed = items.map((i) => i.id);
+    expect(items.find((i) => i.id === close.body.id)?.match).toMatchObject({
+      score: 50, mustMissing: ['google_sheets'], mustClose: [{ need: 'google_sheets', have: 'excel' }],
+    });
     expect(feed).toContain(match.body.id);
     expect(feed).not.toContain(noSkill.body.id);
     expect(feed).not.toContain(office.body.id);
