@@ -70,6 +70,8 @@
 .sd-skill{gap:10px}
 .sd-mark{width:26px;padding:0;justify-content:center;flex-shrink:0}
 .sd-miss{color:var(--ink3)}
+/* «есть близкий: Ozon — засчитано наполовину» под недостающим навыком (#71) */
+.sd-close{display:block;font-size:13px;color:var(--ink2)}
 .sd-link{font:500 14px/1.3 var(--font);text-decoration:none;color:var(--wait-ink);background:none;border:0;padding:0;cursor:pointer;white-space:nowrap}
 .sd-source{align-self:flex-start}
 .sd-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}

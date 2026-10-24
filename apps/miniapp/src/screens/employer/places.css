@@ -153,6 +153,9 @@
 .cd-card .info{position:relative;padding-top:124px}
 .cd-initial{position:absolute;left:0;right:0;top:14px;text-align:center;font-family:var(--font-display);font-weight:800;font-size:150px;line-height:1;color:rgba(255,255,255,.88)}
 .skills.cd-skills{list-style:none;margin:0;padding:0}
+/* «Wildberries ≈ Ozon» (#71): длинные названия не вылезают за карточку, близкий навык обрезается многоточием */
+.cd-skills .sk{max-width:100%}
+.cd-sk-close{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cd-name{font-size:28px;overflow-wrap:anywhere}
 .cd-counts{font-size:12.5px}
 .cd-phrase{margin:0;font-weight:600;font-size:15px;line-height:1.35}

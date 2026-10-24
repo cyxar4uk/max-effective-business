@@ -43,12 +43,22 @@ export interface Tag {
   skills: SkillCode[];
 }
 
+/** Требование закрыто близким навыком наполовину (#71): нужен `need`, у студента есть `have`. */
+export interface CloseSkill {
+  need: SkillCode;
+  have: SkillCode;
+}
+
 export interface Match {
   score: number;
   mustMatched: SkillCode[];
+  /** Чего нет, в том числе закрытое близким навыком. */
   mustMissing: SkillCode[];
   niceMatched: SkillCode[];
   niceMissing: SkillCode[];
+  /** Часть mustMissing / niceMissing, закрытая близким навыком. В откликах до #71 полей нет. */
+  mustClose?: CloseSkill[];
+  niceClose?: CloseSkill[];
 }
 
 /** «Место» в интерфейсе: стажировка, практика или подработка. */

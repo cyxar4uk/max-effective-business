@@ -1,7 +1,7 @@
 // Общие куски кандидата: аватар, эквалайзер совпадения, навыки, тост отмены и короткие сообщения.
 import { useEffect, useState } from 'react';
 import type { Candidate, Match } from '../../api/types';
-import { matchBars, matchLevel, skillName, type SkillNames } from '../../app/matchText';
+import { closeOf, matchBars, matchLevel, skillName, type SkillNames } from '../../app/matchText';
 import { avatarClass, initial } from './candidate';
 import { CheckIcon, CrossIcon } from './icons';
 import { UNDO_MS, type Decision } from './useDecision';
@@ -46,8 +46,12 @@ export function Eq({ score, height = 16, onSurf = true }: EqProps) {
   );
 }
 
-/** Навыки места у кандидата: совпавшие — с галочкой, недостающие — пунктиром. Сначала обязательные. */
+/**
+ * Навыки места у кандидата: совпавшие — с галочкой, недостающие — пунктиром. Сначала обязательные.
+ * Закрытый близким навыком — «Wildberries ≈ Ozon» (#71): навыка нет, но засчитана половина.
+ */
 export function MatchSkills({ match, names, max }: { match: Match; names: SkillNames; max?: number }) {
+  const close = closeOf(match);
   const all = [
     ...match.mustMatched.map((code) => ({ code, ok: true })),
     ...match.niceMatched.map((code) => ({ code, ok: true })),
@@ -63,7 +67,18 @@ export function MatchSkills({ match, names, max }: { match: Match; names: SkillN
         <li key={s.code} className={s.ok ? 'sk ok' : 'sk no'}>
           {s.ok && <CheckIcon className="ic" />}
           {skillName(names, s.code)}
-          <span className="sr-only">{s.ok ? ' — есть' : ' — нет'}</span>
+          {!s.ok && close.has(s.code) ? (
+            <>
+              <span className="cd-sk-close" aria-hidden="true">
+                ≈ {skillName(names, close.get(s.code)!)}
+              </span>
+              <span className="sr-only">
+                {` — нет, есть близкий: ${skillName(names, close.get(s.code)!)}, засчитано наполовину`}
+              </span>
+            </>
+          ) : (
+            <span className="sr-only">{s.ok ? ' — есть' : ' — нет'}</span>
+          )}
         </li>
       ))}
       {more > 0 && <li className="sk no">+{more}</li>}

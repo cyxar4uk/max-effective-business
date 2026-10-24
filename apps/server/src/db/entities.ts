@@ -14,9 +14,16 @@ export type NotificationStatus = 'pending' | 'sent' | 'failed';
 export interface MatchBreakdown {
   score: number;
   mustMatched: string[];
+  /** Чего нет; закрытые близким навыком — тоже здесь (#71). */
   mustMissing: string[];
   niceMatched: string[];
   niceMissing: string[];
+  /**
+   * Часть mustMissing / niceMissing, закрытая близким навыком наполовину: «нужен need — есть have».
+   * В откликах, сохранённых до #71, полей нет — читать как пустые.
+   */
+  mustClose?: { need: string; have: string }[];
+  niceClose?: { need: string; have: string }[];
 }
 
 @Entity('users')

@@ -25,6 +25,15 @@ export interface InternshipMatchInput {
   city: string | null;
 }
 
+/**
+ * Требование места закрыто близким навыком (#71): у студента нет `need`, но есть близкий `have`
+ * (seed/closeSkills.ts). Засчитывается половина веса `need`.
+ */
+export interface CloseSkill {
+  need: SkillCode;
+  have: SkillCode;
+}
+
 /** Почему не пройден жёсткий фильтр. */
 export type FilterFailure = 'format' | 'city';
 
@@ -35,7 +44,13 @@ export interface MatchResult {
   passesFilters: boolean;
   filterFailures: FilterFailure[];
   mustMatched: SkillCode[];
+  /** Обязательные, которых у студента нет. Закрытые близким навыком тоже здесь: обязательный навык не закрыт. */
   mustMissing: SkillCode[];
   niceMatched: SkillCode[];
+  /** Желательные, которых у студента нет, в том числе закрытые близким навыком. */
   niceMissing: SkillCode[];
+  /** Часть mustMissing, закрытая близким навыком наполовину, — в порядке mustMissing. */
+  mustClose: CloseSkill[];
+  /** Часть niceMissing, закрытая близким навыком наполовину. */
+  niceClose: CloseSkill[];
 }
