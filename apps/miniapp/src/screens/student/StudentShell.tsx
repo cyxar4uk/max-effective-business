@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Navigate, NavLink, useLocation } from 'react-router';
 import { useMe } from '../../app/me';
+import { clearNoticedInvites, useNoticedInvites } from './inviteWatch';
 import { Icon } from './ui';
 
 /**
@@ -9,6 +10,13 @@ import { Icon } from './ui';
  */
 function StudentNav() {
   const cls = ({ isActive }: { isActive: boolean }) => (isActive ? 'on' : undefined);
+  const { pathname } = useLocation();
+  const onInterests = pathname.startsWith('/student/interests');
+  // Новые приглашения, замеченные в ленте (inviteWatch.ts): бейдж, пока «Отклики» не открыли
+  const invites = useNoticedInvites();
+  useEffect(() => {
+    if (onInterests) clearNoticedInvites();
+  }, [onInterests, invites]);
   return (
     <nav className="nav st-nav" aria-label="Разделы студента">
       <NavLink to="/student" end replace className={cls}>
@@ -18,6 +26,11 @@ function StudentNav() {
       <NavLink to="/student/interests" replace className={cls}>
         <Icon name="heart" />
         Отклики
+        {invites > 0 && !onInterests && (
+          <span className="badge" aria-label={`Новых приглашений: ${invites}`}>
+            {invites}
+          </span>
+        )}
       </NavLink>
       <NavLink to="/student/profile" end replace className={cls}>
         <Icon name="user" />

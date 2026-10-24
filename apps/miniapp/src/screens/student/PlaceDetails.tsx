@@ -47,13 +47,7 @@ export function MatchBreakdown({ match, names }: { match: Match; names: SkillNam
         <Pct score={match.score} size={44} />
         <div className="col" style={{ gap: 6 }}>
           <Eq score={match.score} onSurf />
-          <span className="lbl">
-            {matchFormula(match).map((line, i) => (
-              <span key={i} className="sd-formula">
-                {line}
-              </span>
-            ))}
-          </span>
+          <span className="lbl">{matchFormula(match)}</span>
         </div>
       </div>
       {must.length > 0 && <span className="cap">Обязательные</span>}

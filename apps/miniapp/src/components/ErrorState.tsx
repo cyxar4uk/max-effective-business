@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router';
 import type { ApiError } from '../api/client';
 import { ABOUT } from '../app/about';
 import { backTo } from '../app/history';
-import { openMaxLink } from '../max/bridge';
+import { initData, openMaxLink } from '../max/bridge';
 
 interface ErrorStateProps {
   error: ApiError;
@@ -13,7 +13,10 @@ interface ErrorStateProps {
   exit?: boolean;
 }
 
-const openBot = () => openMaxLink(`https://max.ru/${ABOUT.botNick}?start=`);
+const botLink = ABOUT.botNick ? `https://max.ru/${ABOUT.botNick}?start=` : null;
+const openBot = () => {
+  if (botLink) openMaxLink(botLink);
+};
 
 /**
  * Ошибка загрузки: текст сервера как есть, «Повторить» и выход на главный — чтобы после ошибки можно было продолжить
@@ -23,6 +26,21 @@ export function ErrorState({ error, onRetry, exit = true }: ErrorStateProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const showExit = exit && pathname !== '/';
+
+  // Открыли в обычном браузере: данных запуска MAX нет вовсе, «устарели» тут неправда — объясняем, где открыть
+  if (error.code === 'UNAUTHORIZED' && !initData) {
+    return (
+      <div className="state" role="alert">
+        <h2 className="state-title d">Откройте приложение в MAX</h2>
+        <p className="state-text">Это мини-приложение MAX — откройте его кнопкой в боте.</p>
+        {botLink && (
+          <a className="btn pri" href={botLink} target="_blank" rel="noopener noreferrer">
+            Открыть бота в MAX
+          </a>
+        )}
+      </div>
+    );
+  }
 
   if (error.code === 'UNAUTHORIZED') {
     return (
