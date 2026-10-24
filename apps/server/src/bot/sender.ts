@@ -1,6 +1,7 @@
 // Отправка уведомлений из очереди с учётом лимитов MAX (docs/05_max_platform.md):
 // не больше 2 сообщений в секунду в один диалог и 30 запросов в секунду на весь API — держим 25 с запасом.
-// Временная ошибка (429, 5xx, сеть) — повтор с растущей паузой; окончательная (403 и прочие 4xx) — failed.
+// Временная ошибка (429, 5xx, сеть) — повтор с растущей паузой около 45 минут; окончательная (403 и прочие 4xx) —
+// failed. Ответ на /start после таймаута не повторяем: он мог уже дойти.
 // Ошибка отправки никогда не доходит до пользовательского запроса: очередь живёт отдельно от API.
 import type { Logger } from 'pino';
 import type { BotData } from '../db/botData.js';
@@ -9,7 +10,8 @@ import { REPLY_KINDS, toMessageBody, type QueuedMessage } from './messages.js';
 
 export const PER_CHAT_INTERVAL_MS = 500;
 export const GLOBAL_INTERVAL_MS = 40;
-export const MAX_ATTEMPTS = 5;
+/** Паузы 5, 10, 20 … 300 с между попытками дают около 45 минут: сбой MAX или TLS не теряет приглашения. */
+export const MAX_ATTEMPTS = 15;
 export const BATCH = 10;
 
 /** Тихие часы по Москве (решение Артёма от 27.09): с 22:00 до 9:00 уведомления не шлём, откладываем до утра. */
@@ -81,14 +83,18 @@ export function createSender(deps: SenderDeps) {
         await deps.data.markSent(n.id);
       } catch (err) {
         const retryable = !(err instanceof MaxApiError) || err.retryable;
+        // Ответ на /start или текст после таймаута мог дойти, и повтор пришлёт его второй раз. Дубль ответа хуже
+        // потери: человек просто напишет ещё раз. Уведомления повторяем — потерять приглашение с контактом хуже
+        const maybeTwice = REPLY_KINDS.has(n.kind) && err instanceof MaxApiError && err.maybeDelivered;
+        const retry = retryable && !maybeTwice && n.attempts < MAX_ATTEMPTS;
         const reason = err instanceof MaxApiError ? `${err.status} ${err.code}: ${err.message}` : String(err);
-        if (retryable && n.attempts < MAX_ATTEMPTS) {
+        if (retry) {
           await deps.data.markRetry(n.id, reason, retryDelaySec(n.attempts));
         } else {
-          await deps.data.markFailed(n.id, reason);
+          await deps.data.markFailed(n.id, maybeTwice ? `${reason} (ответ мог дойти, не повторяем)` : reason);
         }
         // В лог — id и вид уведомления, без текста: в нём бывают телефоны
-        deps.log.warn({ notificationId: n.id, kind: n.kind, attempt: n.attempts, retry: retryable && n.attempts < MAX_ATTEMPTS, reason }, 'Уведомление не отправлено');
+        deps.log.warn({ notificationId: n.id, kind: n.kind, attempt: n.attempts, retry, reason }, 'Уведомление не отправлено');
       }
     }
     return due.length;

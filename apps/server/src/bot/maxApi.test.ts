@@ -44,6 +44,14 @@ describe('createMaxApi', () => {
       throw new TypeError('fetch failed');
     }) as unknown as typeof fetch;
     const err = await createMaxApi({ token: 't', fetch: failing }).sendMessage(1, { text: 'x' }).catch((e: unknown) => e);
-    expect(err).toMatchObject({ status: 0, code: 'network', retryable: true });
+    expect(err).toMatchObject({ status: 0, code: 'network', retryable: true, maybeDelivered: false });
+  });
+
+  it('таймаут → status 0, можно повторить, но запрос мог дойти', async () => {
+    const slow = (async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    }) as unknown as typeof fetch;
+    const err = await createMaxApi({ token: 't', fetch: slow }).sendMessage(1, { text: 'x' }).catch((e: unknown) => e);
+    expect(err).toMatchObject({ status: 0, code: 'timeout', retryable: true, maybeDelivered: true });
   });
 });

@@ -30,6 +30,11 @@ export class MaxApiError extends Error {
   get retryable(): boolean {
     return this.status === 0 || this.status === 429 || this.status >= 500;
   }
+
+  /** Таймаут: MAX мог принять запрос, просто ответ не дошёл, — повтор может прислать сообщение второй раз. */
+  get maybeDelivered(): boolean {
+    return this.status === 0 && this.code === 'timeout';
+  }
 }
 
 export interface MaxApi {
@@ -53,7 +58,9 @@ export function createMaxApi(opts: { token: string; baseUrl?: string; timeoutMs?
         signal: AbortSignal.timeout(timeoutMs),
       });
     } catch (err) {
-      throw new MaxApiError(0, 'network', err instanceof Error ? err.message : String(err));
+      // timeout — запрос ушёл, ответа не дождались; network — не достучались (DNS, соединение, TLS)
+      const code = (err as { name?: unknown } | null)?.name === 'TimeoutError' ? 'timeout' : 'network';
+      throw new MaxApiError(0, code, err instanceof Error ? err.message : String(err));
     }
     const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
