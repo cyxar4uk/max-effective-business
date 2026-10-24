@@ -1,13 +1,15 @@
 import { useLocation, useNavigate } from 'react-router';
 import type { ApiError } from '../api/client';
 import { ABOUT } from '../app/about';
+import { backTo } from '../app/history';
 import { openMaxLink } from '../max/bridge';
 
 interface ErrorStateProps {
   error: ApiError;
   onRetry: () => void;
   /** Показать выход на главный (по умолчанию — везде, кроме самого главного и экрана до загрузки пользователя).
-   *  Переход заменяет запись в истории: «Назад» MAX не вернёт на экран с ошибкой. */
+   *  Переход возвращает к главному в истории или заменяет запись: «Назад» MAX не вернёт на экран с ошибкой
+   *  и не поведёт с главного снова на главный. */
   exit?: boolean;
 }
 
@@ -53,7 +55,7 @@ export function ErrorState({ error, onRetry, exit = true }: ErrorStateProps) {
         Повторить
       </button>
       {showExit && (
-        <button type="button" className="btn ghost" onClick={() => navigate('/', { replace: true })}>
+        <button type="button" className="btn ghost" onClick={() => backTo(navigate, '/')}>
           На главный
         </button>
       )}

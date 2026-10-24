@@ -169,7 +169,7 @@ export function InterestsList() {
           title="Откликов пока нет"
           text="Нажмите «Интересно» на подходящем месте — отклик появится здесь, а ответ компании — здесь и в чате с ботом."
           actionLabel="К местам"
-          onAction={() => navigate('/student')}
+          onAction={() => navigate('/student', { replace: true })}
         />
         <WaitNote />
       </div>

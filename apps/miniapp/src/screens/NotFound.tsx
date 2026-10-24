@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { backTo } from '../app/history';
 import { EmptyState } from '../components/EmptyState';
 
 export function NotFound() {
@@ -9,7 +10,7 @@ export function NotFound() {
         title="Такого экрана нет"
         text="Вернитесь на главный экран и выберите роль."
         actionLabel="На главный"
-        onAction={() => navigate('/', { replace: true })}
+        onAction={() => backTo(navigate, '/')}
       />
     </main>
   );
