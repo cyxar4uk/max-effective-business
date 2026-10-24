@@ -26,7 +26,11 @@ import { DemoBadge } from '../components/DemoBadge';
 const notFound = () => Promise.reject(new ApiError(404, 'NOT_FOUND', 'Место не найдено'));
 
 const STATUS: Record<InterestStatus, { label: string; text: string; cls: string }> = {
-  interested: { label: 'Вы откликнулись', text: 'Компания увидит вас в списке кандидатов. О приглашении бот напишет в чат.', cls: 'wait' },
+  interested: {
+    label: 'Вы откликнулись',
+    text: 'Компания увидит вас в списке кандидатов. Обычно отвечают за 1–2 дня: о приглашении бот напишет в чат, ответ появится в «Откликах».',
+    cls: 'wait',
+  },
   skipped: { label: 'Вы пропустили это место', text: 'Передумали? Отклик ещё можно отправить.', cls: 'no' },
   invited: { label: 'Это тандем', text: 'Компания пригласила вас. Контакт и следующие шаги — по кнопке ниже и в чате с ботом.', cls: 'tandem' },
   declined: { label: 'Компания выбрала другого кандидата', text: 'Посмотрите другие подходящие места.', cls: 'no' },
