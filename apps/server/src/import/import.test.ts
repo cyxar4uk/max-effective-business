@@ -270,6 +270,24 @@ describe('«ёлочки» в названиях «Работа России» (
     expect(typographQuotes('Стажёр в «Луч»')).toBe('Стажёр в «Луч»');
   });
 
+  it('грязные данные: без пробела, после двоеточия и тире, через косую, сдвоенные из CSV (ревью #120)', () => {
+    expect(typographQuotes('ООО"Ромашка"')).toBe('ООО«Ромашка»');
+    expect(typographQuotes('ООО ""РОМАШКА""')).toBe('ООО «РОМАШКА»');
+    expect(typographQuotes('Компания:"Альфа"')).toBe('Компания:«Альфа»');
+    expect(typographQuotes('ООО "А"/"Б"')).toBe('ООО «А»/«Б»');
+    expect(typographQuotes('ООО —"Х"')).toBe('ООО —«Х»');
+    expect(typographQuotes('ООО "Центр "Север""')).toBe('ООО «Центр «Север»»');
+    expect(typographQuotes('АО "1С-Рарус"')).toBe('АО «1С-Рарус»');
+  });
+
+  it('повторный вызов ничего не меняет', () => {
+    for (const raw of ['ООО"Ромашка"', 'ООО ""РОМАШКА""', 'ООО "А"/"Б"', 'ГБУ "Центр (филиал "Север")"']) {
+      const once = typographQuotes(raw);
+      expect(once, raw).not.toMatch(/"/);
+      expect(typographQuotes(once), raw).toBe(once);
+    }
+  });
+
   it('импорт ставит «ёлочки» в компанию и название', () => {
     const p = mapVacancy(vacancy({ company: { name: 'ООО "ТЕСТ"' }, 'job-name': 'Стажёр "аналитик"' }));
     expect(p?.companyName).toBe('ООО «ТЕСТ»');
@@ -286,5 +304,24 @@ describe('«ёлочки» в названиях «Работа России» (
     };
     expect(await backfillTrudvsemQuotes(db)).toBe(1);
     expect(sql.find((q) => q.text.startsWith('UPDATE'))?.params).toEqual([5, 'ООО «АРС»', 'Стажёр']);
+  });
+
+  it('второй запуск дозаполнения ничего не меняет', async () => {
+    // «База» в памяти: SELECT ищет прямые кавычки так же, как SQL-запрос (~ '["„“”]')
+    const rows = [{ id: 7, company_name: 'ООО"Ромашка"', title: 'Стажёр "SMM"' }];
+    let updates = 0;
+    const db = {
+      query: async (text: string, params?: unknown[]) => {
+        if (text.startsWith('SELECT')) return rows.filter((r) => /["„“”]/.test(r.company_name) || /["„“”]/.test(r.title));
+        updates++;
+        const [id, company, title] = params as [number, string, string];
+        Object.assign(rows.find((r) => r.id === id)!, { company_name: company, title });
+        return [];
+      },
+    };
+    expect(await backfillTrudvsemQuotes(db)).toBe(1);
+    expect(rows[0]).toEqual({ id: 7, company_name: 'ООО«Ромашка»', title: 'Стажёр «SMM»' });
+    expect(await backfillTrudvsemQuotes(db)).toBe(0);
+    expect(updates).toBe(1);
   });
 });
