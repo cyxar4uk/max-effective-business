@@ -82,12 +82,18 @@ export function internshipMatchMessage(opts: {
   company: string;
   score: number;
   matchedSkills: string[];
+  /**
+   * Близкие навыки (#71), уже готовые фразы «Excel (есть Google Таблицы)»: процент выше точных совпадений, и без этой
+   * строки непонятно почему. Уведомление идёт, только если обязательные закрыты точно, — здесь только желательные.
+   */
+  closeSkills?: string[];
   /** Тип и оплата места (#74): студенту это важнее всего после самой задачи. */
   terms?: { type: PlaceType; paid: boolean | null; salary: number | null };
 }): QueuedMessage {
   const lines = [`Новое место для вас: «${opts.title}», ${opts.company}.`];
   if (opts.terms) lines.push(placeTerms(opts.terms.type, opts.terms.paid, opts.terms.salary) + '.');
   lines.push(opts.matchedSkills.length ? `Совпадение ${opts.score} %: ${list(opts.matchedSkills)}.` : `Совпадение ${opts.score} %.`);
+  if (opts.closeSkills?.length) lines.push(`Наполовину засчитано: ${list(opts.closeSkills)}.`);
   return { text: lines.join('\n'), buttons: [[{ text: 'Смотреть', startapp: internshipParam(opts.internshipId) }]] };
 }
 

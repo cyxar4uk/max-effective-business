@@ -3,20 +3,23 @@ import { Navigate, NavLink, useLocation } from 'react-router';
 import { useMe } from '../../app/me';
 import { Icon } from './ui';
 
-/** Нижняя навигация студента; на десктопе — колонка слева. */
+/**
+ * Нижняя навигация студента; на десктопе — колонка слева. Вкладки не пишутся в историю (replace): «Назад» с любой
+ * из них ведёт туда, откуда пришли в раздел (выбор роли или закрытие мини-приложения), а не по вкладкам.
+ */
 function StudentNav() {
   const cls = ({ isActive }: { isActive: boolean }) => (isActive ? 'on' : undefined);
   return (
     <nav className="nav st-nav" aria-label="Разделы студента">
-      <NavLink to="/student" end className={cls}>
+      <NavLink to="/student" end replace className={cls}>
         <Icon name="cards" />
         Места
       </NavLink>
-      <NavLink to="/student/interests" className={cls}>
+      <NavLink to="/student/interests" replace className={cls}>
         <Icon name="heart" />
         Отклики
       </NavLink>
-      <NavLink to="/student/profile" end className={cls}>
+      <NavLink to="/student/profile" end replace className={cls}>
         <Icon name="user" />
         Профиль
       </NavLink>

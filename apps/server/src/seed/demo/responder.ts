@@ -13,7 +13,7 @@ import type { Logger } from 'pino';
 import type { DataSource } from 'typeorm';
 import { DEFAULT_DEMO_INVITE_COOLDOWN_HOURS } from '../../config.js';
 import type { AppEvents, EventBus } from '../../events.js';
-import { matchStudentToInternship, type InternshipMatchInput, type MatchResult, type StudentMatchInput } from '../../matching/index.js';
+import { matchBreakdown, matchStudentToInternship, type InternshipMatchInput, type MatchResult, type StudentMatchInput } from '../../matching/index.js';
 
 /** Сколько демо-студентов откликается на стажировку проверяющего. */
 export const DEMO_RESPONSES_LIMIT = 5;
@@ -79,13 +79,12 @@ export async function respondWithDemoStudents(ds: DataSource, internshipId: numb
 
   let created = 0;
   for (const { userId, match } of picked) {
-    const { score, mustMatched, mustMissing, niceMatched, niceMissing } = match;
     const rows: unknown[] = await ds.query(
       `INSERT INTO interests (student_user_id, internship_id, status, match_score, match, is_demo)
        VALUES ($1, $2, 'interested', $3, $4::jsonb, true)
        ON CONFLICT (student_user_id, internship_id) DO NOTHING
        RETURNING id`,
-      [userId, internshipId, score, JSON.stringify({ score, mustMatched, mustMissing, niceMatched, niceMissing })],
+      [userId, internshipId, match.score, JSON.stringify(matchBreakdown(match))],
     );
     created += rows.length;
   }

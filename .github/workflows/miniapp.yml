@@ -1,6 +1,6 @@
 name: miniapp
 
-# Мини-приложение: типы, линтер и сборка на каждом изменении. Образ собирается в workflow compose.
+# Мини-приложение: типы, линтер, тесты и сборка на каждом изменении. Образ собирается в workflow compose.
 on:
   push:
     branches: [main]
@@ -26,4 +26,5 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm test
       - run: npm run build

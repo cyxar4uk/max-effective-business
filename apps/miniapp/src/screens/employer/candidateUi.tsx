@@ -1,7 +1,7 @@
 // Общие куски кандидата: аватар, эквалайзер совпадения, навыки, тост отмены и короткие сообщения.
 import { useEffect, useState } from 'react';
 import type { Candidate, Match } from '../../api/types';
-import { matchBars, matchLevel, skillName, type SkillNames } from '../../app/matchText';
+import { closeOf, matchBars, matchLevel, skillName, type SkillNames } from '../../app/matchText';
 import { avatarClass, initial } from './candidate';
 import { CheckIcon, CrossIcon } from './icons';
 import { UNDO_MS, type Decision } from './useDecision';
@@ -46,8 +46,12 @@ export function Eq({ score, height = 16, onSurf = true }: EqProps) {
   );
 }
 
-/** Навыки места у кандидата: совпавшие — с галочкой, недостающие — пунктиром. Сначала обязательные. */
+/**
+ * Навыки места у кандидата: совпавшие — с галочкой, недостающие — пунктиром. Сначала обязательные.
+ * Закрытый близким навыком — «Wildberries ≈ Ozon» (#71): навыка нет, но засчитана половина.
+ */
 export function MatchSkills({ match, names, max }: { match: Match; names: SkillNames; max?: number }) {
+  const close = closeOf(match);
   const all = [
     ...match.mustMatched.map((code) => ({ code, ok: true })),
     ...match.niceMatched.map((code) => ({ code, ok: true })),
@@ -63,7 +67,18 @@ export function MatchSkills({ match, names, max }: { match: Match; names: SkillN
         <li key={s.code} className={s.ok ? 'sk ok' : 'sk no'}>
           {s.ok && <CheckIcon className="ic" />}
           {skillName(names, s.code)}
-          <span className="sr-only">{s.ok ? ' — есть' : ' — нет'}</span>
+          {!s.ok && close.has(s.code) ? (
+            <>
+              <span className="cd-sk-close" aria-hidden="true">
+                ≈ {skillName(names, close.get(s.code)!)}
+              </span>
+              <span className="sr-only">
+                {` — нет, есть близкий: ${skillName(names, close.get(s.code)!)}, засчитано наполовину`}
+              </span>
+            </>
+          ) : (
+            <span className="sr-only">{s.ok ? ' — есть' : ' — нет'}</span>
+          )}
         </li>
       ))}
       {more > 0 && <li className="sk no">+{more}</li>}
@@ -115,14 +130,19 @@ export function UndoToast({ action, name, onCancel }: { action: Decision; name: 
 export interface NoticeValue {
   text: string;
   tone: 'ok' | 'error';
+  /** Кнопка в сообщении: «Открыть» тандем, когда сразу перейти нельзя. */
+  action?: { label: string; onClick: () => void };
   /** Номер сообщения: одинаковый текст подряд тоже показывается заново. */
   n: number;
 }
 
-/** Короткое сообщение внизу: «Отказ отправлен», ошибка сервера. Подтверждение скрывается через 3 с, ошибка — через 6 с. */
+/**
+ * Короткое сообщение внизу: «Отказ отправлен», ошибка сервера. Подтверждение скрывается через 3 с, ошибка и сообщение
+ * с кнопкой — через 6 с: кнопку надо успеть нажать.
+ */
 export function Notice({ notice, onClose }: { notice: NoticeValue; onClose: () => void }) {
   useEffect(() => {
-    const t = window.setTimeout(onClose, notice.tone === 'error' ? 6000 : 3000);
+    const t = window.setTimeout(onClose, notice.tone === 'error' || notice.action ? 6000 : 3000);
     return () => window.clearTimeout(t);
   }, [notice, onClose]);
 
@@ -134,6 +154,11 @@ export function Notice({ notice, onClose }: { notice: NoticeValue; onClose: () =
         </span>
       )}
       <span className="grow">{notice.text}</span>
+      {notice.action && (
+        <button type="button" className="cd-toast-btn" onClick={notice.action.onClick}>
+          {notice.action.label}
+        </button>
+      )}
       <button type="button" className="cd-toast-x" aria-label="Скрыть сообщение" onClick={onClose}>
         <CrossIcon />
       </button>

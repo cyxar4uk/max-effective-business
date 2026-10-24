@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import { useLoad } from '../../api/useLoad';
+import { backTo } from '../../app/history';
 import { useMe } from '../../app/me';
 import { DemoBadge } from '../../components/DemoBadge';
 import { EmptyState } from '../../components/EmptyState';
@@ -30,7 +31,17 @@ function monthLabel(value: string | null | undefined): string | null {
 }
 
 /** Строка-переход в профиле: иконка, подпись, пояснение и шеврон. */
-function LinkRow({ icon, title, text, onClick }: { icon: 'phone' | 'swap' | 'info'; title: string; text?: string; onClick: () => void }) {
+function LinkRow({
+  icon,
+  title,
+  text,
+  onClick,
+}: {
+  icon: 'phone' | 'swap' | 'refresh' | 'info';
+  title: string;
+  text?: string;
+  onClick: () => void;
+}) {
   return (
     <button type="button" className="li sp-link" onClick={onClick}>
       <Icon name={icon} size="sm" />
@@ -43,7 +54,7 @@ function LinkRow({ icon, title, text, onClick }: { icon: 'phone' | 'swap' | 'inf
   );
 }
 
-/** Профиль студента `/student/profile`: анкета, переход к редактированию, роль работодателя, «О сервисе». */
+/** Профиль студента `/student/profile`: анкета, переход к редактированию, роль работодателя, выбор роли, «О сервисе». */
 export function StudentProfileScreen() {
   const navigate = useNavigate();
   const reduced = useReduced();
@@ -68,7 +79,7 @@ export function StudentProfileScreen() {
         title="Анкеты пока нет"
         text="Заполните короткую анкету — и мы покажем только подходящие места."
         actionLabel="Заполнить анкету"
-        onAction={() => navigate('/student')}
+        onAction={() => navigate('/student', { replace: true })}
       />
     );
   else {
@@ -134,6 +145,13 @@ export function StudentProfileScreen() {
               title="Перейти в роль работодателя"
               text={me.roles.employer ? 'Ваши места и кандидаты' : 'Опубликуйте место и получите откликнувшихся студентов'}
               onClick={() => navigate('/employer')}
+            />
+            {/* Студента могло сразу открыть в ленте (последняя роль, параметр запуска): выбор роли и гид — только отсюда */}
+            <LinkRow
+              icon="refresh"
+              title="Сменить роль"
+              text="Выбор роли и «Как проверить за 5 минут»"
+              onClick={() => backTo(navigate, '/')}
             />
             <LinkRow icon="info" title="О сервисе" text="Документы и поддержка" onClick={() => navigate('/about')} />
           </motion.div>

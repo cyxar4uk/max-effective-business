@@ -50,6 +50,15 @@ describe('тексты бота', () => {
     expect(params(m)).toEqual(['internship_5']);
   });
 
+  it('близкие навыки — отдельной строкой «наполовину засчитано» (#71); без них строки нет', () => {
+    const m = internshipMatchMessage({
+      internshipId: 5, title: 'Аналитик', company: 'Луч', score: 85, matchedSkills: ['SQL'], closeSkills: ['Excel (есть Google Таблицы)'],
+    });
+    expect(m.text.split('\n').slice(-2)).toEqual(['Совпадение 85 %: SQL.', 'Наполовину засчитано: Excel (есть Google Таблицы).']);
+    const plain = internshipMatchMessage({ internshipId: 5, title: 'Аналитик', company: 'Луч', score: 85, matchedSkills: ['SQL'], closeSkills: [] });
+    expect(plain.text).not.toContain('Наполовину');
+  });
+
   it('приглашение студенту: контакт и пронумерованный чек-лист', () => {
     const m = studentInvitedMessage({ internshipId: 3, title: 'Юрист', company: 'Бюро', contactName: 'Павел Родионов', phone: '+70000001004' });
     expect(m.text).toContain('Контакт: Павел Родионов, +70000001004.');

@@ -1,5 +1,6 @@
 import type { DataSource, EntityManager } from 'typeorm';
 import { CONSENT_VERSION } from '../../api/routes.js';
+import { matchBreakdown } from '../../matching/index.js';
 import {
   DEMO_EMPLOYERS,
   DEMO_INTERNSHIPS,
@@ -120,15 +121,15 @@ export async function seedDemo(ds: DataSource, data: DemoData = ALL_DEMO): Promi
     }
 
     for (const it of interests) {
-      const { score, mustMatched, mustMissing, niceMatched, niceMissing } = it.match;
+      const match = matchBreakdown(it.match);
       const rows: unknown[] = await m.query(
         `INSERT INTO interests (student_user_id, internship_id, status, match_score, match, is_demo)
          VALUES ($1, $2, $3, $4, $5::jsonb, true)
          ON CONFLICT (student_user_id, internship_id) DO NOTHING
          RETURNING id`,
         [
-          studentIds.get(it.student)!, internshipIds.get(it.internship)!, it.status, score,
-          JSON.stringify({ score, mustMatched, mustMissing, niceMatched, niceMissing }),
+          studentIds.get(it.student)!, internshipIds.get(it.internship)!, it.status, match.score,
+          JSON.stringify(match),
         ],
       );
       created += rows.length;

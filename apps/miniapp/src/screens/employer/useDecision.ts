@@ -18,8 +18,11 @@ export interface Pending {
 }
 
 interface Handlers {
-  /** Сервер принял решение. mounted = false — экран уже закрыт (решение ушло при уходе), показывать нечего. */
-  onDone: (result: Candidate, action: Decision, mounted: boolean) => void;
+  /**
+   * Сервер принял решение. mounted = false — экран уже закрыт (решение ушло при уходе), показывать нечего.
+   * waiting = true — к ответу уже идёт отсчёт следующего решения: уводить с экрана нельзя, иначе оно уйдёт без отмены.
+   */
+  onDone: (result: Candidate, action: Decision, mounted: boolean, waiting: boolean) => void;
   onError: (error: ApiError) => void;
 }
 
@@ -62,7 +65,7 @@ export function useDecision(handlers: Handlers): DecisionHandle {
     call(p.placeId, p.candidate.studentId, { keepalive }).then(
       (result) => {
         settle();
-        latest.current.onDone(result, p.action, mounted.current);
+        latest.current.onDone(result, p.action, mounted.current, current.current !== null);
       },
       (err: unknown) => {
         settle();

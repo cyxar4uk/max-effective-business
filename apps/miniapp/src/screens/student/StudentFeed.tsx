@@ -2,7 +2,7 @@ import { AnimatePresence, motion, useMotionValue } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
-import type { InterestAction, Internship } from '../../api/types';
+import type { Internship } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
 import { ABOUT } from '../../app/about';
 import { useMe } from '../../app/me';
@@ -17,6 +17,7 @@ import { PlaceCardFace } from './PlaceCard';
 import { PlaceDetails } from './PlaceDetails';
 import { plural, skillNames, tagColor, type SkillNames } from './place';
 import { ScanNotice } from './ScanNotice';
+import { createSkipQueue } from './skipQueue';
 import { Icon } from './ui';
 import { useScanPlace } from './useScanPlace';
 
@@ -93,9 +94,16 @@ function takeBotHint(): boolean {
 
 const openBot = () => openMaxLink(`https://max.ru/${ABOUT.botNick}?start=`);
 
+/** Сколько пропуск можно вернуть, мс: потом он уходит на сервер, и место из ленты пропадает. */
+const SKIP_UNDO_MS = 8000;
+
+/** Пропуски, которые ещё можно вернуть (skipQueue.ts). */
+const skips = createSkipQueue((id, keepalive) => api.interest(id, 'skipped', { keepalive }), SKIP_UNDO_MS);
+
 /**
  * Колода мест: свайп или кнопки, «Вернуть» последнюю пропущенную, клавиши ← → Z на десктопе.
- * Решение уходит на сервер сразу при вылете; ошибка — карточка въезжает обратно с текстом сервера.
+ * «Интересно» уходит на сервер сразу при вылете; ошибка — карточка въезжает обратно с текстом сервера.
+ * «Не интересно» уходит через SKIP_UNDO_MS или при уходе с экрана: до этого «Вернуть» отменяет пропуск без следа.
  */
 function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   const navigate = useNavigate();
@@ -126,19 +134,34 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
     setToast(t);
   };
 
-  const send = async (place: Internship, action: InterestAction) => {
+  // Отправленный пропуск вернуть уже нельзя: сервер исключит место из ленты, а отменить пропуск API не умеет.
+  // Колоду закрыли, мини-приложение свернули или закрывают — отложенные пропуски уходят сразу и доживают до сервера
+  useEffect(() => {
+    const unsubscribe = skips.subscribe((ids) => setSkipped((s) => s.filter((p) => !ids.includes(p.id))));
+    const release = () => skips.flush(true);
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') release();
+    };
+    window.addEventListener('pagehide', release);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('pagehide', release);
+      document.removeEventListener('visibilitychange', onVisibility);
+      release();
+    };
+  }, []);
+
+  const like = async (place: Internship) => {
     try {
-      await api.interest(place.id, action);
-      if (action === 'interested') {
-        haptic.notify('success');
-        if (takeBotHint()) {
-          setToast(null);
-          setBotHint(true);
-        } else showToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
-      }
+      await api.interest(place.id, 'interested');
+      haptic.notify('success');
+      if (takeBotHint()) {
+        setToast(null);
+        setBotHint(true);
+      } else showToast({ kind: 'ok', text: 'Отклик отправлен — компания увидит вас в списке кандидатов' });
     } catch (err) {
       haptic.notify('error');
-      setSkipped((s) => s.filter((p) => p.id !== place.id));
       setQueue((q) => [place, ...q.filter((p) => p.id !== place.id)]);
       showToast({
         kind: 'error',
@@ -149,8 +172,10 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
 
   const onSwipe = (place: Internship, dir: SwipeDir) => {
     setQueue((q) => q.filter((p) => p.id !== place.id));
-    if (dir === -1) setSkipped((s) => [...s.filter((p) => p.id !== place.id), place]);
-    void send(place, dir === 1 ? 'interested' : 'skipped');
+    if (dir === -1) {
+      setSkipped((s) => [...s.filter((p) => p.id !== place.id), place]);
+      skips.add(place.id);
+    } else void like(place);
   };
 
   const decide = (dir: SwipeDir) => deck.current?.swipe(dir);
@@ -158,6 +183,11 @@ function Deck({ items, names, filtered, onResetFilter, head }: DeckProps) {
   const undo = () => {
     const last = skipped[skipped.length - 1];
     if (!last) return;
+    // Пропуск успел уйти на сервер — карточку не возвращаем: место всё равно пропало бы из ленты
+    if (!skips.remove(last.id)) {
+      setSkipped((s) => s.filter((p) => p.id !== last.id));
+      return;
+    }
     haptic.impact('light');
     setSkipped((s) => s.slice(0, -1));
     setQueue((q) => [last, ...q.filter((p) => p.id !== last.id)]);
@@ -322,6 +352,8 @@ export function StudentFeed() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagsState] = useLoad(loadTags, []);
   const [state, retry] = useLoad(async () => {
+    // Смена фильтра закрывает колоду, и её пропуски уходят на сервер: ждём ответа, иначе пропущенные места вернутся
+    await skips.settled(3000);
     const [feed, skills, own] = await Promise.all([
       api.feed(tags),
       loadSkills(),

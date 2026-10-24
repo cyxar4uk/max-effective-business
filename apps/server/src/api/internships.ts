@@ -6,6 +6,7 @@ import type { InterestStatus } from '../db/entities.js';
 // Порядок ленты — чистые функции подбора (Тимур); сам процент по-прежнему считает внедрённый matcher
 import { compareForFeed, practiceMonthFits } from '../matching/match.js';
 import { DEFAULT_FEED_MIN_SCORE } from '../config.js';
+import { withCloseSkills } from '../seed/closeSkills.js';
 import { assertSkills, assertTags, ownInternship, requireEmployer, requireStudent, type DomainDeps } from './context.js';
 import { ApiError, parse } from './errors.js';
 import { employerAction, studentAction } from './interestFsm.js';
@@ -180,7 +181,7 @@ export function internshipsRouter({ ds, matcher, events, feedMinScore = DEFAULT_
     const student = await requireStudent(ds, user.id);
     const { tags } = parse(feedQuery, req.query);
     // Грубые фильтры — в SQL, чтобы не тащить в память всю таблицу: формат студента; хотя бы один общий навык
-    // (иначе совпадение 0 %) или место без требований; теги. Город и точный процент — в matcher.
+    // или близкий к нему (иначе совпадение 0 %) или место без требований; теги. Город и точный процент — в matcher.
     const q = internships
       .createQueryBuilder('i')
       .where(`i.status = 'open'`)
@@ -190,7 +191,7 @@ export function internshipsRouter({ ds, matcher, events, feedMinScore = DEFAULT_
       .andWhere('i.format = ANY(:formats::text[])', { formats: student.formats })
       .andWhere(
         '(i.required_skills && :skills::text[] OR i.nice_skills && :skills::text[] OR (cardinality(i.required_skills) = 0 AND cardinality(i.nice_skills) = 0))',
-        { skills: student.skills },
+        { skills: withCloseSkills(student.skills) },
       );
     // Теги только фильтруют ленту, в расчёте совпадения не участвуют
     if (tags.length) q.andWhere('i.tags && :tags::text[]', { tags });
