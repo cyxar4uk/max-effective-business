@@ -154,6 +154,16 @@ describe('конфиг', () => {
     expect(loadConfig(env).MINIAPP_URL).toBeUndefined();
     expect(() => loadConfig({ ...env, MINIAPP_URL: 'не url' })).toThrow('MINIAPP_URL');
   });
+
+  it('FEED_MIN_SCORE и DEMO_INVITE_COOLDOWN_HOURS: по умолчанию 40 и 24, пусто — то же, 0 — выключено', () => {
+    const env = { DATABASE_URL: 'postgres://x', MAX_BOT_TOKEN: 't' };
+    expect(loadConfig(env)).toMatchObject({ FEED_MIN_SCORE: 40, DEMO_INVITE_COOLDOWN_HOURS: 24 });
+    expect(loadConfig({ ...env, FEED_MIN_SCORE: '', DEMO_INVITE_COOLDOWN_HOURS: ' ' })).toMatchObject({ FEED_MIN_SCORE: 40, DEMO_INVITE_COOLDOWN_HOURS: 24 });
+    expect(loadConfig({ ...env, FEED_MIN_SCORE: '0', DEMO_INVITE_COOLDOWN_HOURS: '0' })).toMatchObject({ FEED_MIN_SCORE: 0, DEMO_INVITE_COOLDOWN_HOURS: 0 });
+    expect(() => loadConfig({ ...env, FEED_MIN_SCORE: '101' })).toThrow('FEED_MIN_SCORE');
+    expect(() => loadConfig({ ...env, DEMO_INVITE_COOLDOWN_HOURS: '1.5' })).toThrow('DEMO_INVITE_COOLDOWN_HOURS');
+    expect(() => loadConfig({ ...env, DEMO_INVITE_COOLDOWN_HOURS: '-1' })).toThrow('DEMO_INVITE_COOLDOWN_HOURS');
+  });
 });
 
 describe('прочее', () => {

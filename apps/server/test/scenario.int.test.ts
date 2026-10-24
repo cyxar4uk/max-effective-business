@@ -224,7 +224,10 @@ describe.skipIf(!url)('основной сценарий', () => {
     await as(OTHER_EMPLOYER).put('/api/employer/profile', { companyName: 'Другая', city: 'Москва', contactName: 'Иван' });
     expect((await as(OTHER_EMPLOYER).get(`/api/internships/${internshipId}/candidates`)).status).toBe(404);
     expect((await as(OTHER_EMPLOYER).post(`/api/internships/${internshipId}/candidates/${studentUserId}/invite`)).status).toBe(404);
-    expect((await as(OTHER_EMPLOYER).patch(`/api/internships/${internshipId}`, { status: 'closed' })).status).toBe(404);
+    const foreign = await as(OTHER_EMPLOYER).patch(`/api/internships/${internshipId}`, { status: 'closed' });
+    expect(foreign.status).toBe(404);
+    // В интерфейсе сущность — «место»: тексты ошибок идут в тосты как есть
+    expect(foreign.body.error.message).toBe('Место не найдено');
   });
 
   it('время отклика — первое «Интересно»: переключение «пропустить → интересно» его не сдвигает', async () => {
@@ -248,7 +251,9 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect(count('interest.invited')).toBe(1);
 
     expect((await as(EMPLOYER).post(`/api/internships/${internshipId}/candidates/${studentUserId}/decline`)).status).toBe(409);
-    expect((await as(STUDENT).post(`/api/internships/${internshipId}/interest`, { action: 'skipped' })).status).toBe(409);
+    const late = await as(STUDENT).post(`/api/internships/${internshipId}/interest`, { action: 'skipped' });
+    expect(late.status).toBe(409);
+    expect(late.body.error.message).toBe('Работодатель уже пригласил вас на это место');
 
     const mine = await as(STUDENT).get('/api/student/interests');
     expect(mine.body.items[0]).toMatchObject({ status: 'invited', employerContact: { name: 'Ольга', phone: null } });
@@ -257,7 +262,9 @@ describe.skipIf(!url)('основной сценарий', () => {
   it('карточка стажировки: студенту — совпадение и статус', async () => {
     const res = await as(STUDENT).get(`/api/internships/${internshipId}`);
     expect(res.body).toMatchObject({ match: { score: 65 }, myInterest: 'invited', isOwner: false });
-    expect((await as(STUDENT).get('/api/internships/999999')).status).toBe(404);
+    const missing = await as(STUDENT).get('/api/internships/999999');
+    expect(missing.status).toBe(404);
+    expect(missing.body.error.message).toBe('Место не найдено');
   });
 
   // #75: номера мест идут подряд и видны в ссылке QR — перебор не должен давать ничего сверх публичной карточки
@@ -291,6 +298,8 @@ describe.skipIf(!url)('основной сценарий', () => {
     await as(EMPLOYER).patch(`/api/internships/${created.body.id}`, { status: 'closed' }).expect(200);
     const res = await as(STUDENT).post(`/api/internships/${created.body.id}/interest`, { action: 'interested' });
     expect(res.status).toBe(409);
+    expect(res.body.error.message).toBe('Набор на это место закрыт');
+    expect(res.body.error.message).not.toMatch(/стажировк/i);
   });
 
   it('параллельные отклики не создают дублей и лишних событий', async () => {
@@ -445,5 +454,24 @@ describe.skipIf(!url)('основной сценарий', () => {
     expect(feed).toContain(match.body.id);
     expect(feed).not.toContain(noSkill.body.id);
     expect(feed).not.toContain(office.body.id);
+  });
+
+  it('лента: места с совпадением ниже FEED_MIN_SCORE (40 %) не показываются, по прямой ссылке открываются', async () => {
+    // Профиль из прошлого теста: excel, sql, power_bi, удалённо
+    const E4 = 200078;
+    await as(E4).post('/api/me/consent', { version: CONSENT_VERSION });
+    await as(E4).put('/api/employer/profile', { companyName: 'Порог', city: 'Москва', contactName: 'П' }).expect(200);
+    // Обязательный не закрыт, желательный закрыт: 70 × 0/1 + 30 × 1/1 = 30 % — ниже порога; 70 × 1/2 + 30 × 1/1 = 65 % — выше
+    const low = await as(E4).post('/api/internships', { ...PLACE, title: 'Слабое', requiredSkills: ['figma'], niceSkills: ['sql'], format: 'remote' });
+    const fair = await as(E4).post('/api/internships', { ...PLACE, title: 'Среднее', requiredSkills: ['sql', 'figma'], niceSkills: ['excel'], format: 'remote' });
+    const feed = (await as(STUDENT).get('/api/student/feed')).body.items as { id: number; match: { score: number } }[];
+    expect(feed.map((i) => i.id)).not.toContain(low.body.id);
+    expect(feed.map((i) => i.id)).toContain(fair.body.id);
+    for (const i of feed) expect(i.match.score).toBeGreaterThanOrEqual(40);
+    // Прямая ссылка и QR — GET /internships/:id: место открывается с процентом, порог ленты его не касается
+    const direct = await as(STUDENT).get(`/api/internships/${low.body.id}`).expect(200);
+    expect(direct.body.match.score).toBe(30);
+    // И откликнуться на него можно
+    await as(STUDENT).post(`/api/internships/${low.body.id}/interest`, { action: 'interested' }).expect(200);
   });
 });

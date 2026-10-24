@@ -163,7 +163,7 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
       employerOwner,
       KIND.invitedEmployer,
       `invite:${interest.id}:employer`,
-      employerInvitedMessage({ internshipId: internship.id, title: internship.title, studentName, phone: student.phone, score: interest.matchScore, employerHasPhone: Boolean(employerOwner.phone) }),
+      employerInvitedMessage({ internshipId: internship.id, title: internship.title, studentName, phone: student.phone, score: interest.matchScore, employerHasPhone: Boolean(employerOwner.phone), type: internship.type, isDemo: interest.isDemo }),
     );
     if (ok) queued++;
   }

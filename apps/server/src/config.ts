@@ -6,6 +6,13 @@ const bool = z
 
 // Пустая переменная (compose подставляет "" для незаданных) — то же, что её отсутствие
 const emptyAsUndefined = (v: unknown) => (v === '' ? undefined : v);
+// Для чисел и строка из пробелов — пусто: иначе Number(' ') = 0 молча выключил бы порог или кулдаун
+const blankAsUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+
+/** Минимальное совпадение для ленты студента по умолчанию, % (FEED_MIN_SCORE). */
+export const DEFAULT_FEED_MIN_SCORE = 40;
+/** Демо-режим: не чаще одного приглашения от демо-компании студенту за столько часов по умолчанию. */
+export const DEFAULT_DEMO_INVITE_COOLDOWN_HOURS = 24;
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -32,6 +39,14 @@ const schema = z.object({
   MATCH_NOTIFY_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
   // Сколько новых мест в день бот присылает студенту, остальное — подборкой; 0 — без лимита (живой показ на защите)
   MATCH_DAILY_LIMIT: z.coerce.number().int().min(0).default(3),
+  // Минимальное совпадение, %, с которым место попадает в ленту студента. По прямой ссылке и QR место открывается всегда
+  FEED_MIN_SCORE: z.preprocess(blankAsUndefined, z.coerce.number().int().min(0).max(100).default(DEFAULT_FEED_MIN_SCORE)),
+
+  // Демо-режим: не чаще одного приглашения от демо-компании студенту за столько часов (до года); 0 — без ограничения
+  DEMO_INVITE_COOLDOWN_HOURS: z.preprocess(
+    blankAsUndefined,
+    z.coerce.number().int().min(0).max(24 * 365).default(DEFAULT_DEMO_INVITE_COOLDOWN_HOURS),
+  ),
 });
 
 export type Config = z.infer<typeof schema>;

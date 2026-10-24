@@ -11,6 +11,7 @@
 // и в приложении открывается «Это тандем!».
 import type { Logger } from 'pino';
 import type { DataSource } from 'typeorm';
+import { DEFAULT_DEMO_INVITE_COOLDOWN_HOURS } from '../../config.js';
 import type { AppEvents, EventBus } from '../../events.js';
 import { matchStudentToInternship, type InternshipMatchInput, type MatchResult, type StudentMatchInput } from '../../matching/index.js';
 
@@ -96,42 +97,52 @@ export const DEMO_INVITE_SCORE = 70;
 /** Через сколько после отклика демо-компания приглашает: пауза, чтобы было видно «Отклик отправлен», потом приглашение. */
 export const DEMO_INVITE_DELAY_MS = 20_000;
 /**
- * Не чаще одного демо-приглашения студенту за столько часов. Для показа хватает одного «Это тандем!», а настоящий
- * студент пилота (SEED_DEMO на проде включён) не получит пачку приглашений от вымышленных компаний.
+ * Не чаще одного демо-приглашения студенту за столько часов (по умолчанию; на сервере — DEMO_INVITE_COOLDOWN_HOURS
+ * из окружения, 0 — без ограничения). Для показа хватает одного «Это тандем!», а настоящий студент пилота
+ * (SEED_DEMO на проде включён) не получит пачку приглашений от вымышленных компаний.
  */
-export const DEMO_INVITE_COOLDOWN_HOURS = 24;
+export const DEMO_INVITE_COOLDOWN_HOURS = DEFAULT_DEMO_INVITE_COOLDOWN_HOURS;
 /** После рестарта сервера таймеры потеряны: отклики не старше стольких минут приглашаем при старте. */
 export const DEMO_INVITE_CATCH_UP_MIN = 10;
 
 // Кого демо-компания приглашает: настоящий студент (не демо), открытое демо-место, отклик всё ещё «интересно»,
-// совпадение от порога и других демо-приглашений у студента за DEMO_INVITE_COOLDOWN_HOURS не было.
+// совпадение от порога ($1) и других демо-приглашений у студента за $2 часов не было ($2 = 0 — без ограничения).
 // Один UPDATE с условием на статус: если студент успел передумать, ничего не меняется.
 const INVITE_SQL = `
   UPDATE interests i SET status = 'invited', updated_at = now()
   FROM internships s
   WHERE s.id = i.internship_id AND s.is_demo AND s.status = 'open'
     AND NOT i.is_demo AND i.status = 'interested' AND i.match_score >= $1
-    AND NOT EXISTS (
+    AND ($2::int = 0 OR NOT EXISTS (
       SELECT 1 FROM interests o JOIN internships os ON os.id = o.internship_id
       WHERE o.student_user_id = i.student_user_id AND o.id <> i.id AND os.is_demo AND o.status = 'invited'
-        AND o.updated_at > now() - make_interval(hours => ${DEMO_INVITE_COOLDOWN_HOURS})
-    )`;
+        AND o.updated_at > now() - make_interval(hours => $2::int)
+    ))`;
+
+/** Условия демо-приглашения; по умолчанию — DEMO_INVITE_SCORE и DEMO_INVITE_COOLDOWN_HOURS. */
+export interface DemoInviteOptions {
+  minScore?: number;
+  /** Не чаще одного демо-приглашения студенту за столько часов; 0 — без ограничения. */
+  cooldownHours?: number;
+}
+
+const inviteParams = (opts: DemoInviteOptions) => [opts.minScore ?? DEMO_INVITE_SCORE, opts.cooldownHours ?? DEMO_INVITE_COOLDOWN_HOURS];
 
 /** Демо-компания приглашает откликнувшегося (условия — INVITE_SQL). Возвращает true, если пригласила. */
-export async function inviteForDemoEmployer(ds: DataSource, interestId: number, minScore: number = DEMO_INVITE_SCORE): Promise<boolean> {
-  const [rows]: [unknown[], number] = await ds.query(`${INVITE_SQL} AND i.id = $2 RETURNING i.id`, [minScore, interestId]);
+export async function inviteForDemoEmployer(ds: DataSource, interestId: number, opts: DemoInviteOptions = {}): Promise<boolean> {
+  const [rows]: [unknown[], number] = await ds.query(`${INVITE_SQL} AND i.id = $3 RETURNING i.id`, [...inviteParams(opts), interestId]);
   return rows.length > 0;
 }
 
 /** Догоняющий проход после рестарта: те же условия для откликов не старше DEMO_INVITE_CATCH_UP_MIN минут. */
 export async function inviteRecentForDemoEmployers(
   ds: DataSource,
-  minScore: number = DEMO_INVITE_SCORE,
+  opts: DemoInviteOptions = {},
 ): Promise<AppEvents['interest.invited'][]> {
   const [rows]: [{ id: string; internship_id: string; student_user_id: string }[], number] = await ds.query(
     `${INVITE_SQL} AND i.interested_at > now() - make_interval(mins => ${DEMO_INVITE_CATCH_UP_MIN})
      RETURNING i.id, i.internship_id, i.student_user_id`,
-    [minScore],
+    inviteParams(opts),
   );
   return rows.map((r) => ({ interestId: Number(r.id), internshipId: Number(r.internship_id), studentUserId: Number(r.student_user_id) }));
 }
@@ -148,8 +159,11 @@ export function registerDemoResponder(deps: {
   log: Logger;
   threshold: number;
   inviteDelayMs?: number;
+  /** DEMO_INVITE_COOLDOWN_HOURS из окружения; не задано — DEMO_INVITE_COOLDOWN_HOURS по умолчанию. */
+  inviteCooldownHours?: number;
 }): void {
   const delay = deps.inviteDelayMs ?? DEMO_INVITE_DELAY_MS;
+  const invite: DemoInviteOptions = { cooldownHours: deps.inviteCooldownHours };
   const later = (task: () => Promise<void>, what: string) => {
     // Таймер не держит процесс: при остановке сервера приглашение случится догоняющим проходом после старта
     setTimeout(() => void task().catch((err: unknown) => deps.log.error({ err }, what)), delay).unref();
@@ -165,14 +179,14 @@ export function registerDemoResponder(deps: {
   deps.events.on('interest.created', (e) => {
     if (e.status !== 'interested') return;
     later(async () => {
-      if (!(await inviteForDemoEmployer(deps.ds, e.interestId))) return;
+      if (!(await inviteForDemoEmployer(deps.ds, e.interestId, invite))) return;
       deps.log.info({ interestId: e.interestId, internshipId: e.internshipId }, 'Демо-компания пригласила студента');
       deps.events.emit('interest.invited', { interestId: e.interestId, internshipId: e.internshipId, studentUserId: e.studentUserId });
     }, 'Демо-компания не смогла пригласить студента');
   });
 
   later(async () => {
-    const invited = await inviteRecentForDemoEmployers(deps.ds);
+    const invited = await inviteRecentForDemoEmployers(deps.ds, invite);
     if (invited.length) deps.log.info({ invited: invited.length }, 'Демо-компании пригласили студентов после рестарта');
     for (const e of invited) deps.events.emit('interest.invited', e);
   }, 'Догоняющий проход демо-приглашений не удался');

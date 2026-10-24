@@ -5,6 +5,7 @@ import { Interest, Internship, StudentProfile, TaskTag, User } from '../db/entit
 import type { InterestStatus } from '../db/entities.js';
 // Порядок ленты — чистые функции подбора (Тимур); сам процент по-прежнему считает внедрённый matcher
 import { compareForFeed, practiceMonthFits } from '../matching/match.js';
+import { DEFAULT_FEED_MIN_SCORE } from '../config.js';
 import { assertSkills, assertTags, ownInternship, requireEmployer, requireStudent, type DomainDeps } from './context.js';
 import { ApiError, parse } from './errors.js';
 import { employerAction, studentAction } from './interestFsm.js';
@@ -17,7 +18,15 @@ const FEED_SCAN_LIMIT = 500;
 // Открытых мест у одного работодателя: защита от спама и раздувания ленты
 export const MAX_OPEN_PER_EMPLOYER = 20;
 
-export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
+export interface InternshipsOptions {
+  /**
+   * Минимальное совпадение, %, с которым место попадает в ленту студента (FEED_MIN_SCORE). Лента обещает «только
+   * подходящие»: места с 15–35 % в ней — шум. По прямой ссылке и QR (`GET /internships/:id`) место открывается всегда.
+   */
+  feedMinScore?: number;
+}
+
+export function internshipsRouter({ ds, matcher, events, feedMinScore = DEFAULT_FEED_MIN_SCORE }: DomainDeps & InternshipsOptions): Router {
   const r = Router();
   const internships = ds.getRepository(Internship);
   const interests = ds.getRepository(Interest);
@@ -120,7 +129,7 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
       const result = await ds.transaction(async (m) => {
         const interest = await lockInterest(m, studentId, internship.id);
         // «Пропустить» работодатель не видит, поэтому для него такого кандидата нет
-        if (!interest || interest.status === 'skipped') throw new ApiError('NOT_FOUND', 'Этот студент не откликался на стажировку');
+        if (!interest || interest.status === 'skipped') throw new ApiError('NOT_FOUND', 'Этот студент не откликался на это место');
         const t = employerAction(interest.status, action);
         if (!t.ok) throw new ApiError('CONFLICT', t.message);
         if (t.changed && action === 'invited') {
@@ -189,7 +198,7 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
 
     const suitable = open
       .map((i) => ({ i, ...matcher(student, i) }))
-      .filter((x) => x.eligible && x.match.score > 0)
+      .filter((x) => x.eligible && x.match.score > 0 && x.match.score >= feedMinScore)
       // Процент, затем закрыты ли все обязательные, затем месяц практики (matching/compareForFeed)
       .map((x) => ({ ...x, datesFit: practiceMonthFits(student.practiceMonth, x.i.startsOn, x.i.endsOn) }))
       .sort(compareForFeed)
@@ -205,7 +214,7 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
   r.get('/internships/:id', async (req, res) => {
     const user = currentUser(req);
     const internship = await internships.findOneBy({ id: parse(idParam, req.params.id) });
-    if (!internship) throw new ApiError('NOT_FOUND', 'Стажировка не найдена');
+    if (!internship) throw new ApiError('NOT_FOUND', 'Место не найдено');
     const employers = await employersById(ds, [internship]);
     const employer = employers.get(internship.employerId ?? -1);
     const student = await ds.getRepository(StudentProfile).findOneBy({ userId: user.id });
@@ -223,14 +232,14 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
     const student = await requireStudent(ds, user.id);
     const { action } = parse(interestBody, req.body);
     const internship = await internships.findOneBy({ id: parse(idParam, req.params.id) });
-    if (!internship) throw new ApiError('NOT_FOUND', 'Стажировка не найдена');
+    if (!internship) throw new ApiError('NOT_FOUND', 'Место не найдено');
     const { match } = matcher(student, internship);
 
     const closed = internship.status !== 'open' && action === 'interested';
     const result = await ds.transaction(async (m) => {
       let interest = await lockInterest(m, user.id, internship.id);
       if (!interest) {
-        if (closed) throw new ApiError('CONFLICT', 'Стажировка закрыта');
+        if (closed) throw new ApiError('CONFLICT', 'Набор на это место закрыт');
         const inserted: { id: number }[] = await m.query(
           `INSERT INTO interests (student_user_id, internship_id, status, match_score, match, interested_at)
            VALUES ($1, $2, $3, $4, $5, CASE WHEN $3 = 'interested' THEN now() END)
@@ -244,7 +253,7 @@ export function internshipsRouter({ ds, matcher, events }: DomainDeps): Router {
       const t = studentAction(interest!.status, action);
       if (!t.ok) throw new ApiError('CONFLICT', t.message);
       if (t.changed) {
-        if (closed) throw new ApiError('CONFLICT', 'Стажировка закрыта');
+        if (closed) throw new ApiError('CONFLICT', 'Набор на это место закрыт');
         await m.update(Interest, { id: interest!.id }, {
           status: t.next,
           matchScore: match.score,

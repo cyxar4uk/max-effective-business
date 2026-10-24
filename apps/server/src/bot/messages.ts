@@ -39,12 +39,13 @@ export const START_PARAM = /^[\w-]{1,512}$/;
 
 export const internshipParam = (id: number) => `internship_${id}`;
 
-const roleButtons: AppButton[][] = [[{ text: 'Я студент', startapp: 'student' }, { text: 'Я работодатель', startapp: 'employer' }]];
+// Работодатель первым — как в мини-приложении и презентации: продукт — практиканты для малого бизнеса
+const roleButtons: AppButton[][] = [[{ text: 'Я работодатель', startapp: 'employer' }, { text: 'Я студент', startapp: 'student' }]];
 
 export function welcomeMessage(opts: { firstName?: string | null; demo: boolean; startPayload?: string | null }): QueuedMessage {
   const lines = [
     opts.firstName ? `Здравствуйте, ${opts.firstName}! Это «Тандем».` : 'Здравствуйте! Это «Тандем».',
-    'Студенту присылаем только подходящие места: практику, стажировки и подработку. Работодатель видит, кто откликнулся и насколько подходит.',
+    'Работодателю — студенты под его задачу: видно, кто откликнулся и насколько подходит. Студенту присылаем только подходящие места: практику, стажировки и подработку.',
     'Кто вы?',
   ];
   if (opts.demo) lines.push('', 'Сейчас демо-режим: компании и студенты тестовые.');
@@ -146,6 +147,22 @@ export const NEXT_STEPS: Record<'practice' | 'job', string[]> = {
 
 export const nextStepsFor = (type?: PlaceType | null) => (type === 'practice' ? NEXT_STEPS.practice : NEXT_STEPS.job);
 
+/**
+ * Что делать работодателю после приглашения: коротко, без юридических подробностей — их получает студент.
+ * Первый шаг — про связь: есть телефон студента — звонить самому, нет — ответить, когда студент свяжется.
+ */
+export const EMPLOYER_NEXT_STEPS: Record<'call' | 'wait', string> & Record<'practice' | 'job', string[]> = {
+  call: 'Созвонитесь со студентом в течение двух дней.',
+  wait: 'Когда студент свяжется с вами, ответьте в течение двух дней.',
+  practice: ['Договоритесь о задачах и графике.', 'Договор о практической подготовке оформите через центр карьеры вуза студента.'],
+  job: ['Договоритесь о задачах, графике и оплате.'],
+};
+
+export const employerNextStepsFor = (type?: PlaceType | null, studentHasPhone = true): string[] => [
+  studentHasPhone ? EMPLOYER_NEXT_STEPS.call : EMPLOYER_NEXT_STEPS.wait,
+  ...(type === 'practice' ? EMPLOYER_NEXT_STEPS.practice : EMPLOYER_NEXT_STEPS.job),
+];
+
 export function studentInvitedMessage(opts: {
   internshipId: number;
   title: string;
@@ -166,7 +183,7 @@ export function studentInvitedMessage(opts: {
     'Что дальше:',
     ...nextStepsFor(opts.type).map((s, i) => `${i + 1}. ${s}`),
   ];
-  return { text: lines.join('\n'), buttons: [[{ text: 'Открыть место', startapp: internshipParam(opts.internshipId) }]] };
+  return { text: lines.join('\n'), buttons: [[{ text: 'Открыть приглашение', startapp: internshipParam(opts.internshipId) }]] };
 }
 
 export function employerInvitedMessage(opts: {
@@ -177,10 +194,15 @@ export function employerInvitedMessage(opts: {
   score: number;
   /** Есть ли телефон у самого работодателя: его бот передаёт студенту в приглашении. */
   employerHasPhone?: boolean;
+  /** Тип места: для практики в шагах — договор через центр карьеры вуза. */
+  type?: PlaceType | null;
+  /** Тестовый отклик: студент и номер вымышленные — говорим прямо, чтобы по номеру не звонили. */
+  isDemo?: boolean;
 }): QueuedMessage {
   const lines = [
-    `Вы пригласили студента на «${opts.title}».`,
+    `Вы пригласили ${opts.isDemo ? 'тестового студента' : 'студента'} на «${opts.title}».`,
     `${opts.studentName}${opts.phone ? `, ${opts.phone}` : ''}. Совпадение ${opts.score} %.`,
+    ...(opts.isDemo ? ['Студент и номер вымышленные — так выглядит приглашение настоящего студента.'] : []),
   ];
   // Написать студенту в MAX работодателю не через что: ник студента мы не храним. Тексты — как на «Это тандем!»
   // в мини-приложении (apps/miniapp/src/screens/employer/CandidateCard.tsx)
@@ -191,6 +213,7 @@ export function employerInvitedMessage(opts: {
         : 'Телефона нет ни у вас, ни у студента. Добавьте свой номер в мини-приложении, чтобы студент мог с вами связаться.',
     );
   }
+  lines.push('', 'Что дальше:', ...employerNextStepsFor(opts.type, Boolean(opts.phone)).map((s, i) => `${i + 1}. ${s}`));
   return { text: lines.join('\n'), buttons: [[{ text: 'Кандидаты', startapp: internshipParam(opts.internshipId) }]] };
 }
 
