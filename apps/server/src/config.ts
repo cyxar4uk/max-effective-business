@@ -13,6 +13,8 @@ const blankAsUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === 
 export const DEFAULT_FEED_MIN_SCORE = 40;
 /** Демо-режим: не чаще одного приглашения от демо-компании студенту за столько часов по умолчанию. */
 export const DEFAULT_DEMO_INVITE_COOLDOWN_HOURS = 24;
+/** Тихие часы бота по Москве по умолчанию (решение Артёма от 27.09), как QUIET_HOURS в bot/sender.ts. */
+export const DEFAULT_QUIET_HOURS = '22-9';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -39,6 +41,21 @@ const schema = z.object({
   MATCH_NOTIFY_THRESHOLD: z.coerce.number().int().min(0).max(100).default(60),
   // Сколько новых мест в день бот присылает студенту, остальное — подборкой; 0 — без лимита (живой показ на защите)
   MATCH_DAILY_LIMIT: z.coerce.number().int().min(0).default(3),
+  // Тихие часы бота по Москве «с-до»: ночью уведомления откладываются до утра. off — выключены: жюри проверяет
+  // бота и вечером. Ответ на /start уходит всегда
+  QUIET_HOURS: z
+    .preprocess((v) => (typeof v === 'string' && v.trim() !== '' ? v.trim().toLowerCase() : undefined), z.string().default(DEFAULT_QUIET_HOURS))
+    .transform((v, ctx) => {
+      if (v === 'off') return null;
+      const m = /^(\d{1,2})-(\d{1,2})$/.exec(v);
+      const from = Number(m?.[1]);
+      const to = Number(m?.[2]);
+      if (!m || from > 23 || to > 23 || from === to) {
+        ctx.addIssue({ code: 'custom', message: 'Ожидается «22-9» или off' });
+        return z.NEVER;
+      }
+      return { from, to };
+    }),
 
   // GigaChat для ИИ-черновика карточки места (POST /api/internships/draft). Authorization key из Studio —
   // base64(client_id:client_secret). Пусто — черновик собирается по ключевым словам, без модели.
