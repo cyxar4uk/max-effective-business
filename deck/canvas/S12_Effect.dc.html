@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ожидаемый эффект</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="deck.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&display=swap">
+<style>body{margin:0}a{color:#2243c4}a:hover{color:#18318f}</style>
+</helmet>
+<div class="slide" style="width: 1920px; height: 1080px">
+  <div class="top"><div class="brand"><span class="mk"><i class="a"></i><i class="b"></i></span>тандем</div><span class="eyebrow">Ожидаемый эффект</span></div>
+  <h1 class="h">Как поймём, что сервис работает</h1>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1.45fr; gap: 32px; flex-grow: 1">
+    <div class="card accent" style="gap: 16px">
+      <span class="pill o">Главная цель</span>
+      <div class="col" style="gap: 4px; margin-top: 8px"><span class="num">≥ 70&nbsp;%</span><span style="font: 700 32px/1.1 Unbounded, Onest, sans-serif; letter-spacing: -0.02em; color: var(--ink)">откликов подходят*</span></div>
+      <p>компания их не отклоняет. Сейчас 4 из 5 откликов работодателю не подходят</p>
+    </div>
+    <div class="card" style="gap: 16px">
+      <span class="pill">Замерили</span>
+      <span class="num" style="margin-top: 8px">2:45<small>мин</small></span>
+      <p>в среднем на карточку места у 3 человек, которые продукт не видели. На владельцах проверим в пилоте</p>
+      <span style="font-size: 15px; color: var(--ink3)">модельные данные</span>
+    </div>
+    <div class="card" style="gap: 0">
+      <h3 style="margin-bottom: 10px">Что ещё считаем*</h3>
+      <div class="row" style="justify-content: space-between; padding: 8px 0"><p style="font-size: 20px">Первый подходящий отклик. Базовую линию снимаем у партнёров центра в пилоте</p><span style="font: 600 22px/1.2 Unbounded, sans-serif; white-space: nowrap">≤ 2 раб. дня</span></div>
+      <div class="sep"></div>
+      <div class="row" style="justify-content: space-between; padding: 8px 0"><p style="font-size: 20px">Компания отвечает на отклик. Сейчас в среднем через 52 часа</p><span style="font: 600 22px/1.2 Unbounded, sans-serif; white-space: nowrap">≤ 24 ч</span></div>
+      <div class="sep"></div>
+      <div class="row" style="justify-content: space-between; padding: 8px 0"><p style="font-size: 20px">Пары, которые созвонились в первую неделю после «Это тандем!»</p><span style="font: 600 22px/1.2 Unbounded, sans-serif; white-space: nowrap">≥ 50&nbsp;%</span></div>
+      <div class="sep"></div>
+      <div class="row" style="justify-content: space-between; padding: 8px 0"><p style="font-size: 20px">Студенты, которые после анкеты откликнулись хотя бы раз</p><span style="font: 600 22px/1.2 Unbounded, sans-serif; white-space: nowrap">≥ 50&nbsp;%</span></div>
+      <div class="sep"></div>
+      <div class="row" style="justify-content: space-between; padding: 8px 0"><p style="font-size: 20px">Действий у компании до первого приглашения</p><span style="font: 600 22px/1.2 Unbounded, sans-serif; white-space: nowrap">≤ 3</span></div>
+      <p style="font-size: 18px; color: var(--ink3); margin-top: 10px">Созвоны и число действий начнём считать в пилоте. Остальное уже считается по данным сервиса, без тестовых записей и персональных данных</p>
+    </div>
+  </div>
+  <div class="card soft-b" style="flex-direction: row; align-items: center; gap: 28px; padding: 22px 34px">
+    <div class="col" style="gap: 4px; width: 300px; flex-shrink: 0"><span class="pill">Так выглядит отчёт пилота</span><span style="font-size: 16px; color: var(--ink3)">пример на тестовых данных</span></div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; flex: 1">
+      <div class="col" style="gap: 2px"><span style="font: 700 30px/1.1 Unbounded, sans-serif">2 из 3</span><span style="font-size: 17px; color: var(--ink2)">мест получили подходящий отклик за 2 рабочих дня</span></div>
+      <div class="col" style="gap: 2px"><span style="font: 700 30px/1.1 Unbounded, sans-serif">49 ч</span><span style="font-size: 17px; color: var(--ink2)">медиана до первого подходящего отклика, n = 2</span></div>
+      <div class="col" style="gap: 2px"><span style="font: 700 30px/1.1 Unbounded, sans-serif">3 из 5</span><span style="font-size: 17px; color: var(--ink2)">«Интересно» с совпадением от 70&nbsp;%</span></div>
+      <div class="col" style="gap: 2px"><span style="font: 700 30px/1.1 Unbounded, sans-serif">1 команда</span><span style="font-size: 17px; color: var(--ink2)">считает всё по базе, без тестовых записей и аккаунтов команды</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>* Гипотеза, проверим на пилоте</span><span>12</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

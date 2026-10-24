@@ -1,0 +1,74 @@
+/* «Тандем» — питч-презентация 1920×1080.
+   Одна гамма на всех слайдах: светлый фон --bg, белые карточки, тёмный текст.
+   Текст — только три тона: --ink (заголовки и главное), --ink2 (основной текст), --ink3 (подписи).
+   Акцент — синий: --accent (карточка с главным, шапка «Тандема» в таблицах). Данные — синий и оранжевый из логотипа.
+   Тёмных слайдов и тёмных карточек нет: эксперты просили без переключений тёмного и светлого. */
+.slide{--ink:#0e1015;--ink2:#474d5c;--ink3:#686e7e;--line:#e2e5eb;--bg:#f4f5f8;--card:#ffffff;--accent:#2a4de0;--blue:#3f6cff;--blue-ink:#2243c4;--blue-soft:#e8eeff;--orange:#ff9a1a;--orange-ink:#8f4700;--orange-soft:#fff1dc;
+  width:1920px;height:1080px;box-sizing:border-box;padding:80px 112px 104px;background:var(--bg);color:var(--ink);font-family:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;gap:40px;position:relative;overflow:hidden}
+.slide *{box-sizing:border-box}
+.top{display:flex;align-items:center;justify-content:space-between;gap:24px;position:relative;z-index:3}
+.brand{display:flex;align-items:center;gap:14px;font:700 24px/1 "Unbounded","Onest",sans-serif;letter-spacing:-.01em;color:var(--ink)}
+.brand .mk{position:relative;width:44px;height:28px;flex-shrink:0}
+.brand .mk i{position:absolute;top:0;width:28px;height:28px;border-radius:50%}
+.brand .mk .a{left:0;background:var(--blue)}
+.brand .mk .b{right:0;background:var(--orange);opacity:.92}
+.eyebrow{font:600 18px/1.2 "Onest",sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3)}
+.h{font-family:"Unbounded","Onest",sans-serif;font-weight:700;font-size:56px;line-height:1.1;letter-spacing:-.025em;margin:0;max-width:1520px;text-wrap:balance;color:var(--ink);position:relative;z-index:3}
+.h.xl{font-size:150px;line-height:.95;font-weight:800;letter-spacing:-.045em}
+.lead{font-size:30px;line-height:1.45;color:var(--ink2);margin:0;text-wrap:pretty}
+.foot{position:absolute;left:112px;right:112px;bottom:44px;display:flex;justify-content:space-between;align-items:center;gap:24px;font-size:18px;color:var(--ink3);z-index:4}
+.card{background:var(--card);border-radius:36px;padding:40px 44px;display:flex;flex-direction:column;gap:16px;min-width:0;position:relative;z-index:2}
+.card.soft-b{background:var(--blue-soft)}
+.card.soft-o{background:var(--orange-soft)}
+.card.accent{background:var(--accent);--bg:var(--accent);--ink:#ffffff;--ink2:#e3e9ff;--ink3:#d3dcff;--line:rgba(255,255,255,.24)}
+.card.accent .pill{background:rgba(255,255,255,.18);color:#ffffff}
+.card h3{font:600 28px/1.2 "Unbounded","Onest",sans-serif;letter-spacing:-.015em;margin:0;color:var(--ink)}
+.card p{font-size:24px;line-height:1.45;color:var(--ink2);margin:0;text-wrap:pretty}
+.card ul,.card ol{margin:0;padding-left:28px;display:flex;flex-direction:column;gap:10px;font-size:24px;line-height:1.42;color:var(--ink2)}
+.card li::marker{color:var(--ink3)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px}
+.row{display:flex;align-items:center;gap:16px}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pill{display:inline-flex;align-items:center;height:38px;padding:0 18px;border-radius:999px;font-size:18px;font-weight:600;white-space:nowrap;align-self:flex-start;background:var(--blue-soft);color:var(--blue-ink)}
+.pill.o{background:var(--orange-soft);color:var(--orange-ink)}
+.pill.n{background:rgba(127,133,150,.16);color:var(--ink2)}
+.card.soft-o .pill.o,.card.soft-b .pill:not(.o):not(.n){background:#ffffff}
+.num{font:800 92px/1 "Unbounded","Onest",sans-serif;letter-spacing:-.04em;color:var(--ink)}
+.num small{font-size:.4em;font-weight:700;letter-spacing:-.01em;margin-left:8px}
+.sep{height:1px;background:var(--line);width:100%;flex-shrink:0}
+.ico{width:64px;height:64px;border-radius:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--card);color:var(--ink)}
+.ico svg{width:30px;height:30px}
+.stp{display:flex;gap:22px;align-items:flex-start}
+.stp b{flex-shrink:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 20px/1 "Unbounded",sans-serif;background:var(--ink);color:var(--bg)}
+.stp h4{font:600 26px/1.2 "Unbounded","Onest",sans-serif;letter-spacing:-.015em;margin:0 0 8px;color:var(--ink)}
+.stp p{font-size:22px;line-height:1.45;color:var(--ink2);margin:0}
+.disc{position:absolute;border-radius:50%;z-index:0}
+
+/* Телефон: рамка, экран 390×844. Размер — классом s260…s400. */
+.device{--w:320px;position:absolute;z-index:2;flex-shrink:0;width:var(--w);padding:calc(var(--w)*.03);border-radius:calc(var(--w)*.165);background:linear-gradient(140deg,#f3f4f6 0%,#b7bbc4 20%,#fbfbfc 42%,#9ca1ab 64%,#e2e4e8 84%,#a9adb6 100%);box-shadow:0 calc(var(--w)*.15) calc(var(--w)*.22) calc(var(--w)*-.08) rgba(14,18,32,.42),0 calc(var(--w)*.03) calc(var(--w)*.07) rgba(14,18,32,.14)}
+.device::before{content:"";position:absolute;right:calc(var(--w)*-.008);top:26%;width:calc(var(--w)*.012);height:11%;border-radius:4px;background:#a3a7b0}
+.device::after{content:"";position:absolute;left:calc(var(--w)*-.008);top:19%;width:calc(var(--w)*.012);height:17%;border-radius:4px;background:linear-gradient(#a3a7b0 0 44%,transparent 44% 56%,#a3a7b0 56%)}
+.device .bz{background:#08090c;border-radius:calc(var(--w)*.137);padding:calc(var(--w)*.02)}
+.device .scr{position:relative;overflow:hidden;border-radius:calc(var(--w)*.117);background:#ffffff;aspect-ratio:390/844}
+.device .scr img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.device .scr::after{content:"";position:absolute;top:calc(var(--w)*.028);left:50%;width:calc(var(--w)*.032);height:calc(var(--w)*.032);margin-left:calc(var(--w)*-.016);border-radius:50%;background:#08090c;box-shadow:0 0 0 calc(var(--w)*.006) rgba(8,9,12,.25)}
+.device.s260{--w:260px}.device.s280{--w:280px}.device.s300{--w:300px}.device.s320{--w:320px}.device.s340{--w:340px}.device.s360{--w:360px}.device.s380{--w:380px}.device.s400{--w:400px}
+
+/* Ноутбук: экран 16:10. */
+.laptop{--w:1000px;position:absolute;z-index:1;width:var(--w)}
+.laptop .lid{background:#0b0c10;border-radius:calc(var(--w)*.024) calc(var(--w)*.024) calc(var(--w)*.006) calc(var(--w)*.006);padding:calc(var(--w)*.016) calc(var(--w)*.016) calc(var(--w)*.024);box-shadow:inset 0 0 0 2px #2c2f37}
+.laptop .lid img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top left;border-radius:calc(var(--w)*.004)}
+.laptop .base{position:relative;height:calc(var(--w)*.024);margin:0 calc(var(--w)*-.07);border-radius:0 0 calc(var(--w)*.06) calc(var(--w)*.06)/0 0 calc(var(--w)*.02) calc(var(--w)*.02);background:linear-gradient(#eceef1 0%,#c5c9d0 55%,#8f949d 100%);box-shadow:0 calc(var(--w)*.05) calc(var(--w)*.07) calc(var(--w)*-.035) rgba(14,18,32,.45)}
+.laptop .base::before{content:"";position:absolute;left:50%;top:0;width:14%;height:45%;transform:translateX(-50%);border-radius:0 0 calc(var(--w)*.012) calc(var(--w)*.012);background:#b3b7bf}
+.laptop.l1000{--w:1000px}.laptop.l1060{--w:1060px}
+
+/* Таблица сравнения */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:23px;line-height:1.4;background:var(--card);border-radius:32px;overflow:hidden}
+.tbl th{font:600 17px/1.2 "Onest",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);text-align:left;padding:24px 28px;border-bottom:1px solid var(--line)}
+.tbl td{padding:22px 28px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink2)}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td.rh{color:var(--ink);font-weight:600}
+.tbl th.us{background:var(--accent);color:#ffffff}
+.tbl td.us{background:var(--blue-soft);color:var(--ink);font-weight:600}
+.tbl.tight th{padding:16px 20px}.tbl.tight td{padding:14px 20px}

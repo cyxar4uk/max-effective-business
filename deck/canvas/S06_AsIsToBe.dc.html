@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Как сейчас и как будет</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="deck.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;600;700;800&display=swap">
+<style>body{margin:0}a{color:#2243c4}a:hover{color:#18318f}</style>
+</helmet>
+<div class="slide" style="width: 1920px; height: 1080px">
+  <div class="top"><div class="brand"><span class="mk"><i class="a"></i><i class="b"></i></span>тандем</div><span class="eyebrow">Как сейчас и как будет</span></div>
+  <h1 class="h">Как компания ищет практиканта сейчас и с «Тандемом»</h1>
+  <div class="grid2" style="flex-grow: 1">
+    <div class="card" style="gap: 22px">
+      <h3>Как сейчас*</h3>
+      <div class="stp"><b style="background: var(--bg); color: var(--ink3)">1</b><p>Нужен человек на сайт, аналитику, маркетплейсы или 1С, а на штатного сотрудника денег нет</p></div>
+      <div class="stp"><b style="background: var(--bg); color: var(--ink3)">2</b><p>Владелец спрашивает знакомых или платит за объявление. Приходят неподходящие отклики</p></div>
+      <div class="stp"><b style="background: var(--bg); color: var(--ink3)">3</b><p>Про практикантов не думает или не знает, к кому идти в вузе</p></div>
+      <div class="stp"><b style="background: var(--bg); color: var(--ink3)">4</b><p>Студент нашёлся, но нужен договор о практической подготовке, и непонятно, что подписывать</p></div>
+      <div class="stp"><b style="background: var(--orange-soft); color: var(--orange-ink)">5</b><p style="color: var(--ink)">Бросает затею или берёт студента без договора. Практику не засчитывают</p></div>
+    </div>
+    <div class="card soft-b" style="gap: 26px">
+      <h3>Как с «Тандемом»</h3>
+      <div class="col" style="gap: 10px"><span class="pill n">Исчезает</span><p style="color: var(--ink)">Искать контакты в вузе и разбирать неподходящие отклики</p></div>
+      <div class="col" style="gap: 10px"><span class="pill" style="background: #ffffff">Упрощается</span><p style="color: var(--ink)">Описать задачу: форма с готовыми примерами, до 3 минут. Договор не оформляем: доводим до него и подсказываем, что подписать и где</p></div>
+      <div class="col" style="gap: 10px"><span class="pill o">Автоматизируется</span><p style="color: var(--ink)">Бот показывает место только подходящим студентам, они откликаются свайпом. Компания видит короткий список с процентом совпадения, после приглашения обе стороны получают контакты и следующие шаги</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>* Гипотеза, проверим на пилоте</span><span>5</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
