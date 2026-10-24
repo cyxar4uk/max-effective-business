@@ -171,6 +171,13 @@ describe('лимит «не больше 3 новых мест в день»', (
     expect(await onInternshipCreated(deps({ students, seen, today: DAILY_MATCH_LIMIT + 1 }).d, { internshipId: 7 })).toBe(0);
   });
 
+  it('лимит 0 (живой показ) — место приходит, сколько бы их ни было сегодня', async () => {
+    const { d, queued } = deps({ students: [student(1, ['excel', 'sql'])], today: DAILY_MATCH_LIMIT + 10 });
+    d.dailyLimit = 0;
+    expect(await onInternshipCreated(d, { internshipId: 7 })).toBe(1);
+    expect(queued[0]!.kind).toBe('internship_match');
+  });
+
   it('до лимита — обычное сообщение о месте', async () => {
     const { d, queued } = deps({ students: [student(1, ['excel', 'sql'])], today: DAILY_MATCH_LIMIT - 1 });
     await onInternshipCreated(d, { internshipId: 7 });
