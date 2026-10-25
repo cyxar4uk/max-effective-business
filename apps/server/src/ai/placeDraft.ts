@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { SKILL_GROUPS, type SkillGroupSeed } from '../seed/skills.js';
 import { TASK_TAGS, tagsForSkills, type TaskTag } from '../seed/tags.js';
 import { GigaChatError, type ChatMessage, type GigaChat } from './gigachat.js';
-import { rulesDraft, titleFromText } from './rules.js';
+import { normalize, rulesDraft, titleFromText } from './rules.js';
 import { clip, DRAFT_LIMITS, type DraftCore, type PlaceDraft } from './types.js';
 
 export interface PlaceDrafter {
@@ -152,6 +152,21 @@ function cleanTitle(s: string): string {
   return cut.charAt(0).toUpperCase() + cut.slice(1);
 }
 
+// Слова, которыми говорят о типе места и о формате. Начало слова, текст после normalize (строчные, «ё» → «е»)
+const mentions = (stems: readonly string[]) => new RegExp(`(?<![\\p{L}\\p{N}])(?:${stems.join('|')})`, 'u');
+const TYPE_MENTION = mentions(['практик', 'стажир', 'стажер', 'подработ', 'разов', 'неполный день', 'неполного дня', 'в штат', 'трудоустро']);
+const FORMAT_MENTION = mentions(['удален', 'дистанц', 'из дома', 'онлайн', 'remote', 'гибрид', 'офис', 'очно', 'приходит', 'приезжа', 'на месте', 'на точке', 'выезд']);
+
+/**
+ * Тип и формат модель любит угадывать: «на месте» для кофейни, хотя в тексте об этом ни слова, а форма подставит.
+ * Оставляем их, только если текст вообще говорит о типе или формате; что именно выбрать, решает модель:
+ * «не надо ездить в офис» — удалённо. Не сказано — null, работодатель выберет на своём шаге.
+ */
+export function keepStated(draft: DraftCore, text: string): DraftCore {
+  const t = normalize(text);
+  return { ...draft, type: TYPE_MENTION.test(t) ? draft.type : null, format: FORMAT_MENTION.test(t) ? draft.format : null };
+}
+
 /**
  * Ответ модели → черновик или null, если он бесполезен. Неизвестные коды выкидываем; названия навыков вместо кодов
  * переводим в коды; обязательных ≤ 5, желательных ≤ 6, пересечения нет. Без обязательных — первые два навыка тега.
@@ -287,7 +302,8 @@ export function createPlaceDrafter({
         const reply = await ai.chat(messages, { signal });
         // Только код причины, без текста: отказ по теме (blacklist) и обрезанный ответ (length) отличаем от кривого JSON
         const finishReason = reply.finishReason?.slice(0, 32) ?? null;
-        const draft = parseModelAnswer(reply.text, groups, tags);
+        const parsed = parseModelAnswer(reply.text, groups, tags);
+        const draft = parsed && keepStated(parsed, text);
         if (!draft) {
           // Сам ответ в лог не пишем: в нём может быть пересказ текста работодателя
           log.warn({ ms: now() - started, rawLength: reply.text.length, finishReason }, 'ИИ-черновик: ответ не по формату, откат на ключевые слова');
