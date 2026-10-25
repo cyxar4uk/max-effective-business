@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { SKILL_GROUPS } from '../seed/skills.js';
 import { TASK_TAGS } from '../seed/tags.js';
 import { GigaChatError, type ChatReply, type GigaChat } from './gigachat.js';
-import { buildSystemPrompt, createPlaceDrafter, extractJson, maskContacts, parseModelAnswer, userMessage } from './placeDraft.js';
+import { buildSystemPrompt, createPlaceDrafter, extractJson, keepStated, maskContacts, parseModelAnswer, userMessage } from './placeDraft.js';
 import { rulesDraft, titleFromText } from './rules.js';
+import type { DraftCore } from './types.js';
 
 const log = pino({ level: 'silent' });
 const parse = (raw: string) => parseModelAnswer(raw, SKILL_GROUPS, TASK_TAGS);
@@ -147,6 +148,34 @@ describe('промпт', () => {
   });
 });
 
+describe('keepStated: тип и формат от модели — только если текст о них говорит', () => {
+  const guessed: DraftCore = { title: 'x', tags: [], requiredSkills: ['smm'], niceSkills: [], type: 'part_time', format: 'office' };
+  const stated = (text: string) => {
+    const d = keepStated(guessed, text);
+    return [d.type, d.format];
+  };
+
+  it('не сказано — null: тексты с прогона на проде 24.10', () => {
+    expect(stated('вести инсту кофейни и снимать сторис')).toEqual([null, null]);
+    expect(stated('первичка в 1С и остатки на складе')).toEqual([null, null]);
+    expect(stated('бар, соцсети и афиши')).toEqual([null, null]);
+    expect(stated('таблица с графиками продаж пекарни')).toEqual([null, null]);
+  });
+
+  it('сказано — остаётся выбор модели, а не ключевых слов', () => {
+    expect(stated('обзвон клиентов автосервиса, CRM, удалённо')).toEqual([null, 'office']);
+    expect(stated('Подработка: приходить в магазин по субботам')).toEqual(['part_time', 'office']);
+    expect(stated('Возьмём студента на практику, работа в офисе')).toEqual(['part_time', 'office']);
+    expect(stated('Ищем стажёра, можно из дома')).toEqual(['part_time', 'office']);
+    expect(stated('место для прохождения практики, гибридный график')).toEqual(['part_time', 'office']);
+  });
+
+  it('не срабатывает на соседних темах', () => {
+    expect(stated('Сделать сайт для салона красоты, рассказать о мастерах')).toEqual([null, null]);
+    expect(stated('карточки детской одежды на WB и фото')).toEqual([null, null]);
+  });
+});
+
 describe('rulesDraft: по ключевым словам', () => {
   const rules = (t: string) => rulesDraft(t, SKILL_GROUPS, TASK_TAGS);
 
@@ -241,6 +270,13 @@ describe('createPlaceDrafter', () => {
     const [messages] = vi.mocked(ai.chat).mock.calls[0]!;
     expect(messages[0]!.role).toBe('system');
     expect(messages[1]).toEqual({ role: 'user', content: '<<<ЗАДАЧА\nвести инсту кофейни\nЗАДАЧА>>>' });
+  });
+
+  it('формат «на месте», которого нет в тексте, в черновик не попадает', async () => {
+    const ai = fakeAi(async () => ok);
+    const drafter = createPlaceDrafter({ ai, log });
+    expect(await drafter.draft('вести инсту кофейни')).toMatchObject({ source: 'ai', requiredSkills: ['smm'], format: null });
+    expect(await drafter.draft('вести инсту кофейни, работа в офисе')).toMatchObject({ source: 'ai', format: 'office' });
   });
 
   it('без модели — сразу правила', async () => {

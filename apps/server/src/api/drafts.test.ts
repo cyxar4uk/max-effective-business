@@ -142,8 +142,9 @@ describe('POST /api/internships/draft', () => {
         tags: ['social_ads'],
         requiredSkills: ['smm'],
         niceSkills: ['canva'],
-        type: 'part_time',
-        format: 'office',
+        // В тексте ни слова о типе и формате — догадки модели не подставляем
+        type: null,
+        format: null,
       });
       // Ключ — только в запросе за токеном, в ответ API он не попадает
       expect(JSON.stringify(res.body)).not.toContain(KEY);
