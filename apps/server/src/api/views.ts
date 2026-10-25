@@ -18,7 +18,24 @@ export function studentProfileView(p: StudentProfile) {
 }
 
 export function employerView(e: Employer) {
-  return { companyName: e.companyName, city: e.city, contactName: e.contactName, isDemo: e.isDemo };
+  return {
+    companyName: e.companyName,
+    city: e.city,
+    contactName: e.contactName,
+    isDemo: e.isDemo,
+    // Реквизиты для документов практики (F-16)
+    legalName: e.legalName,
+    inn: e.inn,
+    ogrn: e.ogrn,
+    legalAddress: e.legalAddress,
+    signerName: e.signerName,
+    signerPosition: e.signerPosition,
+    signerBasis: e.signerBasis,
+    responsibleName: e.responsibleName,
+    responsiblePosition: e.responsiblePosition,
+    responsiblePhone: e.responsiblePhone,
+    responsibleEmail: e.responsibleEmail,
+  };
 }
 
 export function internshipView(

@@ -36,7 +36,9 @@ export function profilesRouter({ ds }: DomainDeps): Router {
     const user = currentUser(req);
     requireConsent(user);
     const body = parse(employerProfileBody, req.body);
-    await employers.upsert({ ownerUserId: user.id, ...body }, ['ownerUserId']);
+    // Реквизиты, которых нет в запросе, не трогаем: старая форма профиля их не присылает
+    const fields = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
+    await employers.upsert({ ownerUserId: user.id, ...fields }, ['ownerUserId']);
     res.json(employerView(await employers.findOneByOrFail({ ownerUserId: user.id })));
   });
 

@@ -21,6 +21,7 @@
   "type": "module",
   "dependencies": {
     "cors": "^2.8.6",
+    "docx": "^9.14.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
@@ -39,6 +40,7 @@
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "eslint": "^10.11.0",
+    "jszip": "^3.10.2",
     "supertest": "^7.3.0",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",

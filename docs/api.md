@@ -167,6 +167,43 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 Все три поля обязательные и непустые: `companyName` и `contactName` — до 200 символов, `city` — до 100.
 `contactName` студент видит в `employerContact.name` после приглашения.
 
+Реквизиты для документов практики (F-16) — необязательные, в ответе `null`, если не заполнены:
+`legalName`, `inn`, `ogrn`, `legalAddress`, `signerName`, `signerPosition`, `signerBasis`, `responsibleName`,
+`responsiblePosition`, `responsiblePhone`, `responsibleEmail`. ИНН — 10 или 12 цифр, ОГРН — 13 или 15, почта —
+`name@example.ru`, остальное — до 300 символов; ошибка — `400` с `fields` по имени поля. Поле, которого нет в `PUT`,
+не меняется; `""` или `null` — стирает.
+
+### Документы для практики `GET /api/interests/:id/documents`
+
+`:id` — `interestId` из кандидатов или откликов. Только две стороны приглашения (студент и владелец места), только
+статус `invited` и место с типом `practice`, иначе `404`.
+
+```json
+{
+  "role": "employer",
+  "internship": { "id": 12, "title": "Оформить карточки чая на Wildberries", "company": "Чайная лавка «Сафина»" },
+  "requisitesReady": true,
+  "items": [
+    { "kind": "contract", "fileName": "Договор о практической подготовке.docx", "url": "https://…/api/practice-files/…" },
+    { "kind": "consent_letter", "fileName": "…", "url": "…" },
+    { "kind": "task", "fileName": "…", "url": "…" },
+    { "kind": "review", "fileName": "…", "url": "…" }
+  ]
+}
+```
+
+- `requisitesReady` — заполнены все реквизиты, кроме телефона и почты ответственного. Иначе у `contract` и
+  `consent_letter` `url: null`.
+- `url` — подписанная ссылка на 15 минут для `WebApp.downloadFile`: MAX качает файл сам, без `X-Max-Init-Data`.
+  Подпись покрывает отклик, вид документа и пользователя; доступ проверяется заново при скачивании. Просрочена или
+  подделана — `404`. Без `MINIAPP_URL` ссылок нет (`null`).
+
+### Документ `GET /api/interests/:id/documents/:kind`
+
+`kind` — `contract` | `consent_letter` | `task` | `review`. Ответ — `.docx` с `Content-Disposition: attachment`.
+Доступ — как у списка. Договор и письмо без реквизитов — `409` с текстом, что заполнить. Шаблоны и подстановка —
+`docs/features/F-16-practice-docs.md`, сборка — `apps/server/src/docs/templates.ts`. В лог — только id отклика и вид.
+
 ### Совпадение `match`
 
 Считает модуль `matching` (Тимур). Везде, где стажировка показывается студенту или кандидат работодателю:

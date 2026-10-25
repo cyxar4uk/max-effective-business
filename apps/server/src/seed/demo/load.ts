@@ -72,13 +72,27 @@ export async function seedDemo(ds: DataSource, data: DemoData = ALL_DEMO): Promi
     for (const e of data.employers) {
       const userId = await upsertUser(m, { maxUserId: e.maxUserId, firstName: e.contactFirstName, lastName: e.contactLastName, phone: e.phone });
       const rows: { id: number }[] = await m.query(
-        `INSERT INTO employers (owner_user_id, company_name, city, contact_name, is_demo)
-         VALUES ($1, $2, $3, $4, true)
+        `INSERT INTO employers (owner_user_id, company_name, city, contact_name, is_demo,
+                                legal_name, inn, ogrn, legal_address, signer_name, signer_position, signer_basis,
+                                responsible_name, responsible_position, responsible_phone, responsible_email)
+         VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          ON CONFLICT (owner_user_id) DO UPDATE SET
            company_name = EXCLUDED.company_name, city = EXCLUDED.city, contact_name = EXCLUDED.contact_name,
-           is_demo = true, updated_at = now()
+           is_demo = true, legal_name = EXCLUDED.legal_name, inn = EXCLUDED.inn, ogrn = EXCLUDED.ogrn,
+           legal_address = EXCLUDED.legal_address, signer_name = EXCLUDED.signer_name,
+           signer_position = EXCLUDED.signer_position, signer_basis = EXCLUDED.signer_basis,
+           responsible_name = EXCLUDED.responsible_name, responsible_position = EXCLUDED.responsible_position,
+           responsible_phone = EXCLUDED.responsible_phone, responsible_email = EXCLUDED.responsible_email,
+           updated_at = now()
          RETURNING id`,
-        [userId, e.companyName, e.city, `${e.contactFirstName} ${e.contactLastName}`],
+        [
+          userId, e.companyName, e.city, `${e.contactFirstName} ${e.contactLastName}`,
+          // Тестовые реквизиты (#144): в демо договор и письмо скачиваются заполненными
+          e.requisites.legalName, e.requisites.inn, e.requisites.ogrn, e.requisites.legalAddress,
+          e.requisites.signerName, e.requisites.signerPosition, e.requisites.signerBasis,
+          e.requisites.responsibleName, e.requisites.responsiblePosition, e.requisites.responsiblePhone,
+          e.requisites.responsibleEmail,
+        ],
       );
       employerIds.set(e.key, rows[0]!.id);
     }

@@ -73,6 +73,18 @@ export class Employer {
   @Column({ type: 'text' }) city!: string;
   @Column({ name: 'contact_name', type: 'text' }) contactName!: string;
   @Column({ name: 'is_demo', type: 'boolean', default: false }) isDemo!: boolean;
+  // Реквизиты для документов практики (F-16): все необязательные
+  @Column({ name: 'legal_name', type: 'text', nullable: true }) legalName!: string | null;
+  @Column({ type: 'text', nullable: true }) inn!: string | null;
+  @Column({ type: 'text', nullable: true }) ogrn!: string | null;
+  @Column({ name: 'legal_address', type: 'text', nullable: true }) legalAddress!: string | null;
+  @Column({ name: 'signer_name', type: 'text', nullable: true }) signerName!: string | null;
+  @Column({ name: 'signer_position', type: 'text', nullable: true }) signerPosition!: string | null;
+  @Column({ name: 'signer_basis', type: 'text', nullable: true }) signerBasis!: string | null;
+  @Column({ name: 'responsible_name', type: 'text', nullable: true }) responsibleName!: string | null;
+  @Column({ name: 'responsible_position', type: 'text', nullable: true }) responsiblePosition!: string | null;
+  @Column({ name: 'responsible_phone', type: 'text', nullable: true }) responsiblePhone!: string | null;
+  @Column({ name: 'responsible_email', type: 'text', nullable: true }) responsibleEmail!: string | null;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt!: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt!: Date;
 }
