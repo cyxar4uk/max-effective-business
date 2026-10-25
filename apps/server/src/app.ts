@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -8,6 +9,7 @@ import { errorBody, errorHandler, notFoundHandler } from './api/errors.js';
 import type { DomainDeps } from './api/context.js';
 import { draftRouter, type DraftDeps } from './api/drafts.js';
 import { internshipsRouter } from './api/internships.js';
+import { createPracticeDocs } from './api/practiceDocs.js';
 import { profilesRouter } from './api/profiles.js';
 import { apiRouter } from './api/routes.js';
 import { webhookRouter, type UpdateHandler } from './api/webhook.js';
@@ -51,7 +53,12 @@ export function createApp({ config, log, repos, events, domain, onBotUpdate, dra
       autoLogging: { ignore: (req) => req.url === '/api/health' },
       // Без заголовков и тел: в них initData и персональные данные
       serializers: {
-        req: (req: { id: unknown; method: string; url: string }) => ({ id: req.id, method: req.method, url: req.url }),
+        // Токен ссылки на документ практики — ключ доступа к файлу на 15 минут: в лог не пишем
+        req: (req: { id: unknown; method: string; url: string }) => ({
+          id: req.id,
+          method: req.method,
+          url: req.url.replace(/(\/api\/practice-files\/)[^/?]+/, '$1…'),
+        }),
         res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
         err: safeErr,
       },
@@ -100,12 +107,23 @@ export function createApp({ config, log, repos, events, domain, onBotUpdate, dra
     app.use(webhookRouter({ secret: config.MAX_WEBHOOK_SECRET, onUpdate: onBotUpdate }));
   }
 
+  // Документы практики (F-16): подписанные ссылки для WebApp.downloadFile — до проверки initData, остальное — после
+  const practiceDocs = domain
+    ? createPracticeDocs({
+        ds: domain.ds,
+        linkSecret: createHmac('sha256', 'practice-docs').update(config.MAX_BOT_TOKEN).digest('hex'),
+        publicOrigin: config.MINIAPP_URL ? new URL(config.MINIAPP_URL).origin : null,
+      })
+    : null;
+  if (practiceDocs) app.use('/api', practiceDocs.files);
+
   app.use(
     '/api',
     requireMaxUser({ botToken: config.MAX_BOT_TOKEN, maxAgeSec: config.INIT_DATA_MAX_AGE_SEC, users: repos.users }),
     apiRouter(repos, config),
     ...(draft ? [draftRouter({ ...draft, perHour: config.AI_DRAFT_PER_HOUR })] : []),
     ...(domain ? [profilesRouter({ ...domain, events }), internshipsRouter({ ...domain, events, feedMinScore: config.FEED_MIN_SCORE })] : []),
+    ...(practiceDocs ? [practiceDocs.authed] : []),
   );
 
   app.use(notFoundHandler);

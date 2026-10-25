@@ -57,10 +57,38 @@ export const studentProfileBody = z.object({
   practiceMonth: practiceMonth.transform((v) => v ?? null),
 });
 
+// Реквизит для документов практики: необязательный. Не передан — undefined (не меняем), "" и null — стираем
+const requisite = (max: number) =>
+  z
+    .string({ error: 'Должно быть строкой' })
+    .trim()
+    .max(max, `Не длиннее ${max} символов`)
+    .refine(noNul, NUL_MESSAGE)
+    .nullish()
+    .transform((v) => (v === undefined ? undefined : v || null));
+const digits = (lengths: number[], message: string) =>
+  requisite(20).refine((v) => !v || (/^\d+$/.test(v) && lengths.includes(v.length)), message);
+
+/** Реквизиты компании для документов практики (F-16), проверка — как в спеке. */
+export const requisitesBody = {
+  legalName: requisite(300),
+  inn: digits([10, 12], 'ИНН — 10 или 12 цифр'),
+  ogrn: digits([13, 15], 'ОГРН — 13 или 15 цифр'),
+  legalAddress: requisite(300),
+  signerName: requisite(300),
+  signerPosition: requisite(300),
+  signerBasis: requisite(300),
+  responsibleName: requisite(300),
+  responsiblePosition: requisite(300),
+  responsiblePhone: requisite(50),
+  responsibleEmail: requisite(200).refine((v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Почта в формате name@example.ru'),
+};
+
 export const employerProfileBody = z.object({
   companyName: text(200),
   city: text(100),
   contactName: text(200),
+  ...requisitesBody,
 });
 
 // Обязательные поля публикации места (decisions.md, 27.09): тип, задача (title), ≥ 1 обязательный навык, формат,

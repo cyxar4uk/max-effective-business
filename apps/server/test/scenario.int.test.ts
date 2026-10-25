@@ -92,7 +92,7 @@ describe.skipIf(!url)('основной сценарий', () => {
   it('работодатель заполняет профиль и публикует стажировку', async () => {
     await as(EMPLOYER).post('/api/me/consent', { version: CONSENT_VERSION }).expect(200);
     await as(EMPLOYER).put('/api/employer/profile', { companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга' }).expect(200);
-    expect((await as(EMPLOYER).get('/api/employer/profile')).body).toEqual({ companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга', isDemo: false });
+    expect((await as(EMPLOYER).get('/api/employer/profile')).body).toMatchObject({ companyName: 'ООО «Вектор»', city: 'Москва', contactName: 'Ольга', isDemo: false, inn: null });
     expect((await as(EMPLOYER).get('/api/me')).body.roles).toEqual({ student: false, employer: true });
 
     const res = await as(EMPLOYER).post('/api/internships', {
