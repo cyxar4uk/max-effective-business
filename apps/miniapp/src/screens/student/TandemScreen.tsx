@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router';
 import { api } from '../../api/client';
 import type { Interest } from '../../api/types';
 import { useLoad } from '../../api/useLoad';
@@ -13,6 +13,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../max/bridge';
 import { fade, meet, pop, spring, useReduced } from '../../motion/springs';
 import { listItem } from '../../motion/variants';
+import type { DocsState } from '../docs/PracticeDocs';
 import { companyInitial, TYPE_LABEL } from './place';
 import { RequireConsent } from './StudentShell';
 import { formatPhone, INVITE_TO, inviteSeen, markInviteSeen, nextStepsFor, tandemPath, type TandemState } from './tandem';
@@ -136,6 +137,17 @@ function Tandem({ interest, celebrate, fromList }: { interest: Interest; celebra
             ))}
           </ol>
           <span className="lbl">Бот продублирует чек-лист в чат. Ночью, с 22:00 до 9:00, сообщение придёт утром.</span>
+          {/* Практика — готовые .docx (F-16); у стажировки и подработки документов нет */}
+          {place.type === 'practice' && interest.interestId !== undefined && (
+            <Link
+              className="btn sec tm-docs"
+              to={`/docs/${interest.interestId}`}
+              state={{ role: 'student' } satisfies DocsState}
+              onClick={() => haptic.selection()}
+            >
+              Документы для практики
+            </Link>
+          )}
         </motion.section>
         <motion.p className="m0 lbl tm-safe" {...item(2)}>
           «Тандем» бесплатен для студентов. Если компания просит заплатить, оформить карту по ссылке или назвать код из

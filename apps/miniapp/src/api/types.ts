@@ -124,6 +124,8 @@ export interface PlaceDraftSuggestion {
 }
 
 export interface Interest {
+  /** id отклика: по нему открываются документы для практики (F-16). В ответах до F-16 поля нет. */
+  interestId?: number;
   status: InterestStatus;
   match: Match;
   updatedAt: string;
@@ -138,6 +140,8 @@ export interface InterestResult {
 }
 
 export interface Candidate {
+  /** id отклика: по нему открываются документы для практики (F-16). В ответах до F-16 поля нет. */
+  interestId?: number;
   studentId: number;
   /** null — имени в MAX нет; поля анкеты — null, если анкету удалили после отклика. */
   firstName: string | null;
@@ -168,11 +172,45 @@ export interface StudentProfile {
   isDemo?: boolean;
 }
 
-export interface EmployerProfile {
+/** Реквизиты для документов практики (F-16): все необязательные, пустое — null. */
+export interface Requisites {
+  legalName?: string | null;
+  inn?: string | null;
+  ogrn?: string | null;
+  legalAddress?: string | null;
+  signerName?: string | null;
+  signerPosition?: string | null;
+  signerBasis?: string | null;
+  responsibleName?: string | null;
+  responsiblePosition?: string | null;
+  responsiblePhone?: string | null;
+  responsibleEmail?: string | null;
+}
+
+export interface EmployerProfile extends Requisites {
   companyName: string;
   city: string;
   contactName: string;
   isDemo?: boolean;
+}
+
+export type DocKind = 'contract' | 'consent_letter' | 'task' | 'review';
+
+export interface PracticeDoc {
+  kind: DocKind;
+  /** Подписанная ссылка без заголовка X-Max-Init-Data — для WebApp.downloadFile; null — нельзя скачать (нет реквизитов). */
+  url?: string | null;
+  fileName?: string;
+}
+
+/** Ответ GET /api/interests/:id/documents (F-16, контракт предложен в #143). */
+export interface PracticeDocs {
+  /** Чей это экран: работодателя (владелец места) или студента. */
+  role?: 'employer' | 'student';
+  internship?: { id: number; title: string; company: string };
+  /** Реквизиты компании заполнены: договор и письмо можно скачать. */
+  requisitesReady: boolean;
+  items: PracticeDoc[];
 }
 
 export interface Items<T> {

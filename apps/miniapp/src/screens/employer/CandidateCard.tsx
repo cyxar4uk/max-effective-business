@@ -10,6 +10,7 @@ import { haptic } from '../../max/bridge';
 import { aboutLine, avatarClass, firstName, fullName, initial, paths, phoneText, studyLine, whenText } from './candidate';
 import { Avatar, Eq, MatchSkills } from './candidateUi';
 import { CheckIcon, CrossIcon, DocIcon, LockIcon } from './icons';
+import type { DocsState } from '../docs/PracticeDocs';
 import type { Decision, Pending } from './useDecision';
 import { DemoBadge } from '../../components/DemoBadge';
 
@@ -96,6 +97,7 @@ export function ContactBlock({ c, place, compact = false, docs = true }: Contact
   const navigate = useNavigate();
   const { me } = useMe();
   const phone = useRef<HTMLSpanElement>(null);
+  const practiceDocs = place.type === 'practice' && c.interestId !== undefined;
   return (
     <div className="surf cd-contact">
       <div className="li cd-contact-main">
@@ -130,7 +132,12 @@ export function ContactBlock({ c, place, compact = false, docs = true }: Contact
           className="li cd-docs-link"
           onClick={() => {
             haptic.selection();
-            navigate(paths.docs(place.id, c.studentId));
+            // Практика с известным откликом — сразу к .docx (F-16); иначе — чек-лист шагов
+            // Документов на сервере нет (404) — экран вернёт к чек-листу
+            if (practiceDocs) {
+              const state: DocsState = { role: 'employer', fallback: paths.docs(place.id, c.studentId) };
+              navigate(`/docs/${c.interestId}`, { state });
+            } else navigate(paths.docs(place.id, c.studentId));
           }}
         >
           <span className="ico g cd-ico" aria-hidden="true">
@@ -139,7 +146,11 @@ export function ContactBlock({ c, place, compact = false, docs = true }: Contact
           <span className="col grow">
             <span className="cd-contact-name">{place.type === 'practice' ? 'Документы для практики' : 'Следующие шаги'}</span>
             <span className="lbl">
-              {place.type === 'practice' ? 'Договор с вузом, руководитель, задание, отзыв' : 'Задачи, график, оформление, первый день'}
+              {practiceDocs
+                ? 'Договор, письмо о согласии, задание и отзыв — .docx'
+                : place.type === 'practice'
+                  ? 'Договор с вузом, руководитель, задание, отзыв'
+                  : 'Задачи, график, оформление, первый день'}
             </span>
           </span>
         </button>

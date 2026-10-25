@@ -1,5 +1,6 @@
 // Профиль компании: три обязательных поля (docs/api.md, «Профиль компании»). Первый раз — потом сразу форма места.
-import { useState, type FormEvent, type InputHTMLAttributes } from 'react';
+// Ниже — необязательные реквизиты для документов практики (F-16), свёрнуты, пока не заполнены.
+import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { EmployerProfile } from '../../api/types';
@@ -8,9 +9,20 @@ import { useMe } from '../../app/me';
 import { ErrorState } from '../../components/ErrorState';
 import { flash } from '../../components/flashMessage';
 import { Skeleton } from '../../components/Skeleton';
+import { TextField } from '../../components/TextField';
 import { haptic, insideMax, requestContact, type MaxContact } from '../../max/bridge';
+import {
+  checkRequisites,
+  REQUISITE_FIELDS,
+  requisiteId,
+  requisitesBody,
+  requisitesFilled,
+  requisitesForm,
+  type RequisiteName,
+} from '../docs/requisites';
+import { RequisitesFields } from '../docs/RequisitesFields';
 import type { Errors } from './draft';
-import { CheckIcon, ChevronIcon, PhoneIcon } from './icons';
+import { CheckIcon, ChevronIcon, DocIcon, PhoneIcon } from './icons';
 import './employer.css';
 
 /** Экран согласия и телефона — задача #14; после него пользователь вернётся сюда. */
@@ -54,35 +66,6 @@ function CompanyLoader() {
     );
   }
   return <CompanyForm initial={state.data} />;
-}
-
-interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
-  id: string;
-  label: string;
-  value: string;
-  error?: string;
-  onChange: (value: string) => void;
-}
-
-function TextField({ id, label, value, error, onChange, ...rest }: TextFieldProps) {
-  return (
-    <div className={error ? 'pf-field bad' : 'pf-field'}>
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        value={value}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id}-err` : undefined}
-        onChange={(e) => onChange(e.target.value)}
-        {...rest}
-      />
-      {error && (
-        <span id={`${id}-err`} className="pf-err" role="alert">
-          {error}
-        </span>
-      )}
-    </div>
-  );
 }
 
 /**
@@ -162,16 +145,43 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
     city: initial?.city ?? '',
     contactName: initial?.contactName ?? me.firstName ?? '',
   });
+  // Реквизиты показываем, когда сервер их знает (F-16, #142): иначе PUT молча их отбросит
+  const reqSupported = initial !== null && 'inn' in initial;
+  const [req, setReq] = useState(() => requisitesForm(initial));
+  // Реквизиты нужны только для практики: свёрнуты, пока ни одного поля нет
+  const [reqOpen, setReqOpen] = useState(() => requisitesFilled(requisitesForm(initial)).done > 0);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   // Чётность переключает анимацию покачивания полей с ошибкой, чтобы она повторялась при каждой попытке
   const [attempt, setAttempt] = useState(0);
 
-  const set = (name: FieldName) => (value: string) => {
-    setForm({ ...form, [name]: value });
+  const clearError = (name: string) => {
     if (errors[name]) setErrors(Object.fromEntries(Object.entries(errors).filter(([k]) => k !== name)));
     if (formError) setFormError(null);
+  };
+  const set = (name: FieldName) => (value: string) => {
+    setForm({ ...form, [name]: value });
+    clearError(name);
+  };
+  const setRequisite = (name: RequisiteName, value: string) => {
+    setReq({ ...req, [name]: value });
+    clearError(name);
+  };
+  const filled = requisitesFilled(req);
+
+  // Курсор — в первое поле с ошибкой: с клавиатуры и экранным диктором не надо искать, что не так.
+  // Ошибка в реквизитах — раскрываем их; поле появится после отрисовки
+  const focusFirst = (found: Errors) => {
+    const main = (Object.keys(FIELD_ID) as FieldName[]).find((k) => k in found);
+    if (main) {
+      document.getElementById(FIELD_ID[main])?.focus();
+      return;
+    }
+    const field = REQUISITE_FIELDS.find((f) => f.name in found);
+    if (!field) return;
+    setReqOpen(true);
+    requestAnimationFrame(() => document.getElementById(requisiteId(field.name))?.focus());
   };
 
   const submit = async (e: FormEvent) => {
@@ -181,8 +191,9 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
       companyName: form.companyName.trim(),
       city: form.city.trim(),
       contactName: form.contactName.trim(),
+      ...(reqSupported ? requisitesBody(req) : {}),
     };
-    const found: Errors = {};
+    const found: Errors = checkRequisites(req);
     if (!body.companyName) found.companyName = 'Укажите название компании';
     if (!body.city) found.city = 'Укажите город';
     if (!body.contactName) found.contactName = 'Укажите, к кому обращаться студенту';
@@ -190,9 +201,7 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
       setErrors(found);
       setAttempt((n) => n + 1);
       haptic.notify('error');
-      // Курсор — в первое пустое поле: с клавиатуры и экранным диктором не надо искать, что не так
-      const first = (Object.keys(FIELD_ID) as FieldName[]).find((k) => k in found);
-      if (first) document.getElementById(FIELD_ID[first])?.focus();
+      focusFirst(found);
       return;
     }
 
@@ -219,6 +228,7 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
       }
       setErrors(apiErr.fields);
       setFormError(apiErr.message);
+      if (REQUISITE_FIELDS.some((f) => f.name in apiErr.fields)) setReqOpen(true);
       setAttempt((n) => n + 1);
     } finally {
       setSaving(false);
@@ -266,6 +276,46 @@ function CompanyForm({ initial }: { initial: EmployerProfile | null }) {
         </div>
         <PhoneRow />
         <p className="lbl m0">Имя контактного лица и ваш номер, если вы им поделились, студент получит только после вашего приглашения.</p>
+        {reqSupported && (
+          <section className="req" aria-label="Реквизиты для документов практики">
+            <div className="surf">
+              <button
+                type="button"
+                className="li req-toggle"
+                aria-expanded={reqOpen}
+                aria-controls={reqOpen ? 'req-body' : undefined}
+                onClick={() => {
+                  haptic.selection();
+                  setReqOpen(!reqOpen);
+                }}
+              >
+                <span className="ico g req-ico" aria-hidden="true">
+                  <DocIcon />
+                </span>
+                <span className="col grow">
+                  <span className="req-t">Реквизиты для документов практики</span>
+                  <span className="lbl">
+                    {filled.done === filled.total
+                      ? 'Заполнены — договор и письмо соберутся целиком'
+                      : filled.done === 0
+                        ? 'Нужны для договора с вузом и письма о согласии. Можно заполнить позже'
+                        : `Заполнено ${filled.done} из ${filled.total}`}
+                  </span>
+                </span>
+                <ChevronIcon />
+              </button>
+            </div>
+            {reqOpen && (
+              <div id="req-body" className="req-body">
+                <p className="lbl m0">
+                  Подставим их в договор о практической подготовке и письмо о согласии, когда пригласите студента на
+                  практику. Студенты их не видят, все поля необязательные.
+                </p>
+                <RequisitesFields form={req} errors={errors} onChange={setRequisite} />
+              </div>
+            )}
+          </section>
+        )}
         {formError && (
           <p key={attempt} className="pf-alert" role="alert">
             {formError}

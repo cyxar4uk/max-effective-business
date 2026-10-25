@@ -1,7 +1,7 @@
 import { BrowserRouter, Route } from 'react-router';
 import { BackButtonSync } from './app/BackButtonSync';
 import { LastRoleSync } from './app/lastRole';
-import { lazyScreen, loadAbout, loadEmployer, loadPlaceForm, loadStudent } from './app/lazyScreen';
+import { lazyScreen, loadAbout, loadDocs, loadEmployer, loadPlaceForm, loadStudent } from './app/lazyScreen';
 import { MeProvider } from './app/MeProvider';
 import { StartParamGate } from './app/StartParamGate';
 import { FlashHost } from './components/Flash';
@@ -10,7 +10,7 @@ import { Home } from './screens/Home';
 import { NotFound } from './screens/NotFound';
 import { ConsentScreen } from './screens/onboarding/ConsentScreen';
 
-// В первом чанке — главный экран и онбординг; разделы ролей, форма места и «О сервисе» — отдельные чанки
+// В первом чанке — главный экран и онбординг; разделы ролей, форма места, документы практики и «О сервисе» — отдельные чанки
 const StudentHome = lazyScreen(loadStudent, (m) => m.StudentHome);
 const StudentInterests = lazyScreen(loadStudent, (m) => m.StudentInterests);
 const StudentProfileScreen = lazyScreen(loadStudent, (m) => m.StudentProfileScreen);
@@ -25,6 +25,7 @@ const CandidatesScreen = lazyScreen(loadEmployer, (m) => m.CandidatesScreen);
 const EmployerTandemScreen = lazyScreen(loadEmployer, (m) => m.EmployerTandemScreen);
 const EmployerDocsScreen = lazyScreen(loadEmployer, (m) => m.EmployerDocsScreen);
 const PlaceForm = lazyScreen(loadPlaceForm, (m) => m.PlaceForm);
+const PracticeDocsScreen = lazyScreen(loadDocs, (m) => m.PracticeDocsScreen);
 const AboutScreen = lazyScreen(loadAbout, (m) => m.AboutScreen);
 
 export function App() {
@@ -52,6 +53,7 @@ export function App() {
             <Route path="/employer/internships/:id/candidates" element={<CandidatesScreen />} />
             <Route path="/employer/internships/:id/tandem/:studentId" element={<EmployerTandemScreen />} />
             <Route path="/employer/internships/:id/docs/:studentId" element={<EmployerDocsScreen />} />
+            <Route path="/docs/:interestId" element={<PracticeDocsScreen />} />
             <Route path="/about" element={<AboutScreen />} />
             <Route path="*" element={<NotFound />} />
           </AnimatedRoutes>

@@ -21,6 +21,11 @@
     **Вызывать прямо из обработчика нажатия**: перед вызовом MAX проверяет клик пользователя, без клика экран
     шеринга не откроется ([Bridge](https://dev.max.ru/docs/webapps/bridge), сверено 29.09);
   - `openMaxLink(url)` и `openLink(url)` — открыть диплинк MAX или внешнюю ссылку;
+  - `downloadFile(url, file_name)` — скачать файл по https-ссылке. **Скачивание через href не поддерживается**, нужен
+    клик пользователя перед вызовом, в браузере метод не работает. Файл качает клиент MAX, заголовков мини-приложения
+    у запроса нет, поэтому ссылка должна быть подписанной (документы практики, F-16). Ошибки:
+    `client.download_file.invalid_params`, `client.download_file.request_timeout` (60 с)
+    ([Bridge](https://dev.max.ru/docs/webapps/bridge), сверено 25.10);
   - `BackButton` (`show`, `hide`, `onClick`, `offClick`);
   - `HapticFeedback` (`impactOccurred`, `notificationOccurred`, `selectionChanged`);
   - `DeviceStorage` и `SecureStorage`.

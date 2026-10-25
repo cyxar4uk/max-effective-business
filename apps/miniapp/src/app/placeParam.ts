@@ -11,6 +11,12 @@ export function parsePlaceId(raw: string | null | undefined): number | null {
   return id > 0 && id <= MAX_ID ? id : null;
 }
 
+/** id отклика из параметра запуска `docs_<id>` (кнопка бота «Документы для практики», F-16); иначе null. */
+export function interestIdFromParam(param: string | null | undefined): number | null {
+  const m = /^docs_(\d{1,10})$/.exec(param ?? '');
+  return m ? parsePlaceId(m[1]) : null;
+}
+
 /** id места из параметра запуска `internship_<id>`; иначе null. */
 export function placeIdFromParam(param: string | null | undefined): number | null {
   const m = /^internship_(\d{1,10})$/.exec(param ?? '');

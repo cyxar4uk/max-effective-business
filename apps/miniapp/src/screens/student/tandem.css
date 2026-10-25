@@ -20,6 +20,7 @@
 .tm-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .tm-list li{display:flex;align-items:flex-start;gap:10px}
 .tm-n{flex-shrink:0;width:18px;font-size:13px;line-height:1.55;color:var(--em-ink)}
+.tm-docs{width:100%;margin-top:2px}
 /* действия всегда на виду: практика — пять шагов, на маленьком экране список уходит под кнопки */
 .tm-acts{position:sticky;bottom:0;z-index:3;display:flex;flex-direction:column;gap:6px;padding:20px 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 78%,transparent)}
 .tm-acts .btn{width:100%}

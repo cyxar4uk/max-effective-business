@@ -109,7 +109,7 @@ export function internshipsRouter({ ds, matcher, events, feedMinScore = DEFAULT_
   r.get('/internships/:id/candidates', async (req, res) => {
     const { internship } = await ownInternship(ds, currentUser(req).id, parse(idParam, req.params.id));
     const rows: CandidateRow[] = await ds.query(
-      `SELECT i.status, i.match, i.is_demo, COALESCE(i.interested_at, i.created_at) AS interested_at,
+      `SELECT i.id AS interest_id, i.status, i.match, i.is_demo, COALESCE(i.interested_at, i.created_at) AS interested_at,
               u.id AS student_id, u.first_name, u.last_name, u.phone,
               sp.university, sp.course, sp.direction, sp.city
        FROM interests i
@@ -155,7 +155,7 @@ export function internshipsRouter({ ds, matcher, events, feedMinScore = DEFAULT_
         events.emit('interest.invited', { interestId: result.interestId, internshipId: internship.id, studentUserId: studentId });
       }
       const [row] = (await ds.query(
-        `SELECT i.status, i.match, i.is_demo, COALESCE(i.interested_at, i.created_at) AS interested_at,
+        `SELECT i.id AS interest_id, i.status, i.match, i.is_demo, COALESCE(i.interested_at, i.created_at) AS interested_at,
                 u.id AS student_id, u.first_name, u.last_name, u.phone,
                 sp.university, sp.course, sp.direction, sp.city
          FROM interests i JOIN users u ON u.id = i.student_user_id
@@ -305,6 +305,8 @@ export function internshipsRouter({ ds, matcher, events, feedMinScore = DEFAULT_
         return [
           {
             ...interestSummary(x),
+            // id отклика: по нему открываются документы для практики (F-16)
+            interestId: x.id,
             internship: internshipView(i, employer),
             employerContact: owner && employer ? { name: employer.contactName, phone: owner.phone } : null,
           },
@@ -326,6 +328,7 @@ async function lockInterest(m: EntityManager, studentUserId: number, internshipI
 }
 
 interface CandidateRow {
+  interest_id: number;
   status: InterestStatus;
   match: unknown;
   is_demo: boolean;
@@ -344,6 +347,8 @@ interface CandidateRow {
 function candidateView(row: CandidateRow) {
   const invited = row.status === 'invited';
   return {
+    // id отклика: по нему открываются документы для практики (F-16)
+    interestId: row.interest_id,
     studentId: row.student_id,
     firstName: row.first_name,
     lastName: invited ? row.last_name : null,
