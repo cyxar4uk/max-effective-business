@@ -154,6 +154,7 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
         phone: employerOwner?.phone ?? null,
         type: internship.type,
         isDemo: internship.isDemo,
+        interestId: interest.id,
       }),
     );
     if (ok) queued++;
@@ -166,7 +167,7 @@ export async function onInterestInvited(deps: NotifyDeps, e: AppEvents['interest
       employerOwner,
       KIND.invitedEmployer,
       `invite:${interest.id}:employer`,
-      employerInvitedMessage({ internshipId: internship.id, title: internship.title, studentName, phone: student.phone, score: interest.matchScore, employerHasPhone: Boolean(employerOwner.phone), type: internship.type, isDemo: interest.isDemo }),
+      employerInvitedMessage({ internshipId: internship.id, title: internship.title, studentName, phone: student.phone, score: interest.matchScore, employerHasPhone: Boolean(employerOwner.phone), type: internship.type, isDemo: interest.isDemo, interestId: interest.id }),
     );
     if (ok) queued++;
   }
