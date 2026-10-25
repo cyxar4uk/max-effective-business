@@ -46,6 +46,8 @@ interface MaxWebApp {
   shareMaxContent(params: ShareParams): unknown;
   openMaxLink(url: string): void;
   openLink(url: string): void;
+  /** Нет в старых клиентах MAX — проверяем перед вызовом. */
+  downloadFile?(url: string, fileName: string): Promise<unknown>;
 }
 
 declare global {
@@ -73,7 +75,7 @@ export const insideMax: boolean = Boolean(webApp()?.initData);
 /** Bridge для действий, которые имеют смысл только в клиенте MAX (в обычном браузере скрипт тоже есть, но пустой). */
 const maxApp = (): MaxWebApp | undefined => (insideMax ? webApp() : undefined);
 
-/** Параметр запуска: `student` | `employer` | `internship_<id>` | пусто. */
+/** Параметр запуска: `student` | `employer` | `internship_<id>` | `docs_<id отклика>` | пусто. */
 export function getStartParam(): string {
   const fromMax = webApp()?.initDataUnsafe?.start_param;
   if (fromMax) return fromMax;
@@ -171,4 +173,28 @@ export function openLink(url: string): void {
  */
 export function openPage(url: string): void {
   openLink(new URL(url, window.location.origin).href);
+}
+
+const DOWNLOAD_TIMEOUT_MS = 65_000;
+
+/**
+ * Скачать файл по https-ссылке ([Bridge](https://dev.max.ru/docs/webapps/bridge), «Скачивание файла»): href в MAX
+ * не работает. Файл качает сам клиент, без наших заголовков — ссылка должна открываться без X-Max-Init-Data.
+ * Вызывать прямо в обработчике нажатия, без await перед вызовом: MAX проверяет клик пользователя.
+ * null — не в MAX или клиент без метода: тогда качаем сами (fetch → blob).
+ */
+export function downloadFile(url: string, fileName: string): Promise<void> | null {
+  const app = maxApp();
+  if (!app?.downloadFile) return null;
+  let call: Promise<void>;
+  try {
+    call = Promise.resolve(app.downloadFile(url, fileName)).then(() => undefined);
+  } catch (err) {
+    return Promise.reject(err instanceof Error ? err : new Error('Не получилось скачать файл'));
+  }
+  // MAX сам отвечает отказом через 60 с; если клиент промолчит — не держим кнопку «Качаем…» вечно
+  const timeout = new Promise<never>((_, reject) =>
+    window.setTimeout(() => reject(new Error('MAX не ответил. Повторите попытку.')), DOWNLOAD_TIMEOUT_MS),
+  );
+  return Promise.race([call, timeout]);
 }

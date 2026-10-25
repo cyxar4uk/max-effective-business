@@ -6,7 +6,7 @@ import { getStartParam } from '../max/bridge';
 import type { LaunchState } from './launchState';
 import { lastRole } from './lastRole';
 import { useMe } from './me';
-import { placeIdFromParam } from './placeParam';
+import { interestIdFromParam, placeIdFromParam } from './placeParam';
 
 /** Куда вести при запуске и как: поверх главного (push) или вместо него (replace). */
 interface Target {
@@ -19,6 +19,7 @@ interface Target {
  * Параметр запуска от бота или диплинка (docs/api.md, for_ilya §4) всегда важнее последней роли:
  * - `internship_<id>` (QR-код на стенде, «Смотреть» и «Кандидаты» в боте, ссылка друга) — карточка места поверх
  *   главного, чтобы «Назад» вела к выбору роли; своё место карточка сама откроет списком кандидатов;
+ * - `docs_<id отклика>` (кнопка бота «Документы для практики», F-16) — документы по приглашению, тоже поверх главного;
  * - `student` и `employer` — раздел роли вместо главного.
  * Без параметра — в раздел последней роли, если её профиль есть; иначе остаёмся на главном (выбор роли).
  * Разбираем только на главном: другой адрес при запуске — перезагрузка внутри приложения, остаёмся где были.
@@ -28,6 +29,8 @@ function launchTarget(pathname: string, me: Me): Target | null {
   const param = getStartParam();
   const placeId = placeIdFromParam(param);
   if (placeId !== null) return { to: `/internships/${placeId}`, replace: false, state: { launch: true } };
+  const interestId = interestIdFromParam(param);
+  if (interestId !== null) return { to: `/docs/${interestId}`, replace: false };
   if (param === 'student' || param === 'employer') return { to: `/${param}`, replace: true };
   if (param) return null;
   const role = lastRole();

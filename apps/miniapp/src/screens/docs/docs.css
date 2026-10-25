@@ -1,0 +1,49 @@
+/* «Документы для практики» (F-16): шаги, четыре документа, форма реквизитов. Телефон — колонкой, десктоп — две колонки. */
+.pdc{background:var(--bg);overflow-x:clip}
+.pdc-wait{display:flex;flex-direction:column;gap:12px;padding-top:16px}
+.pdc-grid{display:flex;flex-direction:column;gap:16px;width:100%;max-width:640px;margin:0 auto;padding-top:16px;flex-grow:1}
+.pdc-main,.pdc-side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pdc-side{flex-grow:1;scroll-margin-top:16px}
+.pdc-head{display:flex;flex-direction:column;gap:10px}
+.pdc-place{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdc-h{font-size:30px}
+
+.pdc-steps{padding:14px 16px;gap:10px}
+.pdc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.pdc-list li{display:flex;align-items:flex-start;gap:10px;line-height:1.45}
+.pdc-n{flex-shrink:0;width:18px;font-size:13px;line-height:1.7;color:var(--em-ink)}
+.pdc-you{height:20px;margin-left:6px;vertical-align:1px;font-size:11px}
+.pdc-form-note{line-height:1.4}
+
+.pdc-alert{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 16px;border-radius:22px;background:var(--warn-bg);color:var(--warn-ink);line-height:1.4}
+.pdc-alert .btn{margin-top:4px}
+.pdc-saved{margin:0;padding:12px 14px;border-radius:16px;background:var(--ok-bg);color:var(--ok-ink);font-size:14px}
+
+.pdc-docs{list-style:none;margin:0;padding:0}
+.pdc-doc{border-bottom:1px solid var(--line)}
+.pdc-doc:last-child{border-bottom:0}
+.pdc-doc-row{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.pdc-ico{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pdc-ico.off{background:var(--chip);color:var(--ink3)}
+.pdc-t{font-weight:600;font-size:15px;line-height:1.3}
+.pdc-doc .lbl{line-height:1.35}
+.pdc-get{flex-shrink:0;padding:0 12px}
+.pdc-get:disabled{opacity:.6}
+.pdc-note{margin:0;padding:0 14px 12px 64px;font-size:13px;line-height:1.35}
+.pdc-note.ok{color:var(--ok-ink)}
+.pdc-note.bad{color:var(--neg-ink)}
+.pdc-foot{margin-top:auto;padding-top:4px}
+.pdc-foot .btn{width:100%}
+
+.pdc-req{display:flex;flex-direction:column;gap:14px}
+.pdc-req-head{gap:6px}
+.pdc-req-foot{margin-top:4px}
+
+@media (min-width:1024px){
+  .pdc{padding-left:max(36px,calc((100% - 1040px) / 2));padding-right:max(36px,calc((100% - 1040px) / 2))}
+  .pdc-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,480px);gap:32px;align-items:start;max-width:none;padding-top:40px}
+  .pdc-main{position:sticky;top:40px}
+  .pdc-h{font-size:36px}
+  .pdc-foot{margin-top:0}
+  .pdc-req .pf-foot{position:static;background:none;padding-bottom:0}
+}

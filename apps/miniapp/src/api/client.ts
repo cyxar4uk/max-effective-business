@@ -3,6 +3,7 @@
 import { initData } from '../max/bridge';
 import type {
   Candidate,
+  DocKind,
   EmployerProfile,
   Interest,
   InterestAction,
@@ -13,6 +14,7 @@ import type {
   Items,
   Me,
   PlaceDraftSuggestion,
+  PracticeDocs,
   Skills,
   StudentProfile,
   Tag,
@@ -87,6 +89,26 @@ async function request<T>(method: string, path: string, body?: unknown, options:
   return data as T;
 }
 
+/** Документ .docx с заголовком X-Max-Init-Data — для скачивания вне MAX. Ошибка — тот же ApiError, что у JSON-запросов. */
+async function getFile(path: string): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetch(BASE + path, { headers: { 'X-Max-Init-Data': initData } });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Нет связи с сервером. Проверьте интернет и повторите.');
+  }
+  if (!res.ok) {
+    const err = ((await res.json().catch(() => null)) as ErrorBody | null)?.error;
+    throw new ApiError(
+      res.status,
+      err?.code ?? 'INTERNAL',
+      err?.message ?? 'Сервер временно недоступен. Повторите чуть позже.',
+      err?.fields ?? {},
+    );
+  }
+  return res.blob();
+}
+
 const get = <T>(path: string) => request<T>('GET', path);
 const post = <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('POST', path, body, options);
 const put = <T>(path: string, body: unknown) => request<T>('PUT', path, body);
@@ -123,4 +145,9 @@ export const api = {
     post<Candidate>(`/internships/${id}/candidates/${studentId}/invite`, undefined, options),
   decline: (id: number, studentId: number, options?: RequestOptions) =>
     post<Candidate>(`/internships/${id}/candidates/${studentId}/decline`, undefined, options),
+
+  /** Документы для практики по отклику (F-16): только стороны приглашения, иначе 404. */
+  practiceDocs: (interestId: number) => get<PracticeDocs>(`/interests/${interestId}/documents`),
+  /** Без реквизитов компании договор и письмо — 409 с текстом, что заполнить. */
+  practiceDoc: (interestId: number, kind: DocKind) => getFile(`/interests/${interestId}/documents/${kind}`),
 };

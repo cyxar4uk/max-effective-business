@@ -372,10 +372,11 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 Отклики, кроме `skipped`, новые сверху:
 
 ```json
-{ "items": [ { "status": "invited", "match": {…}, "updatedAt": "…", "internship": Место, "employerContact": { "name": "Ольга", "phone": "+7…" } } ] }
+{ "items": [ { "status": "invited", "match": {…}, "updatedAt": "…", "interestId": 34, "internship": Место, "employerContact": { "name": "Ольга", "phone": "+7…" } } ] }
 ```
 
 `employerContact` — только в статусе `invited`, иначе `null`. `phone` работодателя — `null`, если он им не поделился.
+`interestId` — id отклика: по нему открываются документы для практики (F-16).
 
 ### Кандидаты `GET /api/internships/:id/candidates`
 
@@ -386,6 +387,7 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 {
   "items": [
     {
+      "interestId": 34,
       "studentId": 12,
       "firstName": "Анна",
       "lastName": null,
@@ -400,7 +402,7 @@ NODE_ENV=development npm run dev:init-data -- 100001 Студент internship_5
 }
 ```
 
-**`lastName` и `phone` заполнены только в статусе `invited`**, в остальных — `null`.
+**`lastName` и `phone` заполнены только в статусе `invited`**, в остальных — `null`. `interestId` — id отклика (F-16).
 
 `interestedAt` — когда студент впервые нажал «Интересно»; повторные «Пропустить» → «Интересно» его не сдвигают.
 Метрика «от публикации до первого отклика» — самый ранний `interestedAt` минус `createdAt` места. У откликов из

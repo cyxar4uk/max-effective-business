@@ -46,6 +46,7 @@ export const loadStudent = loader(() => import('../screens/student/studentRoutes
 export const loadEmployer = loader(() => import('../screens/employer/employerRoutes'));
 export const loadPlaceForm = loader(() => import('../screens/employer/PlaceForm'));
 export const loadAbout = loader(() => import('../screens/AboutScreen'));
+export const loadDocs = loader(() => import('../screens/docs/docsRoutes'));
 
 const RELOAD_KEY = 'tandem.chunkReloadAt';
 /** Сама страница перезагружается не чаще раза в 10 с — иначе при лежащем сервере вышел бы цикл. */
@@ -126,6 +127,7 @@ const quiet = (load: Loader<unknown>) => void load.run().catch(() => {});
 export function preloadScreens(startParam: string, role: 'student' | 'employer' | null): void {
   if (startParam === 'employer' || (!startParam && role === 'employer')) quiet(loadEmployer);
   else if (startParam === 'student' || startParam.startsWith('internship_') || (!startParam && role === 'student')) quiet(loadStudent);
+  else if (startParam.startsWith('docs_')) quiet(loadDocs);
 
   // requestIdleCallback нет в Safari — там через таймер
   const idle = (cb: () => void) =>

@@ -1,0 +1,14 @@
+/* Реквизиты для документов практики: в профиле компании (свёрнуты) и на экране документов. */
+.req{display:flex;flex-direction:column;gap:12px}
+.req-toggle{width:100%;background:none;border:0;font:inherit;text-align:left;cursor:pointer}
+.req-toggle > .ic:last-child{flex-shrink:0;color:var(--ink3);transition:transform 150ms ease-out}
+.req-toggle[aria-expanded="true"] > .ic:last-child{transform:rotate(90deg)}
+.req-ico{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.req-t{font-weight:600}
+.req-body{display:flex;flex-direction:column;gap:12px}
+.req-group{margin:0;padding:0;border:0;min-width:0;display:flex;flex-direction:column;gap:8px}
+.req-cap{padding:0 4px}
+
+@media (prefers-reduced-motion: reduce){
+  .req-toggle > .ic:last-child{transition:none}
+}
