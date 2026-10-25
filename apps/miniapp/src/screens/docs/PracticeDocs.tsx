@@ -11,7 +11,8 @@ import { useMe } from '../../app/me';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
-import { downloadFile, haptic, insideMax } from '../../max/bridge';
+import { downloadFile, haptic, hasDownloadFile, insideMax, openLink, platform } from '../../max/bridge';
+import { downloadVia } from '../../max/download';
 import { parsePlaceId } from '../../app/placeParam';
 import { DocIcon } from '../employer/icons';
 import {
@@ -210,10 +211,16 @@ function Docs({ id, initial, side }: { id: number; initial: PracticeDocs; side: 
         .finally(() => setBusy(null));
       return;
     }
+    if (item?.url && insideMax && downloadVia(platform(), hasDownloadFile()) === 'link') {
+      // Веб-версия MAX или клиент без downloadFile: подписанную ссылку открываем в браузере, файл скачает он
+      openLink(item.url);
+      haptic.selection();
+      setNote({ kind, ok: true, text: `Открыли «${fileName}» в браузере — файл скачается там` });
+      return;
+    }
     let job: Promise<void>;
     if (item?.url && insideMax) {
       const native = downloadFile(item.url, fileName);
-      // Клиент MAX без downloadFile: качает только сам MAX, href в нём не работает
       job = native ?? Promise.reject(new Error('Обновите приложение MAX, чтобы скачивать файлы'));
     } else {
       job = api.practiceDoc(id, kind).then((blob) => saveBlob(blob, fileName));

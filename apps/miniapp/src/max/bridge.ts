@@ -86,6 +86,9 @@ export function getStartParam(): string {
 
 export const platform = (): MaxPlatform | undefined => webApp()?.platform;
 
+/** Есть ли в этом клиенте MAX WebApp.downloadFile (в старых клиентах нет). */
+export const hasDownloadFile = (): boolean => Boolean(maxApp()?.downloadFile);
+
 /** Сообщить MAX, что приложение готово. Вызывается один раз при старте. */
 export function ready(): void {
   webApp()?.ready?.();
