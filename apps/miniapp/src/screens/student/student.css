@@ -16,6 +16,10 @@
 .feed-h1{font-size:22px}
 .feed-chips{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding:0 16px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .feed-chips::-webkit-scrollbar{display:none}
+/* Есть ещё чипы за краем — край растворяется (useEdgeFade): видно, что ряд листается, а не обрезан */
+.feed-chips.fade-r{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 48px),transparent)}
+.feed-chips.fade-l{-webkit-mask-image:linear-gradient(to right,transparent,#000 48px);mask-image:linear-gradient(to right,transparent,#000 48px)}
+.feed-chips.fade-l.fade-r{-webkit-mask-image:linear-gradient(to right,transparent,#000 48px,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(to right,transparent,#000 48px,#000 calc(100% - 48px),transparent)}
 .feed-deck{flex:1 0 auto;display:flex;flex-direction:column}
 /* Минимум колоды — 260 px: в MAX на Android 360×640 видно ~560 px, и при большем минимуме кнопки колоды уходили
    под навигацию. Текст карточки ужимается под высоту сам (squeezeSteps в PlaceCard.tsx) */

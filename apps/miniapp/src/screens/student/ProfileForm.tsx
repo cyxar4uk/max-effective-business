@@ -7,6 +7,7 @@ import { useLoad } from '../../api/useLoad';
 import type { AsStudentState } from '../../app/launchState';
 import { parsePlaceId } from '../../app/placeParam';
 import { useMe } from '../../app/me';
+import { useEdgeFade } from '../../components/useEdgeFade';
 import { flash } from '../../components/flashMessage';
 import { ErrorState } from '../../components/ErrorState';
 import { Skeleton } from '../../components/Skeleton';
@@ -111,6 +112,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
   const reduced = useReduced();
   const [params] = useSearchParams();
   const { me, setMe } = useMe();
+  const chipsRef = useEdgeFade<HTMLDivElement>();
   const step = params.get('step') === 'skills' ? 2 : 1;
   // Анкету открыли с экрана места («Заполнить анкету»): /student?place=<id> лежит в истории прямо над ним
   const placeId = mode === 'new' ? parsePlaceId(params.get('place')) : null;
@@ -459,7 +461,7 @@ function ProfileForm({ mode, initial, skills, addSkill }: ProfileFormProps) {
           />
         </label>
       </div>
-      <div className="chips feed-chips" role="group" aria-label="Группы навыков">
+      <div ref={chipsRef} className="chips feed-chips" role="group" aria-label="Группы навыков">
         <button type="button" className={group === null ? 'chip on' : 'chip'} aria-pressed={group === null} onClick={() => setGroup(null)}>
           Все
         </button>

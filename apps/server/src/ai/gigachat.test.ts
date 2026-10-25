@@ -17,7 +17,7 @@ function fakeFetch(opts: { oauthStatus?: number; chatStatus?: number; expiresIn?
     }
     if (u === `${GIGACHAT_API_BASE}/chat/completions`) {
       if (opts.chatStatus) return json({ message: 'nope' }, opts.chatStatus);
-      return json({ choices: [{ message: { role: 'assistant', content: '{"ok":true}' } }] });
+      return json({ choices: [{ message: { role: 'assistant', content: '{"ok":true}' }, finish_reason: 'stop' }] });
     }
     if (u === `${GIGACHAT_API_BASE}/models`) {
       return json({ object: 'list', data: [{ id: 'GigaChat-2', object: 'model' }, { id: 'GigaChat-2-Pro', object: 'model' }, { object: 'model' }] });
@@ -32,7 +32,7 @@ describe('GigaChat', () => {
     const f = fakeFetch({ now: () => t });
     const ai = createGigaChat({ authKey: KEY, scope: 'GIGACHAT_API_PERS', model: 'GigaChat-2', fetch: f, now: () => t });
 
-    expect(await ai.chat([{ role: 'user', content: 'привет' }], { signal: signal() })).toBe('{"ok":true}');
+    expect(await ai.chat([{ role: 'user', content: 'привет' }], { signal: signal() })).toEqual({ text: '{"ok":true}', finishReason: 'stop' });
 
     const [oauthUrl, oauthInit] = f.mock.calls[0]!;
     expect(oauthUrl).toBe(GIGACHAT_OAUTH_URL);
