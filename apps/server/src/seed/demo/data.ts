@@ -7,6 +7,24 @@
 import type { PlaceType } from '../../db/entities.js';
 import type { WorkFormat } from '../../matching/index.js';
 
+/**
+ * Реквизиты для документов практики (F-16, #144) — вымышленные и помеченные «тестовые», чтобы в демо договор
+ * и письмо скачивались заполненными. Названия полей — как столбцы `employers` в спеке F-16.
+ */
+export interface DemoRequisites {
+  legalName: string;
+  inn: string;
+  ogrn: string;
+  legalAddress: string;
+  signerName: string;
+  signerPosition: string;
+  signerBasis: string;
+  responsibleName: string;
+  responsiblePosition: string;
+  responsiblePhone: string;
+  responsibleEmail: string;
+}
+
 export interface DemoEmployer {
   key: string;
   maxUserId: number;
@@ -15,6 +33,30 @@ export interface DemoEmployer {
   contactFirstName: string;
   contactLastName: string;
   phone: string;
+  requisites: DemoRequisites;
+}
+
+const ZIP: Record<string, string> = { Москва: '101000', Казань: '420000' };
+
+/**
+ * Тестовые реквизиты: ИНН и ОГРН с кодом региона 00 — такого региона нет, с настоящей компанией не совпадут.
+ * ИНН — 10 цифр, ОГРН — 13 (как у юрлица), почта — на зарезервированном домене example.com.
+ */
+function demoRequisites(n: number, key: string, companyName: string, first: string, last: string, city: string, phone: string): DemoRequisites {
+  const brand = /«([^»]+)»/.exec(companyName)?.[1] ?? companyName;
+  return {
+    legalName: `Общество с ограниченной ответственностью «${brand}» (тестовые реквизиты)`,
+    inn: `00${String(n).padStart(8, '0')}`,
+    ogrn: `12600${String(n).padStart(8, '0')}`,
+    legalAddress: `${ZIP[city] ?? '000000'}, г. ${city}, ул. Тестовая, д. ${n} (тестовый адрес)`,
+    signerName: `${last} ${first}`,
+    signerPosition: 'генеральный директор',
+    signerBasis: 'Устава',
+    responsibleName: `${last} ${first}`,
+    responsiblePosition: 'руководитель практики',
+    responsiblePhone: phone,
+    responsibleEmail: `practice-${key}@example.com`,
+  };
 }
 
 export interface DemoInternship {
@@ -75,6 +117,7 @@ const employer = (
   contactFirstName,
   contactLastName,
   phone: `+7000000${1000 + n}`,
+  requisites: demoRequisites(n, key, companyName, contactFirstName, contactLastName, city, `+7000000${1000 + n}`),
 });
 
 export const DEMO_EMPLOYERS: DemoEmployer[] = [

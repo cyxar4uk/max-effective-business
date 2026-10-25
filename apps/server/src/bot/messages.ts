@@ -38,6 +38,17 @@ export const REPLY_KINDS: ReadonlySet<string> = new Set([KIND.welcome, KIND.fall
 export const START_PARAM = /^[\w-]{1,512}$/;
 
 export const internshipParam = (id: number) => `internship_${id}`;
+/** Экран «Документы для практики» отклика в мини-приложении (F-16, #143): `docs_<id отклика>`. */
+export const docsParam = (interestId: number) => `docs_${interestId}`;
+
+/** Практика и известен отклик — строка и кнопка «Документы для практики» (F-16, #144). Иначе ничего. */
+function practiceDocs(type: PlaceType | null | undefined, interestId: number | undefined): { line: string[]; button: AppButton[][] } {
+  if (type !== 'practice' || !interestId) return { line: [], button: [] };
+  return {
+    line: ['', 'Документы для практики готовы: договор о практической подготовке и письмо о согласии — по кнопке ниже.'],
+    button: [[{ text: 'Документы для практики', startapp: docsParam(interestId) }]],
+  };
+}
 
 // Работодатель первым — как в мини-приложении и презентации: продукт — практиканты для малого бизнеса
 const roleButtons: AppButton[][] = [[{ text: 'Я работодатель', startapp: 'employer' }, { text: 'Я студент', startapp: 'student' }]];
@@ -178,8 +189,11 @@ export function studentInvitedMessage(opts: {
   type?: PlaceType | null;
   /** Тестовое место: компания и номер вымышленные — говорим об этом прямо, чтобы по номеру не звонили. */
   isDemo?: boolean;
+  /** Отклик: для практики — кнопка на документы. */
+  interestId?: number;
 }): QueuedMessage {
   const contact = [opts.contactName, opts.phone].filter(Boolean).join(', ') || 'работодатель свяжется с вами сам';
+  const docs = practiceDocs(opts.type, opts.interestId);
   const lines = [
     // Тестовое — в первой строке: её видно в превью уведомления MAX
     `${opts.isDemo ? 'Тестовое приглашение' : 'Вас приглашают'}: «${opts.title}», ${opts.company}.`,
@@ -188,8 +202,12 @@ export function studentInvitedMessage(opts: {
     '',
     'Что дальше:',
     ...nextStepsFor(opts.type).map((s, i) => `${i + 1}. ${s}`),
+    ...docs.line,
   ];
-  return { text: lines.join('\n'), buttons: [[{ text: 'Открыть приглашение', startapp: internshipParam(opts.internshipId) }]] };
+  return {
+    text: lines.join('\n'),
+    buttons: [...docs.button, [{ text: 'Открыть приглашение', startapp: internshipParam(opts.internshipId) }]],
+  };
 }
 
 export function employerInvitedMessage(opts: {
@@ -204,7 +222,10 @@ export function employerInvitedMessage(opts: {
   type?: PlaceType | null;
   /** Тестовый отклик: студент и номер вымышленные — говорим прямо, чтобы по номеру не звонили. */
   isDemo?: boolean;
+  /** Отклик: для практики — кнопка на документы. */
+  interestId?: number;
 }): QueuedMessage {
+  const docs = practiceDocs(opts.type, opts.interestId);
   const lines = [
     `Вы пригласили ${opts.isDemo ? 'тестового студента' : 'студента'} на «${opts.title}».`,
     `${opts.studentName}${opts.phone ? `, ${opts.phone}` : ''}. Совпадение ${opts.score} %.`,
@@ -219,8 +240,8 @@ export function employerInvitedMessage(opts: {
         : 'Телефона нет ни у вас, ни у студента. Добавьте свой номер в мини-приложении, чтобы студент мог с вами связаться.',
     );
   }
-  lines.push('', 'Что дальше:', ...employerNextStepsFor(opts.type, Boolean(opts.phone)).map((s, i) => `${i + 1}. ${s}`));
-  return { text: lines.join('\n'), buttons: [[{ text: 'Кандидаты', startapp: internshipParam(opts.internshipId) }]] };
+  lines.push('', 'Что дальше:', ...employerNextStepsFor(opts.type, Boolean(opts.phone)).map((s, i) => `${i + 1}. ${s}`), ...docs.line);
+  return { text: lines.join('\n'), buttons: [...docs.button, [{ text: 'Кандидаты', startapp: internshipParam(opts.internshipId) }]] };
 }
 
 /** Превращает сообщение из очереди в тело POST /messages. Параметры, не подходящие под ограничения MAX, отбрасываются. */
