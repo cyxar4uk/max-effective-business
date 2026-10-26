@@ -8,14 +8,17 @@
 | | |
 |---|---|
 | Коммит заморозки | `c85103e6148272965c3a1f99a417d6996a02ffd0` (`c85103e`) |
-| Архив кода | `tandem-c85103e.zip`, SHA-256 `4c9d0cf9bcf2c2a7525b9738a307bb4daab55a4bc39ad88e04309ca2a85f5641` |
+| Архив кода | `tandem-c85103e.zip`, SHA-256 `150251691949d7b1f54de0268d81a49911d374f89af7a81cb00beece6dceae0a` |
 | Бот | [max.ru/t373_hakaton_max_bot](https://max.ru/t373_hakaton_max_bot) |
 | Мини-приложение и API | `https://tandem.anyway-community.ru`, API — `/api` |
 
-Архив собирается из коммита одной командой и совпадает побайтно:
+Архив — тот же коммит без материалов кейса и ресёрча (`materials/`), исходников презентации и внутренних заметок к защите;
+в нём остались код, документация из README и `deck/tandem.pdf`. Собирается из коммита одной командой, сумма совпадает:
 
 ```bash
-git archive --format=zip --prefix=max-effective-business-c85103e/ -o tandem-c85103e.zip c85103e
+git archive --format=zip --prefix=max-effective-business-c85103e/ -o tandem-c85103e.zip c85103e -- . \
+  ':(exclude)materials' ':(exclude)deck/canvas' ':(exclude)deck/screens-desktop' \
+  ':(exclude)deck/speech.md' ':(exclude)deck/summary.md' ':(exclude)docs/defense.md'
 ```
 
 Эта строка в README добавлена отдельным коммитом поверх `c85103e`: код и всё остальное в нём не менялись.
